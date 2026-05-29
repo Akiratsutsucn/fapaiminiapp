@@ -1,0 +1,110 @@
+<view class="home-page">
+  <!-- 城市选择器 -->
+  <view class="city-bar">
+    <city-selector
+      cities="{{cities}}"
+      currentCityId="{{currentCityId}}"
+      currentCityName="{{currentCityName}}"
+      bind:change="onCityChange"
+    />
+  </view>
+
+  <!-- ============ Hero 大字报 ============ -->
+  <view class="hero">
+    <view class="hero-tagline">FAPAI · 上海 / 宁波</view>
+    <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
+    <view class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源数据</view>
+  </view>
+
+  <!-- 横幅轮播（叠加在 hero 下方负 margin） -->
+  <view class="banner-wrap" wx:if="{{banners.length > 0}}">
+    <banner-carousel banners="{{banners}}" />
+  </view>
+
+  <!-- ============ 行情数据卡（V2 大字报） ============ -->
+  <view class="stats-card-v2">
+    <view class="stat-cell" bindtap="onStatTap" data-type="bargain">
+      <text class="stat-num accent">{{stats.bargain_count}}</text>
+      <text class="stat-label">捡漏房源</text>
+    </view>
+    <view class="stat-cell" bindtap="onStatTap" data-type="upcoming">
+      <text class="stat-num">{{stats.upcoming_count}}</text>
+      <text class="stat-label">即将开拍</text>
+    </view>
+    <view class="stat-cell" bindtap="onStatTap" data-type="listed">
+      <text class="stat-num">{{stats.yesterday_listed}}</text>
+      <text class="stat-label">昨日上架</text>
+    </view>
+    <view class="stat-cell" bindtap="onStatTap" data-type="sold">
+      <text class="stat-num">{{stats.yesterday_sold}}</text>
+      <text class="stat-label">昨日成交</text>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="quick-entry">
+    <view class="qe-item" bindtap="onViewAll">
+      <view class="qe-icon-list"></view>
+      <text class="qe-text">全部房源</text>
+    </view>
+    <view class="qe-divider"></view>
+    <view class="qe-item" bindtap="onMapFind">
+      <view class="qe-icon-map"></view>
+      <text class="qe-text">地图找房</text>
+    </view>
+  </view>
+
+  <!-- ============ 法拍秘籍 ============ -->
+  <view class="section" wx:if="{{articles.length > 0}}">
+    <view class="section-head">
+      <view class="section-title-v2">法拍课堂<text class="badge-new">HOT</text></view>
+      <text class="section-sub">拍来盟科技 · 全部 ›</text>
+    </view>
+    <scroll-view class="article-scroll" scroll-x>
+      <view class="article-card" wx:for="{{articles}}" wx:key="id" bindtap="onArticleTap" data-id="{{item.id}}">
+        <image class="article-cover" src="{{item.cover_image}}" mode="aspectFill" />
+        <view class="article-info">
+          <text class="article-title">{{item.title}}</text>
+          <text class="article-date">{{item.published_at}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- ============ 精选房源 ============ -->
+  <view class="section">
+    <view class="section-head">
+      <view class="section-title-v2">头条捡漏</view>
+      <view class="section-filters">
+        <view class="filter-chip {{activeFilter === 'district' || selectedDistrict ? 'active' : ''}}" bindtap="onQuickFilter" data-filter="district">{{selectedDistrict || '区域'}}</view>
+        <view class="filter-chip {{activeFilter === 'price' || selectedPriceLabel ? 'active' : ''}}" bindtap="onQuickFilter" data-filter="price">{{selectedPriceLabel || '起拍价'}}</view>
+      </view>
+    </view>
+
+    <!-- 区域筛选面板 -->
+    <view class="filter-panel" wx:if="{{activeFilter === 'district'}}">
+      <view class="filter-options">
+        <view class="option-item {{!selectedDistrict ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="">全部区域</view>
+        <view class="option-item {{selectedDistrict === item ? 'selected' : ''}}" wx:for="{{districts}}" wx:key="*this" bindtap="onSelectDistrict" data-value="{{item}}">{{item}}</view>
+      </view>
+    </view>
+
+    <!-- 价格筛选面板 -->
+    <view class="filter-panel" wx:if="{{activeFilter === 'price'}}">
+      <view class="filter-options">
+        <view class="option-item {{!selectedPriceRange ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="">不限</view>
+        <view class="option-item {{selectedPriceRange === item.value ? 'selected' : ''}}" wx:for="{{priceRanges}}" wx:key="value" bindtap="onSelectPriceRange" data-value="{{item.value}}">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{properties.length > 0}}">
+      <house-card wx:for="{{properties}}" wx:key="id" property="{{item}}" />
+    </view>
+    <view class="empty-state" wx:else>
+      <text>暂无房源数据</text>
+    </view>
+  </view>
+
+  <!-- 浮动按钮 -->
+  <float-buttons bind:contact="onContact" bind:top="onScrollTop" />
+</view>

@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "city-selector": "/components/city-selector/city-selector",
+    "banner-carousel": "/components/banner-carousel/banner-carousel",
+    "house-card": "/components/house-card/house-card",
+    "float-buttons": "/components/float-buttons/float-buttons"
+  },
+  "navigationBarTitleText": "法拍者联盟"
+}

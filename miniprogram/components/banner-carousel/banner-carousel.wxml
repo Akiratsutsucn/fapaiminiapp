@@ -1,0 +1,8 @@
+<view class="banner-wrap">
+  <swiper class="banner-swiper" indicator-dots="{{banners.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff" autoplay interval="3000" circular>
+    <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap" data-item="{{item}}">
+      <image class="banner-image" src="{{item.image_url}}" mode="aspectFill" lazy-load />
+      <view class="banner-title" wx:if="{{item.title}}">{{item.title}}</view>
+    </swiper-item>
+  </swiper>
+</view>

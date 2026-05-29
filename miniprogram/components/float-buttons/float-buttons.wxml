@@ -1,0 +1,8 @@
+<view class="float-btns">
+  <view class="float-btn btn-contact" bindtap="onContact">
+    <view class="btn-icon service-icon"></view>
+  </view>
+  <view class="float-btn btn-top" bindtap="onTop" wx:if="{{showTop}}">
+    <view class="btn-icon top-icon"></view>
+  </view>
+</view>

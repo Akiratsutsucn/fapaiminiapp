@@ -1,0 +1,67 @@
+<view class="login-page">
+  <!-- 装饰圈 -->
+  <view class="login-bg">
+    <view class="bg-glow"></view>
+    <view class="bg-circle circle-1"></view>
+    <view class="bg-circle circle-2"></view>
+    <view class="bg-circle circle-3"></view>
+  </view>
+
+  <!-- 顶部品牌 -->
+  <view class="login-brand">
+    <view class="brand-logo-wrap">
+      <image class="brand-logo" src="/images/logo.png" mode="aspectFit" />
+    </view>
+    <text class="brand-name">法拍者联盟</text>
+    <text class="brand-subtitle">FAPAI · 上海 / 宁波</text>
+  </view>
+
+  <!-- Hero 大字报 -->
+  <view class="login-hero">
+    <view class="hero-tagline">JUDICIAL AUCTION · INSIDER</view>
+    <view class="hero-title">做<text class="accent">专业</text>的</view>
+    <view class="hero-title-2">法拍主理</view>
+    <view class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源</view>
+  </view>
+
+  <!-- 数据小卡 -->
+  <view class="login-stats">
+    <view class="ls-cell">
+      <text class="ls-num">1.1<text class="ls-unit">K+</text></text>
+      <text class="ls-label">在拍房源</text>
+    </view>
+    <view class="ls-divider"></view>
+    <view class="ls-cell">
+      <text class="ls-num">128</text>
+      <text class="ls-label">捡漏推荐</text>
+    </view>
+    <view class="ls-divider"></view>
+    <view class="ls-cell">
+      <text class="ls-num accent">7折</text>
+      <text class="ls-label">平均折扣</text>
+    </view>
+  </view>
+
+  <!-- 登录区 -->
+  <view class="login-actions">
+    <button class="login-btn" bindtap="onLogin" loading="{{loading}}">
+      <view class="login-btn-content">
+        <view class="login-btn-icon wechat-icon"></view>
+        <text class="login-btn-text">一键登录</text>
+      </view>
+    </button>
+
+    <view class="privacy-agreement" bindtap="onAgreeToggle">
+      <view class="privacy-checkbox {{agreed ? 'checked' : ''}}">
+        <text wx:if="{{agreed}}" class="privacy-check-mark">✓</text>
+      </view>
+      <text class="privacy-text">
+        已阅读并同意<text class="privacy-link" catchtap="onViewTerms">《用户协议》</text>和<text class="privacy-link" catchtap="onViewPrivacy">《隐私政策》</text>
+      </text>
+    </view>
+  </view>
+
+  <view class="login-footer">
+    <text class="footer-text">© 拍来盟科技 · 客服 400-007-6786</text>
+  </view>
+</view>

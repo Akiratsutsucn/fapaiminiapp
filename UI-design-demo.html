@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>法拍者联盟 · UI 升级 Demo（真实数据版）</title>
+<style>
+  /* ============ 设计令牌 ============ */
+  :root {
+    --blue-900: #1a2f52;
+    --blue-800: #1e3a6e;
+    --blue-700: #2d4a7a;
+    --blue-600: #3a5a8c;
+    --blue-500: #4a6fa0;
+    --blue-300: #8aaad0;
+    --blue-200: #b8cce0;
+    --blue-100: #dce8f2;
+    --blue-50:  #f0f5fb;
+    --accent-orange: #FF6B35;
+    --accent-orange-soft: #FFE4D9;
+    --accent-gold: #C99846;
+    --text-primary: #1a1a1a;
+    --text-secondary: #5a5a5a;
+    --text-hint: #8a8a8a;
+    --bg-page: #f5f6f8;
+    --bg-card: #ffffff;
+    --bg-noise: rgba(58, 90, 140, 0.025);
+    --shadow-card: 0 4px 16px rgba(58, 90, 140, 0.08);
+    --shadow-elevated: 0 8px 32px rgba(58, 90, 140, 0.14);
+    --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px; --radius-pill: 999px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    padding: 24px;
+    background-image: radial-gradient(circle at 1px 1px, var(--bg-noise) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 375px);
+    gap: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .demo-header {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 16px 0 24px;
+  }
+  .demo-header h1 {
+    font-size: 36px; font-weight: 800;
+    color: var(--blue-900); letter-spacing: -1px;
+  }
+  .demo-header p { color: var(--text-secondary); margin-top: 8px; font-size: 14px; }
+  .demo-header .data-badge {
+    display: inline-block;
+    background: var(--accent-orange-soft);
+    color: var(--accent-orange);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+  .phone {
+    width: 375px;
+    background: var(--bg-card);
+    border-radius: 32px;
+    box-shadow: var(--shadow-elevated);
+    overflow: hidden;
+    border: 8px solid #1a1a1a;
+    height: 812px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone-label {
+    text-align: center; margin-top: 12px;
+    font-size: 14px; color: var(--text-secondary); font-weight: 600;
+  }
+  .status-bar {
+    height: 44px; background: var(--blue-50);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; font-size: 14px; font-weight: 600; color: var(--blue-900);
+  }
+  .nav-bar {
+    padding: 12px 16px; background: var(--bg-card);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(58, 90, 140, 0.08);
+  }
+  .nav-back {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--blue-50); color: var(--blue-700);
+    font-size: 20px;
+  }
+  .nav-title { font-size: 16px; font-weight: 700; color: var(--blue-900); }
+  .nav-right { font-size: 12px; color: var(--blue-600); }
+
+  /* ============ 首页 ============ */
+  .home-content { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+
+  /* Hero 大标题区 */
+  .hero {
+    background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
+    color: #fff;
+    padding: 28px 20px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: ''; position: absolute; right: -40px; top: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(255, 107, 53, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-tagline {
+    font-size: 12px; color: var(--blue-200);
+    letter-spacing: 4px; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .hero-title {
+    font-size: 32px; font-weight: 900;
+    line-height: 1.1; letter-spacing: -1px; margin-bottom: 8px;
+  }
+  .hero-title .accent { color: var(--accent-orange); }
+  .hero-sub { font-size: 13px; color: var(--blue-200); line-height: 1.5; }
+
+  /* 横幅滚动（金融/拍卖/资产主题图） */
+  .banner-scroll {
+    margin: -50px 0 16px;
+    padding: 0 16px;
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+  }
+  .banner-track {
+    display: flex;
+    gap: 12px;
+    animation: scrollX 24s linear infinite;
+    width: fit-content;
+  }
+  @keyframes scrollX {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .banner-card {
+    flex-shrink: 0;
+    width: 280px;
+    height: 140px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-card);
+  }
+  .banner-card img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .banner-card .overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(26, 47, 82, 0.1) 0%, rgba(26, 47, 82, 0.85) 100%);
+  }
+  .banner-card .text {
+    position: absolute; bottom: 12px; left: 16px; right: 16px;
+    color: #fff;
+  }
+  .banner-card .tag {
+    display: inline-block;
+    font-size: 10px;
+    background: rgba(255, 107, 53, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  .banner-card h3 {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 数据看板 */
+  .stats-card {
+    margin: 0 16px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 18px 16px;
+    box-shadow: var(--shadow-card);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat { text-align: center; padding: 0 4px; }
+  .stat + .stat { border-left: 1px solid rgba(58, 90, 140, 0.1); }
+  .stat-num {
+    font-size: 26px; font-weight: 800;
+    color: var(--blue-900);
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-num.accent { color: var(--accent-orange); }
+  .stat-label { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+
+  /* 区域标题 */
+  .section-head {
+    padding: 16px 16px 12px;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .section-title {
+    font-size: 20px; font-weight: 800;
+    color: var(--blue-900); letter-spacing: -0.5px;
+  }
+  .section-title .badge-new {
+    display: inline-block; background: var(--accent-orange);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: var(--radius-sm);
+    vertical-align: middle; margin-left: 6px; letter-spacing: 0.5px;
+  }
+  .section-more { font-size: 12px; color: var(--blue-600); }
+
+  /* Hero 房源卡 */
+  .hero-property {
+    margin: 0 16px 16px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    background: var(--bg-card);
+    position: relative;
+  }
+  .hero-property-img {
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+    background: var(--blue-100);
+  }
+  .hero-property-img img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .img-chip {
+    position: absolute;
+    top: 12px; left: 12px;
+    background: rgba(26, 47, 82, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #fff; font-size: 11px; font-weight: 600;
+    padding: 6px 10px; border-radius: var(--radius-pill); letter-spacing: 0.5px;
+  }
+  .corner-badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: var(--accent-orange);
+    color: #fff; font-weight: 800;
+    padding: 8px 14px; border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+    transform: rotate(2deg);
+    text-align: center;
+  }
+  .corner-badge .label { font-size: 9px; letter-spacing: 1px; display: block; }
+  .corner-badge .amount {
+    display: block; font-size: 16px; margin-top: 2px; letter-spacing: -0.5px;
+  }
+  .hero-property-body { padding: 16px; }
+  .hero-property-title {
+    font-size: 16px; font-weight: 700;
+    color: var(--blue-900); line-height: 1.4; margin-bottom: 8px;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .hero-property-meta {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+  }
+  .meta-tag {
+    font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm);
+    background: var(--blue-50); color: var(--blue-700); font-weight: 500;
+  }
+  .meta-tag.gold {
+    background: rgba(201, 152, 70, 0.12); color: var(--accent-gold);
+  }
+  .meta-tag.live {
+    background: rgba(255, 107, 53, 0.12); color: var(--accent-orange);
+  }
+  .price-row {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 12px 0; border-top: 1px dashed rgba(58, 90, 140, 0.15);
+  }
+  .price-main {
+    font-size: 48px; font-weight: 900; color: var(--blue-900);
+    line-height: 1; letter-spacing: -2px; font-variant-numeric: tabular-nums;
+  }
+  .price-main .unit {
+    font-size: 16px; font-weight: 600; margin-left: 2px; color: var(--blue-700);
+  }
+  .price-aside { flex: 1; }
+  .price-original { font-size: 12px; color: var(--text-hint); text-decoration: line-through; }
+  .price-save { font-size: 13px; color: var(--accent-orange); font-weight: 700; margin-top: 2px; }
+
+  /* 普通房源卡 */
+  .property-list { padding: 0 16px; }
+  .property-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 12px;
+    display: flex;
+  }
+  .property-card-img {
+    width: 120px; height: 120px; flex-shrink: 0; overflow: hidden;
+    background: var(--blue-100);
+  }
+  .property-card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .property-card-body {
+    flex: 1; padding: 12px; display: flex;
+    flex-direction: column; justify-content: space-between;
+  }
+  .property-card-title {
+    font-size: 14px; font-weight: 700; color: var(--blue-900); line-height: 1.3;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .property-card-meta { font-size: 11px; color: var(--text-hint); margin: 4px 0; }
+  .property-card-price { display: flex; align-items: baseline; gap: 6px; }
+  .property-card-price .num {
+    font-size: 22px; font-weight: 800; color: var(--blue-900); letter-spacing: -0.5px;
+  }
+  .property-card-price .num.accent { color: var(--accent-orange); }
+  .property-card-price .unit { font-size: 11px; color: var(--text-secondary); }
+  .property-card-price .save {
+    margin-left: auto; font-size: 10px;
+    background: var(--accent-orange-soft); color: var(--accent-orange);
+    padding: 2px 6px; border-radius: 4px; font-weight: 700;
+  }
+
+  /* TabBar */
+  .tab-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 64px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(58, 90, 140, 0.08);
+    display: flex; align-items: center; padding: 0 8px;
+  }
+  .tab-item { flex: 1; text-align: center; font-size: 10px; color: var(--text-hint); }
+  .tab-item .icon { font-size: 22px; display: block; margin-bottom: 2px; }
+  .tab-item.active { color: var(--blue-700); }
+  .tab-item.active .icon { color: var(--accent-orange); }
+
+  /* ============ 房源列表 ============ */
+  .filter-bar {
+    padding: 12px 16px; background: var(--bg-card);
+    border-bottom: 1px solid rgba(58, 90, 140, 0.06);
+    display: flex; gap: 8px; overflow-x: auto; flex-wrap: nowrap;
+  }
+  .filter-pill {
+    flex-shrink: 0; padding: 6px 12px; border-radius: var(--radius-pill);
+    font-size: 12px; font-weight: 600;
+    background: var(--blue-50); color: var(--blue-700);
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .filter-pill.active { background: var(--blue-900); color: #fff; }
+  .filter-pill.accent {
+    background: var(--accent-orange-soft); color: var(--accent-orange);
+    border-color: var(--accent-orange);
+  }
+  .list-content {
+    flex: 1; overflow-y: auto;
+    background: var(--bg-page); padding: 16px 0; padding-bottom: 80px;
+  }
+  .list-hero {
+    margin: 0 16px 16px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    background: var(--bg-card);
+  }
+  .list-hero-banner {
+    background: linear-gradient(135deg, var(--accent-orange) 0%, #FF8E53 100%);
+    color: #fff; padding: 8px 16px; font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ============ 详情页 ============ */
+  .detail-content { flex: 1; overflow-y: auto; padding-bottom: 80px; background: var(--bg-page); }
+  .detail-img {
+    height: 280px; position: relative; overflow: hidden;
+    background: var(--blue-100);
+  }
+  .detail-img img { width: 100%; height: 100%; object-fit: cover; }
+  .detail-img-chips {
+    position: absolute;
+    top: 60px; left: 12px; right: 12px;
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .detail-img-chips .img-chip { position: static; }
+  .detail-card {
+    background: var(--bg-card);
+    margin: -20px 12px 12px;
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+    position: relative; z-index: 2;
+  }
+  .detail-title {
+    font-size: 20px; font-weight: 800;
+    color: var(--blue-900); line-height: 1.3;
+    letter-spacing: -0.5px; margin-bottom: 12px;
+  }
+  .detail-tags {
+    display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .detail-price-block {
+    background: linear-gradient(135deg, var(--blue-50), #fff);
+    margin: 0 -20px;
+    padding: 20px;
+    border-top: 1px solid rgba(58, 90, 140, 0.08);
+    border-bottom: 1px solid rgba(58, 90, 140, 0.08);
+  }
+  .detail-price-label {
+    font-size: 11px; color: var(--text-hint); letter-spacing: 2px; margin-bottom: 4px;
+  }
+  .detail-price-main {
+    font-size: 56px; font-weight: 900;
+    color: var(--blue-900); letter-spacing: -2px; line-height: 1;
+    font-variant-numeric: tabular-nums; margin-bottom: 4px;
+  }
+  .detail-price-main .unit { font-size: 20px; font-weight: 600; color: var(--blue-700); }
+  .detail-price-compare {
+    display: flex; gap: 16px; margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(58, 90, 140, 0.2);
+  }
+  .compare-item { flex: 1; }
+  .compare-label { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+  .compare-value { font-size: 16px; font-weight: 700; color: var(--text-secondary); }
+  .compare-value.strike { text-decoration: line-through; color: var(--text-hint); }
+  .compare-value.accent { color: var(--accent-orange); font-size: 18px; }
+  .data-row {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 12px; margin-top: 16px;
+  }
+  .data-cell {
+    background: var(--blue-50); border-radius: var(--radius-md);
+    padding: 12px; position: relative; overflow: hidden;
+  }
+  .data-cell-label { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+  .data-cell-value {
+    font-size: 22px; font-weight: 800;
+    color: var(--blue-900); letter-spacing: -0.5px;
+  }
+  .data-cell.accent { background: var(--accent-orange-soft); }
+  .data-cell.accent .data-cell-value { color: var(--accent-orange); }
+  .info-section {
+    background: var(--bg-card); margin: 12px;
+    border-radius: var(--radius-md); padding: 16px;
+  }
+  .info-section-title {
+    font-size: 14px; font-weight: 800;
+    color: var(--blue-900); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .info-section-title::before {
+    content: ''; display: inline-block; width: 3px; height: 14px;
+    background: var(--accent-orange); border-radius: 2px;
+  }
+  .info-row { display: flex; padding: 8px 0; font-size: 13px; }
+  .info-row + .info-row { border-top: 1px solid rgba(58, 90, 140, 0.05); }
+  .info-row .label { color: var(--text-hint); width: 90px; }
+  .info-row .value { color: var(--text-primary); flex: 1; font-weight: 500; }
+  .cta-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(58, 90, 140, 0.08);
+    padding: 12px 16px; padding-bottom: 28px;
+    display: flex; gap: 8px;
+  }
+  .cta-secondary {
+    padding: 12px 16px; border-radius: var(--radius-pill);
+    background: var(--blue-50); color: var(--blue-700);
+    font-size: 13px; font-weight: 600; border: none;
+  }
+  .cta-primary {
+    flex: 1; padding: 12px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, var(--accent-orange) 0%, #FF8E53 100%);
+    color: #fff; font-size: 14px; font-weight: 800; border: none;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); letter-spacing: 1px;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .property-card, .hero-property, .stats-card, .info-section {
+    animation: slideUp 0.4s ease-out backwards;
+  }
+  .property-card:nth-child(1) { animation-delay: 0.05s; }
+  .property-card:nth-child(2) { animation-delay: 0.1s; }
+  .property-card:nth-child(3) { animation-delay: 0.15s; }
+
+  .design-notes {
+    grid-column: 1 / -1;
+    margin-top: 32px;
+    padding: 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+  .design-notes h2 {
+    font-size: 22px; color: var(--blue-900); margin-bottom: 16px;
+  }
+  .design-notes ul { padding-left: 20px; line-height: 1.8; color: var(--text-secondary); font-size: 14px; }
+  .design-notes ul li b { color: var(--blue-900); }
+  .design-notes .swatch {
+    display: inline-block; width: 14px; height: 14px;
+    border-radius: 3px; vertical-align: middle; margin-right: 4px;
+  }
+
+  /* 资讯卡片 */
+  .article-list { padding: 0 16px; }
+  .article-card {
+    display: flex; background: var(--bg-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .article-card-img {
+    width: 100px; height: 80px; flex-shrink: 0; overflow: hidden;
+  }
+  .article-card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .article-card-body {
+    flex: 1; padding: 8px 12px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .article-card-title {
+    font-size: 13px; font-weight: 700; color: var(--blue-900); line-height: 1.3;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .article-card-meta { font-size: 10px; color: var(--text-hint); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="demo-grid">
+  <div class="demo-header">
+    <h1>法拍者联盟 · UI 升级 Demo</h1>
+    <p>莫兰迪蓝主基调保留 + 跳色商业感 + 大字报排版 + 数据可视化</p>
+    <div class="data-badge">⚡ 真实数据 + 真实房源照片（来自生产数据库 imgcdn.gpai.net）</div>
+  </div>
+
+  <!-- ============ 页面 1: 首页 ============ -->
+  <div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="home-content">
+        <div class="hero">
+          <div class="hero-tagline">FAPAI · 上海 / 宁波</div>
+          <div class="hero-title">捡漏<span class="accent">7折</span><br>是常态</div>
+          <div class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源数据</div>
+        </div>
+
+        <!-- 横幅滚动 -->
+        <div class="banner-scroll">
+          <div class="banner-track">
+            <div class="banner-card">
+              <img src="demo_assets/banner_1.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">资产投资</span>
+                <h3>2026年Q1上海法拍均价同比下跌 8%</h3>
+              </div>
+            </div>
+            <div class="banner-card">
+              <img src="demo_assets/banner_2.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">捡漏指南</span>
+                <h3>司法拍卖 vs 商品房 三大核心差异</h3>
+              </div>
+            </div>
+            <div class="banner-card">
+              <img src="demo_assets/banner_3.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">法律小贴士</span>
+                <h3>报名前必读·拍卖标的物七大查册</h3>
+              </div>
+            </div>
+            <div class="banner-card">
+              <img src="demo_assets/banner_4.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">行情速读</span>
+                <h3>宁波法拍开闸 · 鄞州东部新城起拍降至 ¥186 万</h3>
+              </div>
+            </div>
+            <!-- 重复一遍实现无缝循环 -->
+            <div class="banner-card">
+              <img src="demo_assets/banner_1.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">资产投资</span>
+                <h3>2026年Q1上海法拍均价同比下跌 8%</h3>
+              </div>
+            </div>
+            <div class="banner-card">
+              <img src="demo_assets/banner_2.jpg" alt="">
+              <div class="overlay"></div>
+              <div class="text">
+                <span class="tag">捡漏指南</span>
+                <h3>司法拍卖 vs 商品房 三大核心差异</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-card">
+          <div class="stat">
+            <div class="stat-num">1,132</div>
+            <div class="stat-label">在拍房源</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num accent">43</div>
+            <div class="stat-label">今日新增</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">128</div>
+            <div class="stat-label">捡漏推荐</div>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <h2 class="section-title">头条捡漏<span class="badge-new">HOT</span></h2>
+          <span class="section-more">更多 ›</span>
+        </div>
+        <!-- 真实数据：#1239 杨浦区政悦路 199.38㎡ 复式 -->
+        <div class="hero-property">
+          <div class="hero-property-img">
+            <img src="demo_assets/real_1239.jpg" alt="">
+            <span class="img-chip">📍 杨浦 · 政悦路</span>
+            <div class="corner-badge">
+              <span class="label">立减</span>
+              <span class="amount">432万</span>
+            </div>
+          </div>
+          <div class="hero-property-body">
+            <div class="hero-property-title">杨浦区政悦路·199㎡复式大宅+车位</div>
+            <div class="hero-property-meta">
+              <span class="meta-tag">199.38㎡</span>
+              <span class="meta-tag">含车位</span>
+              <span class="meta-tag">公拍网·一拍</span>
+              <span class="meta-tag gold">⏰ 即将开拍</span>
+            </div>
+            <div class="price-row">
+              <div class="price-main">1008<span class="unit">万</span></div>
+              <div class="price-aside">
+                <div class="price-original">评估价 1440 万</div>
+                <div class="price-save">↓ 立省 432 万 / 7折</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <h2 class="section-title">为你推荐</h2>
+        </div>
+        <div class="property-list">
+          <!-- 真实 #390 闵行都市路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_390.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">闵行·都市路 195㎡大平层</div>
+              <div class="property-card-meta">闵行 · 195.20㎡ · 京东·一拍</div>
+              <div class="property-card-price">
+                <span class="num">680</span>
+                <span class="unit">万起</span>
+                <span class="save">省 270 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- 真实 #535 静安彭江路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_535.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">静安·彭江路 197㎡ 复式</div>
+              <div class="property-card-meta">静安 · 197.46㎡ · 公拍·一拍</div>
+              <div class="property-card-price">
+                <span class="num accent">1280</span>
+                <span class="unit">万起</span>
+                <span class="save">省 540 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- 真实 #538 普陀白玉路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_538.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">普陀·白玉路 198㎡精装</div>
+              <div class="property-card-meta">普陀 · 198.30㎡ · 公拍·一拍</div>
+              <div class="property-card-price">
+                <span class="num">995</span>
+                <span class="unit">万起</span>
+                <span class="save">省 425 万</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 资讯专区（真实风格的法拍房文章） -->
+        <div class="section-head">
+          <h2 class="section-title">法拍课堂</h2>
+          <span class="section-more">全部 ›</span>
+        </div>
+        <div class="article-list">
+          <div class="article-card">
+            <div class="article-card-img">
+              <img src="demo_assets/article_1.jpg" alt="">
+            </div>
+            <div class="article-card-body">
+              <div class="article-card-title">参拍前必看：5 项尽职调查不能省略</div>
+              <div class="article-card-meta">小编 · 5 分钟读完 · 1.2k 阅读</div>
+            </div>
+          </div>
+          <div class="article-card">
+            <div class="article-card-img">
+              <img src="demo_assets/article_2.jpg" alt="">
+            </div>
+            <div class="article-card-body">
+              <div class="article-card-title">法拍房贷款全攻略：哪些银行支持？</div>
+              <div class="article-card-meta">法拍说 · 8 分钟读完 · 866 阅读</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <div class="tab-item active"><span class="icon">●</span>首页</div>
+        <div class="tab-item"><span class="icon">○</span>房源</div>
+        <div class="tab-item"><span class="icon">○</span>需求</div>
+        <div class="tab-item"><span class="icon">○</span>我的</div>
+      </div>
+    </div>
+    <div class="phone-label">① 首页（横幅滚动 · 真实房源 · 法拍课堂）</div>
+  </div>
+
+  <!-- ============ 页面 2: 房源列表 ============ -->
+  <div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="nav-bar">
+        <span class="nav-back">‹</span>
+        <span class="nav-title">房源</span>
+        <span class="nav-right">筛选</span>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-pill active">全部</div>
+        <div class="filter-pill accent">⚡ 捡漏</div>
+        <div class="filter-pill">即将开拍</div>
+        <div class="filter-pill">进行中</div>
+        <div class="filter-pill">100㎡以下</div>
+        <div class="filter-pill">300万以下</div>
+      </div>
+      <div class="list-content">
+        <!-- 列表头条 #1239 杨浦政悦路 -->
+        <div class="list-hero">
+          <div class="list-hero-banner">⚡ 编辑精选 · 今日最值</div>
+          <div class="hero-property" style="margin: 0; box-shadow: none; border-radius: 0">
+            <div class="hero-property-img" style="height: 180px">
+              <img src="demo_assets/real_1239.jpg" alt="">
+              <span class="img-chip">📍 杨浦 · 政悦路</span>
+              <div class="corner-badge">
+                <span class="label">7折</span>
+                <span class="amount">立省432万</span>
+              </div>
+            </div>
+            <div class="hero-property-body">
+              <div class="hero-property-title">杨浦区政悦路·199㎡复式大宅+车位</div>
+              <div class="hero-property-meta">
+                <span class="meta-tag">199.38㎡</span>
+                <span class="meta-tag">含车位</span>
+                <span class="meta-tag gold">⏰ 即将开拍</span>
+              </div>
+              <div class="price-row">
+                <div class="price-main" style="font-size: 40px">1008<span class="unit">万</span></div>
+                <div class="price-aside">
+                  <div class="price-original">评估 1440 万</div>
+                  <div class="price-save">↓ 立省 432 万</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="property-list">
+          <!-- 真实房源 #390 闵行都市路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_390.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">闵行·都市路 195㎡大平层</div>
+              <div class="property-card-meta">闵行 · 195.20㎡ · 京东·一拍</div>
+              <div class="property-card-price">
+                <span class="num">680</span>
+                <span class="unit">万起</span>
+                <span class="save">省 270 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- #535 静安彭江路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_535.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">静安·彭江路 197㎡复式</div>
+              <div class="property-card-meta">静安 · 197.46㎡ · 公拍·一拍</div>
+              <div class="property-card-price">
+                <span class="num accent">1280</span>
+                <span class="unit">万起</span>
+                <span class="save">省 540 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- #538 普陀白玉路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_538.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">普陀·白玉路 198㎡精装</div>
+              <div class="property-card-meta">普陀 · 198.30㎡ · 公拍·一拍</div>
+              <div class="property-card-price">
+                <span class="num">995</span>
+                <span class="unit">万起</span>
+                <span class="save">省 425 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- #1202 金山蒙山路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_1202.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">金山·蒙山路 196㎡花园洋房</div>
+              <div class="property-card-meta">金山 · 196.50㎡ · 京东·一拍</div>
+              <div class="property-card-price">
+                <span class="num">388</span>
+                <span class="unit">万起</span>
+                <span class="save">省 167 万</span>
+              </div>
+            </div>
+          </div>
+          <!-- #1244 普陀长寿路 -->
+          <div class="property-card">
+            <div class="property-card-img">
+              <img src="demo_assets/real_1244.jpg" alt="">
+            </div>
+            <div class="property-card-body">
+              <div class="property-card-title">普陀·长寿路 200㎡顶层</div>
+              <div class="property-card-meta">普陀 · 200.10㎡ · 公拍·二拍</div>
+              <div class="property-card-price">
+                <span class="num accent">1180</span>
+                <span class="unit">万起</span>
+                <span class="save">省 480 万</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item"><span class="icon">○</span>首页</div>
+        <div class="tab-item active"><span class="icon">●</span>房源</div>
+        <div class="tab-item"><span class="icon">○</span>需求</div>
+        <div class="tab-item"><span class="icon">○</span>我的</div>
+      </div>
+    </div>
+    <div class="phone-label">② 房源列表（5 套真实房源 + 编辑精选 hero）</div>
+  </div>
+
+  <!-- ============ 页面 3: 详情页 ============ -->
+  <div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="detail-content">
+        <!-- 真实 #1239 杨浦区政悦路 -->
+        <div class="detail-img">
+          <img src="demo_assets/real_1239.jpg" alt="">
+          <div class="detail-img-chips">
+            <span class="img-chip">📍 杨浦 · 政悦路</span>
+            <span class="img-chip">公拍网 · 一拍</span>
+          </div>
+          <div class="corner-badge">
+            <span class="label">立减</span>
+            <span class="amount">432万</span>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <h1 class="detail-title">上海市杨浦区政悦路199弄6号18楼1801室+车位</h1>
+          <div class="detail-tags">
+            <span class="meta-tag">199.38㎡</span>
+            <span class="meta-tag">含车位</span>
+            <span class="meta-tag">复式</span>
+            <span class="meta-tag gold">⏰ 即将开拍</span>
+          </div>
+
+          <div class="detail-price-block">
+            <div class="detail-price-label">起拍价</div>
+            <div class="detail-price-main">1008<span class="unit"> 万</span></div>
+            <div class="detail-price-compare">
+              <div class="compare-item">
+                <div class="compare-label">评估价</div>
+                <div class="compare-value strike">1440 万</div>
+              </div>
+              <div class="compare-item">
+                <div class="compare-label">捡漏空间</div>
+                <div class="compare-value accent">↓ 432 万</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-row">
+            <div class="data-cell">
+              <div class="data-cell-label">起拍单价</div>
+              <div class="data-cell-value">5.06<span style="font-size: 13px; color: var(--text-secondary)">万/㎡</span></div>
+            </div>
+            <div class="data-cell">
+              <div class="data-cell-label">评估单价</div>
+              <div class="data-cell-value">7.22<span style="font-size: 13px; color: var(--text-secondary)">万/㎡</span></div>
+            </div>
+            <div class="data-cell accent">
+              <div class="data-cell-label">折扣率</div>
+              <div class="data-cell-value">70<span style="font-size: 13px">%</span></div>
+            </div>
+            <div class="data-cell">
+              <div class="data-cell-label">围观人数</div>
+              <div class="data-cell-value">2.3K</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-section-title">基本信息</div>
+          <div class="info-row"><span class="label">小区</span><span class="value">政悦路199弄</span></div>
+          <div class="info-row"><span class="label">面积</span><span class="value">199.38 ㎡（含车位）</span></div>
+          <div class="info-row"><span class="label">楼层</span><span class="value">18 楼 / 复式</span></div>
+          <div class="info-row"><span class="label">物业类型</span><span class="value">住宅</span></div>
+          <div class="info-row"><span class="label">建成年代</span><span class="value">2010</span></div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-section-title">拍卖信息</div>
+          <div class="info-row"><span class="label">拍卖平台</span><span class="value">公拍网</span></div>
+          <div class="info-row"><span class="label">拍卖轮次</span><span class="value">一拍</span></div>
+          <div class="info-row"><span class="label">起拍价</span><span class="value">¥ 10,080,000</span></div>
+          <div class="info-row"><span class="label">评估价</span><span class="value">¥ 14,400,000</span></div>
+          <div class="info-row"><span class="label">承办法院</span><span class="value">杨浦区人民法院</span></div>
+        </div>
+      </div>
+
+      <div class="cta-bar">
+        <button class="cta-secondary">咨询</button>
+        <button class="cta-primary">立即报名 · 抢拍</button>
+      </div>
+    </div>
+    <div class="phone-label">③ 房源详情（真实数据：杨浦政悦路 199㎡）</div>
+  </div>
+
+  <div class="design-notes">
+    <h2>设计要点</h2>
+    <ul>
+      <li><b>真实数据驱动</b>：所有房源数据（标题、面积、价格、平台、轮次）和封面图都来自生产数据库的真实抓取记录（杨浦 #1239、闵行 #390、静安 #535、普陀 #538/#1244、金山 #1202）。图片已下载到本地 demo_assets/，确保 demo 离线能完整显示</li>
+      <li><b>横幅滚动</b>：首页 hero 下方加了横向无限滚动横幅，4 张高级感法拍/资产/法律主题图（来自 Unsplash 摄影师作品），24s 一轮</li>
+      <li><b>主基调保留</b>：莫兰迪蓝（<span class="swatch" style="background:#1a2f52"></span>#1a2f52、<span class="swatch" style="background:#3a5a8c"></span>#3a5a8c、<span class="swatch" style="background:#dce8f2"></span>#dce8f2）继续作为主色，使用率 80%+</li>
+      <li><b>跳色克制</b>：仅在「立减/捡漏/CTA」用亮橙 <span class="swatch" style="background:#FF6B35"></span>#FF6B35 + 莫兰迪金 <span class="swatch" style="background:#C99846"></span>#C99846，占比 ≤ 10%</li>
+      <li><b>大字报排版</b>：起拍价 56px / 标题 32px / 正文 14px，字号差 2-4 倍，类似杂志头条</li>
+      <li><b>数据可视化</b>：详情页价格区有 4 格 data-cell 网格（起拍单价、评估单价、折扣率、围观人数），财经 App 风格</li>
+      <li><b>玻璃 chip</b>：图片上的「区域 · 平台」用半透明 + backdrop-blur，比传统标签有质感</li>
+      <li><b>法拍课堂</b>：首页底部加资讯卡片，引流到优质内容（涨知识 + 提升用户停留时长）</li>
+      <li><b>柔和阴影</b>：阴影用蓝 tint（rgba(58,90,140,0.08)）而不是纯黑</li>
+      <li><b>背景噪点</b>：全局 5% 透明度蓝色点阵纹理，远看像高级杂志纸质感</li>
+      <li><b>微动效</b>：列表项进入时上滑+淡入 0.4s</li>
+    </ul>
+    <p style="margin-top: 16px; padding: 12px; background: var(--blue-50); border-radius: 8px; color: var(--blue-700); font-size: 13px;">
+      <b>如何应用到实际小程序：</b>这个 demo 是 HTML/CSS 写的，但所有设计 token（颜色、字号、圆角、阴影、间距）都和你 <code>app.wxss</code> 里的 CSS variable 同名同义。
+      实际改造只需：① 在 <code>app.wxss</code> 加 4 个新变量（accent-orange, accent-gold, font-display, shadow-card）；② 改房源详情页和首页的 wxss 用新字号 + 新色值；③ 列表加一个 hero 房源 wxml 节点；④ 首页加横幅滚动 swiper。
+      预计改造工作量：<b>1-2 个工作日</b>，全部为 wxss/wxml 修改，不动 ts 业务逻辑。
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

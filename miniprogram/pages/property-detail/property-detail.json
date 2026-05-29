@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "image-gallery": "/components/image-gallery/image-gallery",
+    "float-action-bar": "/components/float-action-bar/float-action-bar"
+  }
+}

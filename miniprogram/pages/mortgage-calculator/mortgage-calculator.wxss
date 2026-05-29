@@ -1,0 +1,241 @@
+.page {
+  padding: 24rpx;
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 28rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.form-group {
+  margin-bottom: 20rpx;
+}
+
+.label {
+  display: block;
+  font-size: 24rpx;
+  color: var(--blue-700);
+  margin-bottom: 12rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+}
+
+.input {
+  width: 100%;
+  height: 80rpx;
+  background: var(--blue-50);
+  border-radius: var(--radius-md);
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  color: var(--blue-900);
+  font-weight: 700;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.half {
+  flex: 1;
+}
+
+.ratio-group {
+  display: flex;
+  gap: 12rpx;
+}
+
+.ratio-chip {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  background: var(--blue-50);
+  border-radius: var(--radius-pill);
+  font-size: 24rpx;
+  color: var(--blue-700);
+  font-weight: 600;
+  border: 2rpx solid transparent;
+}
+
+.ratio-chip.active {
+  background: var(--blue-900);
+  color: #fff;
+  border-color: var(--blue-900);
+  font-weight: 700;
+  box-shadow: 0 4rpx 12rpx rgba(58, 90, 140, 0.3);
+}
+
+.rate-tabs {
+  display: flex;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  background: var(--blue-50);
+  padding: 6rpx;
+  border-radius: var(--radius-md);
+}
+
+.rate-tab {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 24rpx;
+  color: var(--blue-700);
+  font-weight: 600;
+}
+
+.rate-tab.active {
+  background: #fff;
+  color: var(--blue-900);
+  font-weight: 800;
+  box-shadow: var(--shadow-card);
+}
+
+.rate-inputs {
+  margin-top: 16rpx;
+}
+
+.btn-row {
+  margin-top: 24rpx;
+}
+
+.btn-row .btn-primary {
+  width: 100%;
+  height: 96rpx;
+  font-size: 30rpx;
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  letter-spacing: 4rpx;
+  color: #fff;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(255, 107, 53, 0.4);
+}
+
+.btn-row .btn-primary::after { border: none; }
+
+/* ===== 结果 ===== */
+.result-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1rpx solid rgba(58, 90, 140, 0.06);
+  background: var(--bg-card);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  border-bottom: 4rpx solid transparent;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  color: var(--blue-900);
+  border-bottom-color: var(--accent-orange);
+  font-weight: 800;
+}
+
+.result-highlight {
+  padding: 40rpx 28rpx;
+  text-align: center;
+  background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+}
+
+.result-highlight::after {
+  content: '';
+  position: absolute;
+  right: -60rpx;
+  top: -60rpx;
+  width: 240rpx;
+  height: 240rpx;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.result-label {
+  display: block;
+  font-size: 22rpx;
+  color: var(--blue-200);
+  margin-bottom: 12rpx;
+  letter-spacing: 4rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.result-number {
+  font-size: 80rpx;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.05;
+  letter-spacing: -2rpx;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 1;
+}
+
+.result-unit {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--blue-200);
+  margin-left: 6rpx;
+}
+
+.result-sub {
+  display: block;
+  font-size: 22rpx;
+  color: var(--blue-200);
+  margin-top: 16rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.result-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 24rpx 16rpx;
+}
+
+.result-item {
+  width: 50%;
+  padding: 20rpx;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.ri-label {
+  display: block;
+  font-size: 22rpx;
+  color: var(--text-hint);
+  margin-bottom: 8rpx;
+}
+
+.ri-value {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: var(--blue-900);
+  letter-spacing: -1rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.ri-value.accent {
+  color: var(--accent-orange);
+}

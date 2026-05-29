@@ -1,0 +1,35 @@
+<view class="house-card" bindtap="onTap">
+  <view class="card-image-wrap">
+    <image class="card-image" src="{{coverImage}}" mode="aspectFill" lazy-load />
+    <view class="card-tag-v2 {{statusTagClass}}">{{statusLabel}}</view>
+    <view class="card-discount-corner" wx:if="{{discount || savingWan}}">
+      <text class="dc-discount" wx:if="{{discount}}">{{discount}}</text>
+      <text class="dc-saving" wx:if="{{savingWan}}">立省 {{savingWan}} 万</text>
+    </view>
+  </view>
+  <view class="card-body">
+    <view class="card-title">{{title}}</view>
+    <view class="card-meta">
+      <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
+      <text class="meta-tag" wx:if="{{propertyType}}">{{propertyType}}</text>
+      <text class="meta-tag" wx:if="{{auctionRound}}">{{auctionRound}}</text>
+      <text class="meta-tag" wx:if="{{area}}">{{area}}㎡</text>
+      <text class="meta-tag" wx:if="{{layout}}">{{layout}}</text>
+    </view>
+    <view class="card-price-row">
+      <view class="price-main">
+        <text class="price-value">{{startingPriceWan}}</text>
+        <text class="price-unit">{{startingUnit}}</text>
+      </view>
+      <view class="price-sub" wx:if="{{appraisalPriceWan}}">
+        <text class="sub-label">评估价</text>
+        <text class="sub-value">{{appraisalPriceWan}} 万</text>
+      </view>
+    </view>
+    <view class="card-time" wx:if="{{auctionTime}}">
+      <view class="time-dot"></view>
+      <text class="time-label">开拍</text>
+      <text class="time-value">{{auctionTime}}</text>
+    </view>
+  </view>
+</view>

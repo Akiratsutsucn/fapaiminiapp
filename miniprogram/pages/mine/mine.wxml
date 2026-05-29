@@ -1,0 +1,110 @@
+<view class="mine-page">
+  <!-- 头部 -->
+  <view class="mine-header">
+    <view class="header-bg"></view>
+    <view class="header-content">
+      <view class="avatar-wrap">
+        <image class="avatar" src="{{userInfo.avatar_url || ''}}" mode="aspectFill" />
+      </view>
+      <view class="user-info" wx:if="{{isLoggedIn}}">
+        <view class="user-name-row">
+          <text class="user-name">{{userInfo.nickname || '法拍用户'}}</text>
+          <view class="role-tag" wx:if="{{userInfo.role === 'agent'}}">代理商</view>
+        </view>
+        <text class="user-phone">{{userInfo.phone || 'FAPAI · 法拍主理'}}</text>
+      </view>
+      <view class="login-entry" wx:else bindtap="onGoLogin">
+        <text>点击登录</text>
+        <view class="entry-arrow"></view>
+      </view>
+      <view class="edit-btn" wx:if="{{isLoggedIn}}" bindtap="onEditProfile">
+        <text>编辑</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 编辑资料弹窗 -->
+  <view class="edit-overlay" wx:if="{{showEdit}}" bindtap="onCloseEdit" catchtouchmove="preventMove">
+    <view class="edit-modal" catchtap="preventBubble">
+      <view class="edit-modal-header">
+        <text class="edit-modal-title">编辑资料</text>
+        <view class="edit-close" bindtap="onCloseEdit">×</view>
+      </view>
+      <view class="edit-modal-body">
+        <view class="edit-field">
+          <text class="edit-label">昵称</text>
+          <input class="edit-input" value="{{editNickname}}" bindinput="onNicknameInput" placeholder="请输入昵称" maxlength="20" />
+        </view>
+        <view class="edit-field">
+          <text class="edit-label">手机号</text>
+          <input class="edit-input" type="number" value="{{editPhone}}" bindinput="onPhoneInput" placeholder="请输入手机号" maxlength="11" />
+        </view>
+      </view>
+      <view class="edit-modal-footer">
+        <button class="btn-outline edit-cancel" bindtap="onCloseEdit">取消</button>
+        <button class="btn-primary edit-save" bindtap="onSaveProfile" loading="{{saving}}">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计数据（V2 大字报） -->
+  <view class="stats-row">
+    <view class="stat-item" bindtap="onStatTap" data-key="favorites">
+      <text class="stat-num accent">{{stats.favorite_count || 0}}</text>
+      <text class="stat-label">关注房源</text>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item" bindtap="onStatTap" data-key="participated">
+      <text class="stat-num">{{stats.participated_count}}</text>
+      <text class="stat-label">参拍次数</text>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item" bindtap="onStatTap" data-key="won">
+      <text class="stat-num">{{stats.won_count}}</text>
+      <text class="stat-label">成功竞拍</text>
+    </view>
+  </view>
+
+  <!-- 服务区段标题 -->
+  <view class="section-head">
+    <view class="section-title-v2">我的服务</view>
+  </view>
+
+  <!-- 服务宫格 -->
+  <view class="service-grid">
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/favorites/favorites">
+      <view class="service-icon fav-icon"></view>
+      <text class="service-name">房源收藏</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/article-favs/article-favs">
+      <view class="service-icon article-icon"></view>
+      <text class="service-name">文章收藏</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/demand-form/demand-form">
+      <view class="service-icon demand-icon"></view>
+      <text class="service-name">选房需求</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/history/history">
+      <view class="service-icon history-icon"></view>
+      <text class="service-name">浏览记录</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/pages/customer-service/customer-service">
+      <view class="service-icon cs-icon"></view>
+      <text class="service-name">联系客服</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/agent/invite-list/invite-list" wx:if="{{userInfo.role === 'agent'}}">
+      <view class="service-icon invite-icon"></view>
+      <text class="service-name">邀请分享</text>
+    </view>
+  </view>
+
+  <!-- 推广位 -->
+  <view class="promo-card" bindtap="onNav" data-url="/subpackages/user/demand-form/demand-form">
+    <view class="promo-text">
+      <view class="promo-tag">免费</view>
+      <view class="promo-title">告诉我们你想要什么样的法拍房</view>
+      <view class="promo-sub">客服人工筛选并 1 对 1 推荐</view>
+    </view>
+    <view class="promo-arrow">›</view>
+  </view>
+</view>

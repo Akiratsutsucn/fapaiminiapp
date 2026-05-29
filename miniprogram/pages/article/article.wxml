@@ -1,0 +1,45 @@
+<view class="article-page">
+  <image class="article-cover" src="{{article.cover_image}}" mode="aspectFill" wx:if="{{article.cover_image}}" />
+
+  <view class="article-header">
+    <text class="article-title">{{article.title}}</text>
+    <view class="article-meta">
+      <text class="meta-item">拍来盟科技</text>
+      <text class="meta-item" wx:if="{{article.published_at}}">{{article.published_at}}</text>
+    </view>
+  </view>
+
+  <view class="article-body">
+    <text class="article-summary">{{article.summary || '暂无摘要'}}</text>
+    <view class="article-link" wx:if="{{article.mp_url}}" bindtap="onOpenMp">
+      <text>查看公众号原文</text>
+      <view class="link-arrow"></view>
+    </view>
+  </view>
+
+  <view class="mp-footer">
+    <view class="mp-avatar"></view>
+    <view class="mp-info">
+      <text class="mp-name">拍来盟科技</text>
+      <text class="mp-desc">专业法拍房信息服务平台</text>
+    </view>
+    <view class="mp-actions">
+      <view class="mp-action-btn" bindtap="onLike">
+        <view class="mp-icon mp-icon-like {{liked ? 'active' : ''}}"></view>
+        <text class="mp-action-label">{{likeCount}}</text>
+      </view>
+      <view class="mp-action-btn" bindtap="onLeaveMessage">
+        <view class="mp-icon mp-icon-msg"></view>
+        <text class="mp-action-label">留言</text>
+      </view>
+      <view class="mp-follow-btn btn-primary btn-sm" bindtap="onFollowMp">关注</view>
+    </view>
+  </view>
+
+  <float-action-bar
+    primary-text="联系客服"
+    show-calc="{{false}}"
+    bind:share="onShare"
+    bind:contact="onContact"
+  />
+</view>

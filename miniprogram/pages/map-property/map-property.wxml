@@ -1,0 +1,39 @@
+<view class="page">
+  <map
+    id="propertyMap"
+    class="map"
+    latitude="{{latitude}}"
+    longitude="{{longitude}}"
+    scale="{{scale}}"
+    markers="{{markers}}"
+    show-location="{{true}}"
+    bindmarkertap="onMarkerTap"
+    bindregionchange="onRegionChange"
+  >
+    <cover-view class="map-controls">
+      <cover-view class="ctrl-btn ctrl-btn-text" bindtap="onZoomIn">+</cover-view>
+      <cover-view class="ctrl-btn ctrl-btn-text" bindtap="onZoomOut">-</cover-view>
+      <cover-view class="ctrl-btn" bindtap="onLocate">
+        <cover-image class="ctrl-btn-icon" src="/images/icon-locate.png" />
+      </cover-view>
+    </cover-view>
+  </map>
+
+  <!-- 底部房源卡片 -->
+  <view class="bottom-card" wx:if="{{selectedProperty}}" bindtap="onCardTap">
+    <view class="bc-close" bindtap="onCloseCard" catchtap="onCloseCard">
+      <view class="bc-close-icon"></view>
+    </view>
+    <view class="bc-row">
+      <image class="bc-cover" src="{{selectedProperty.cover_image || '/images/default-house.png'}}" mode="aspectFill" />
+      <view class="bc-info">
+        <text class="bc-title">{{selectedProperty.title}}</text>
+        <text class="bc-location">{{selectedProperty.district}} · {{selectedProperty.community_name}}</text>
+        <view class="bc-price-row">
+          <text class="bc-price">{{selectedProperty.starting_price}}万</text>
+          <text class="bc-status">{{selectedProperty.auction_status}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,5 @@
+{
+  "usingComponents": {
+    "float-action-bar": "/components/float-action-bar/float-action-bar"
+  }
+}

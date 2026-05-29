@@ -1,0 +1,149 @@
+# ===== 敏感文件（绝对不能提交）=====
+.env
+.env.*
+!.env.example
+.credentials
+.gpai_credentials
+凭据.txt
+xiaochengxu.pem
+*.pem
+*.key
+*.p12
+*.pfx
+.server_snapshot/
+
+# Cookie / token 文件
+*cookie*.txt
+!*-cookie-example.txt
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+ENV/
+
+# ===== Node / 前端 =====
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+# ===== 微信小程序 =====
+miniprogram/miniprogram_npm/
+
+# ===== 大文件 / 二进制 =====
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bz2
+*.7z
+*.rar
+*.dmg
+*.iso
+*.exe
+*.msi
+
+# 数据库 dump / SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+demo.db
+_local_*.db
+_local_*.sql
+
+# ===== 日志 =====
+logs/
+*.log
+crawler/logs/
+backend/logs/
+deploy/logs/
+
+# ===== 调试 / 临时文件 =====
+_taobao_*.png
+_taobao_*.html
+_taobao_*.txt
+_docx_*.txt
+_docx_extract/
+_*tmp*
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 调试脚本（保留主程序的，排除一次性 debug）
+debug_*.py
+explore_*.py
+find_*.py
+test_*.py
+*_test.py
+patch_*.py
+tmp_*.py
+fix_*.py
+list_*.py
+seed_demo_data.py
+gpai_new.py
+*_debug.py
+verify_*.py
+
+# 截图 / 图片（保留 demo_assets 和 logo）
+*_state.png
+登录界面*.png
+*_after_submit*.png
+*_failed*.png
+
+# Word / Excel 文档（仅保留 markdown / txt）
+*.docx
+*.xlsx
+*.xls
+*.doc
+*.ppt
+*.pptx
+*.pdf
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.iml
+.project
+.settings/
+.classpath
+
+# ===== Claude / AI 工具运行时 =====
+.claude/
+.ai_session/
+__agentmemory_/
+
+# ===== 上传 / 缓存 =====
+uploads/
+backend/uploads/
+.cache/
+*.cache
+
+# ===== Playwright 浏览器 =====
+.playwright/
+
+# ===== 其它项目临时 =====
+fapai-ui-demo.zip
+acme.sh-master.zip

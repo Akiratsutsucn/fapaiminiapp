@@ -1,0 +1,302 @@
+/* ===== 法拍者联盟 · 莫兰迪蓝设计令牌 ===== */
+page {
+  /* 主色系 — 莫兰迪蓝 */
+  --blue-900: #1a2f52;
+  --blue-800: #1e3a6e;
+  --blue-700: #2d4a7a;
+  --blue-600: #3a5a8c;
+  --blue-500: #4a6fa0;
+  --blue-400: #6a8cb8;
+  --blue-300: #8aaad0;
+  --blue-200: #b8cce0;
+  --blue-100: #dce8f2;
+  --blue-50:  #f0f5fb;
+
+  /* 跳色（V2 升级 · 商业感） */
+  --accent-orange: #FF6B35;
+  --accent-orange-soft: #FFE4D9;
+  --accent-orange-2: #FF8E53;
+  --accent-gold: #C99846;
+  --accent-gold-soft: rgba(201, 152, 70, 0.12);
+
+  /* 功能色 */
+  --success: #4a8c7a;
+  --warning: #c4935a;
+  --danger: #b85a5a;
+  --wechat-green: #07C160;
+
+  /* 中性色 */
+  --text-primary: #1a1a1a;
+  --text-secondary: #5a5a5a;
+  --text-hint: #8a8a8a;
+  --text-disabled: #bcbcbc;
+  --border-color: #e0e0e0;
+  --bg-page: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* 间距 */
+  --spacing-xs: 8rpx;
+  --spacing-sm: 16rpx;
+  --spacing-md: 24rpx;
+  --spacing-lg: 32rpx;
+  --spacing-xl: 48rpx;
+
+  /* 圆角 */
+  --radius-sm: 8rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 24rpx;
+  --radius-xl: 40rpx;
+  --radius-pill: 999rpx;
+
+  /* 字号 */
+  --font-xs: 20rpx;
+  --font-sm: 24rpx;
+  --font-md: 28rpx;
+  --font-lg: 32rpx;
+  --font-xl: 36rpx;
+  --font-xxl: 44rpx;
+  --font-display: 80rpx;       /* 大字报：起拍价/标题数字 */
+  --font-display-sm: 56rpx;    /* 中等大字报：列表卡 hero 价格 */
+
+  /* 阴影 */
+  --shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.14);
+  --shadow-card: 0 4rpx 16rpx rgba(58, 90, 140, 0.08);    /* 蓝 tint 阴影 */
+  --shadow-elevated: 0 8rpx 32rpx rgba(58, 90, 140, 0.14);
+  --shadow-orange: 0 4rpx 12rpx rgba(255, 107, 53, 0.4);
+
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: var(--font-md);
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+  line-height: 1.6;
+}
+
+/* ===== 全局重置 ===== */
+view, text, image, navigator, scroll-view, swiper, swiper-item {
+  box-sizing: border-box;
+}
+
+/* ===== 通用按钮样式 ===== */
+.btn-primary {
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-600));
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  font-size: var(--font-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary:active {
+  opacity: 0.85;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--blue-600);
+  border: 2rpx solid var(--blue-400);
+  border-radius: var(--radius-md);
+  font-size: var(--font-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--blue-500);
+  border: none;
+  font-size: var(--font-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== 卡片容器 ===== */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md);
+}
+
+/* ===== 通用布局 ===== */
+.page-container {
+  min-height: 100vh;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+
+.safe-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ===== 标签 ===== */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: var(--font-xs);
+  line-height: 1.4;
+}
+
+.tag-blue { background: #3b82f6; color: #fff; }
+.tag-green { background: #10b981; color: #fff; }
+.tag-orange { background: #f59e0b; color: #fff; }
+.tag-red { background: #ef4444; color: #fff; }
+
+/* ===== 分割线 ===== */
+.divider {
+  height: 1rpx;
+  background: var(--border-color);
+  margin: var(--spacing-sm) 0;
+}
+
+/* ===== 加载/空状态 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) 0;
+  color: var(--text-hint);
+}
+
+/* ===== 浮标通用 ===== */
+.float-btn {
+  position: fixed;
+  z-index: 100;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.float-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: var(--bg-card);
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.08);
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ===== V2 升级：跳色按钮 / 大字报 / meta tag / 玻璃 chip ===== */
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  box-shadow: var(--shadow-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 2rpx;
+  font-weight: 800;
+}
+
+.btn-accent:active { opacity: 0.9; }
+
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: var(--radius-sm);
+  background: var(--blue-50);
+  color: var(--blue-700);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.meta-tag.gold { background: var(--accent-gold-soft); color: var(--accent-gold); }
+.meta-tag.live { background: var(--accent-orange-soft); color: var(--accent-orange); }
+
+.img-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(26, 47, 82, 0.7);
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 8rpx 18rpx;
+  border-radius: var(--radius-pill);
+  letter-spacing: 1rpx;
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+}
+
+.corner-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--accent-orange);
+  color: #fff;
+  font-weight: 800;
+  padding: 12rpx 22rpx;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-orange);
+  text-align: center;
+}
+
+.corner-badge .label { font-size: 18rpx; letter-spacing: 2rpx; line-height: 1; }
+.corner-badge .amount { font-size: 30rpx; margin-top: 4rpx; line-height: 1; letter-spacing: -0.5rpx; }
+
+.section-title-v2 {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: var(--blue-900);
+  letter-spacing: -1rpx;
+  line-height: 1.2;
+}
+
+.section-title-v2 .badge-new {
+  display: inline-block;
+  background: var(--accent-orange);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  padding: 2rpx 12rpx;
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+  margin-left: 10rpx;
+  letter-spacing: 1rpx;
+}
+
+.price-display {
+  font-size: var(--font-display);
+  font-weight: 900;
+  color: var(--blue-900);
+  letter-spacing: -3rpx;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-display .unit {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--blue-700);
+  margin-left: 4rpx;
+}

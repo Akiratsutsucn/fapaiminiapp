@@ -1,0 +1,311 @@
+<view class="detail-page">
+  <!-- 轮播图 -->
+  <image-gallery images="{{images}}" />
+
+  <!-- 标签 + 收藏 -->
+  <view class="detail-header">
+    <view class="tag {{statusTagClass}}">{{statusLabel}}</view>
+    <view class="favorite-btn {{isFavorited ? 'active' : ''}}" bindtap="onToggleFavorite">
+      <view class="fav-icon"></view>
+    </view>
+  </view>
+
+  <!-- 标题 + 区域 -->
+  <view class="detail-title-section">
+    <text class="detail-title">{{property.title}}</text>
+    <view class="detail-location">
+      <view class="loc-icon"></view>
+      <text>{{property.district}} {{property.sub_district || ''}} {{property.community_name}}</text>
+    </view>
+  </view>
+
+  <!-- 价格网格 -->
+  <view class="price-grid">
+    <view class="price-item">
+      <text class="price-value primary">{{startingPriceWan}}</text>
+      <text class="price-label">起拍价（万）</text>
+    </view>
+    <view class="price-item">
+      <text class="price-value">{{appraisalPriceWan}}</text>
+      <text class="price-label">评估价（万）</text>
+    </view>
+    <view class="price-item">
+      <text class="price-value accent">{{discount}}</text>
+      <text class="price-label">折扣</text>
+    </view>
+    <view class="price-item">
+      <text class="price-value">{{depositWan}}</text>
+      <text class="price-label">保证金（万）</text>
+    </view>
+  </view>
+
+  <!-- 开拍时间醒目提示 -->
+  <view class="auction-time-box" wx:if="{{property.auction_start_time}}">
+    <view class="time-left">
+      <text class="time-countdown">{{countdown}}</text>
+      <text class="time-label">后开拍</text>
+    </view>
+    <view class="time-right">
+      <text>开拍时间: {{auctionTimeFull}}</text>
+    </view>
+  </view>
+
+  <!-- Tab切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'basic' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="basic">基本信息</view>
+    <view class="tab-item {{activeTab === 'court' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="court">法院公告</view>
+    <view class="tab-item {{activeTab === 'community' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="community">小区详情</view>
+    <view class="tab-item {{activeTab === 'around' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="around">周边配套</view>
+  </view>
+
+  <!-- Tab内容 -->
+  <view class="tab-content" wx:if="{{activeTab === 'basic'}}">
+    <view class="info-grid">
+      <view class="info-row" wx:if="{{property.community_name}}"><text class="info-k">小区名称</text><text class="info-v">{{property.community_name}}</text></view>
+      <view class="info-row" wx:if="{{regionInfo}}"><text class="info-k">区域信息</text><text class="info-v">{{regionInfo}}</text></view>
+      <view class="info-row" wx:if="{{property.layout}}"><text class="info-k">房屋户型</text><text class="info-v">{{property.layout}}</text></view>
+      <view class="info-row" wx:if="{{property.area}}"><text class="info-k">建筑面积</text><text class="info-v">{{property.area}}㎡</text></view>
+      <view class="info-row" wx:if="{{property.property_type}}"><text class="info-k">房屋类型</text><text class="info-v">{{property.property_type}}</text></view>
+      <view class="info-row" wx:if="{{property.floor_info}}"><text class="info-k">楼层总高</text><text class="info-v">{{property.floor_info}}{{property.total_floors ? '/' + property.total_floors + '层' : ''}}</text></view>
+      <view class="info-row" wx:if="{{property.decoration}}"><text class="info-k">装修情况</text><text class="info-v">{{property.decoration}}</text></view>
+      <view class="info-row" wx:if="{{property.orientation}}"><text class="info-k">房屋朝向</text><text class="info-v">{{property.orientation}}</text></view>
+      <view class="info-row" wx:if="{{property.build_year}}"><text class="info-k">建筑年代</text><text class="info-v">{{property.build_year}}年</text></view>
+      <view class="info-row" wx:if="{{property.has_elevator !== null}}"><text class="info-k">配备电梯</text><text class="info-v">{{property.has_elevator ? '有' : '无'}}</text></view>
+      <view class="info-row" wx:if="{{property.address}}"><text class="info-k">详细地址</text><text class="info-v">{{property.address}}</text></view>
+    </view>
+
+    <!-- 价差分析点评 -->
+    <view class="commentary-card" wx:if="{{commentary}}">
+      <view class="commentary-header">
+        <view class="commentary-icon">★</view>
+        <view class="commentary-title">独家解读</view>
+      </view>
+      <view class="commentary-body">
+        <view class="commentary-section" wx:if="{{commentary.priceInsight}}">
+          <view class="commentary-label">价差点评</view>
+          <view class="commentary-text">{{commentary.priceInsight}}</view>
+        </view>
+        <view class="commentary-section" wx:if="{{commentary.bargainInsight}}">
+          <view class="commentary-label">捡漏分析</view>
+          <view class="commentary-text">{{commentary.bargainInsight}}</view>
+        </view>
+        <view class="commentary-section" wx:if="{{commentary.locationInsight}}">
+          <view class="commentary-label">板块优劣</view>
+          <view class="commentary-text">{{commentary.locationInsight}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="tab-content" wx:if="{{activeTab === 'court'}}">
+    <view class="info-grid">
+      <view class="info-row" wx:if="{{property.court_name}}"><text class="info-k">拍卖法院</text><text class="info-v">{{property.court_name}}</text></view>
+      <view class="info-row" wx:if="{{property.case_number}}"><text class="info-k">案号</text><text class="info-v">{{property.case_number}}</text></view>
+      <view class="info-row"><text class="info-k">拍卖轮次</text><text class="info-v">{{property.auction_round}}</text></view>
+      <view class="info-row"><text class="info-k">加价幅度</text><text class="info-v">{{incrementAmountText}}</text></view>
+      <view class="info-row" wx:if="{{property.deposit}}"><text class="info-k">保证金</text><text class="info-v">{{depositText}}</text></view>
+      <view class="info-row" wx:if="{{biddingTime}}"><text class="info-k">竞标时间</text><text class="info-v">{{biddingTime}}</text></view>
+      <view class="info-row" wx:if="{{property.view_count}}"><text class="info-k">围观人数</text><text class="info-v">{{property.view_count}}人</text></view>
+      <view class="info-row" wx:if="{{property.participant_count}}"><text class="info-k">参拍人数</text><text class="info-v">{{property.participant_count}}人</text></view>
+    </view>
+
+    <!-- 公告全文 -->
+    <view class="notice-section" wx:if="{{property.description}}">
+      <view class="section-title">竞买公告 / 标的物介绍</view>
+      <view class="notice-text {{noticeExpanded ? 'expanded' : 'collapsed'}}">{{property.description}}</view>
+      <view class="notice-toggle" bindtap="onToggleNotice" wx:if="{{property.description.length > 300}}">
+        <text>{{noticeExpanded ? '收起' : '展开全文'}}</text>
+        <text class="toggle-arrow">{{noticeExpanded ? '∧' : '∨'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="tab-content" wx:if="{{activeTab === 'community'}}">
+    <!-- 小区详情卡 -->
+    <view wx:if="{{property.community_info}}" class="community-card">
+      <view class="cc-header">
+        <view class="cc-title">{{property.community_info.name}}</view>
+        <view class="cc-source" wx:if="{{property.community_info.source === 'beike'}}">数据来自贝壳找房</view>
+      </view>
+
+      <!-- 富文本介绍 -->
+      <view wx:if="{{property.community_info.description}}" class="cc-desc">{{property.community_info.description}}</view>
+
+      <!-- 数据网格 -->
+      <view class="cc-grid">
+        <view class="cc-cell" wx:if="{{property.community_info.avg_price}}">
+          <text class="cc-num accent">{{communityAvgPriceWan}}</text>
+          <text class="cc-label">参考均价 元/㎡</text>
+        </view>
+        <view class="cc-cell" wx:if="{{property.community_info.build_year_start}}">
+          <text class="cc-num">{{property.community_info.build_year_start}}</text>
+          <text class="cc-label">建成年代</text>
+        </view>
+        <view class="cc-cell" wx:if="{{property.community_info.total_units}}">
+          <text class="cc-num">{{property.community_info.total_units}}</text>
+          <text class="cc-label">总户数</text>
+        </view>
+        <view class="cc-cell" wx:if="{{property.community_info.on_sale_count}}">
+          <text class="cc-num">{{property.community_info.on_sale_count}}</text>
+          <text class="cc-label">在售房源</text>
+        </view>
+      </view>
+
+      <!-- 详细信息 -->
+      <view class="cc-info-list">
+        <view wx:if="{{property.community_info.address_full}}" class="info-row"><text class="info-k">小区地址</text><text class="info-v">{{property.community_info.address_full}}</text></view>
+        <view wx:if="{{property.community_info.property_type}}" class="info-row"><text class="info-k">物业类型</text><text class="info-v">{{property.community_info.property_type}}</text></view>
+        <view wx:if="{{property.community_info.developer}}" class="info-row"><text class="info-k">开发商</text><text class="info-v">{{property.community_info.developer}}</text></view>
+        <view wx:if="{{property.community_info.property_company}}" class="info-row"><text class="info-k">物业公司</text><text class="info-v">{{property.community_info.property_company}}</text></view>
+        <view wx:if="{{property.community_info.property_fee}}" class="info-row"><text class="info-k">物业费</text><text class="info-v">{{property.community_info.property_fee}}</text></view>
+        <view wx:if="{{property.community_info.plot_ratio}}" class="info-row"><text class="info-k">容积率</text><text class="info-v">{{property.community_info.plot_ratio}}</text></view>
+        <view wx:if="{{property.community_info.green_rate}}" class="info-row"><text class="info-k">绿化率</text><text class="info-v">{{communityGreenRatePct}}</text></view>
+        <view wx:if="{{property.community_info.total_buildings}}" class="info-row"><text class="info-k">楼栋数</text><text class="info-v">{{property.community_info.total_buildings}}栋</text></view>
+        <view wx:if="{{property.community_info.huxing_summary}}" class="info-row"><text class="info-k">主力户型</text><text class="info-v">{{property.community_info.huxing_summary}}</text></view>
+      </view>
+
+      <!-- 价差分析（仅当贝壳均价 + 起拍单价都存在） -->
+      <view class="cc-bargain" wx:if="{{property.community_info.avg_price && property.starting_unit_price}}">
+        <view class="cc-bargain-title">⚡ 价差分析</view>
+        <view class="cc-bargain-row">
+          <view class="cb-item">
+            <text class="cb-label">起拍单价</text>
+            <text class="cb-value">{{startingUnitPriceWan}} 万/㎡</text>
+          </view>
+          <view class="cb-item">
+            <text class="cb-label">市场参考</text>
+            <text class="cb-value">{{communityAvgUnitPriceWan}} 万/㎡</text>
+          </view>
+          <view class="cb-item">
+            <text class="cb-label">折扣空间</text>
+            <text class="cb-value accent">{{communityDiscountText}}</text>
+          </view>
+        </view>
+        <view wx:if="{{bargainDelta}}" class="cc-bargain-saving">按面积估算捡漏空间约 <text class="accent">{{bargainDelta}} 万</text></view>
+      </view>
+    </view>
+
+    <!-- 旧路径兜底（无 community_info 时仍显示房源自身字段） -->
+    <view wx:elif="{{property.community_name}}" class="community-info">
+      <view class="section-title">小区信息</view>
+      <view class="info-row"><text class="info-k">小区名称</text><text class="info-v">{{property.community_name}}</text></view>
+      <view class="info-row" wx:if="{{property.address}}"><text class="info-k">详细地址</text><text class="info-v">{{property.address}}</text></view>
+      <view class="info-row" wx:if="{{property.build_year}}"><text class="info-k">建筑年代</text><text class="info-v">{{property.build_year}}年</text></view>
+      <view class="info-row"><text class="info-k">小区详情</text><text class="info-v">数据筹备中，稍后查看</text></view>
+    </view>
+
+    <!-- 板块介绍（静态词典） -->
+    <view class="block-intro" wx:if="{{blockIntro}}">
+      <view class="section-title">板块介绍</view>
+      <view class="block-intro-text">{{blockIntro}}</view>
+    </view>
+
+    <view wx:if="{{!property.community_name && !blockIntro}}" class="empty-state"><text>暂无小区参考数据</text></view>
+  </view>
+
+  <view class="tab-content" wx:if="{{activeTab === 'around'}}">
+    <view class="block-intro" wx:if="{{blockIntro}}">
+      <view class="section-title">板块概况</view>
+      <view class="block-intro-text">{{blockIntro}}</view>
+    </view>
+
+    <!-- 房源位置地图（有坐标时才显示） -->
+    <view class="map-section" wx:if="{{property.lat && property.lng}}">
+      <view class="section-title">房源位置</view>
+      <map
+        class="map-canvas"
+        latitude="{{property.lat}}"
+        longitude="{{property.lng}}"
+        scale="15"
+        markers="{{mapMarkers}}"
+        show-location="{{false}}"
+        enable-scroll="{{true}}"
+        enable-zoom="{{true}}"
+      ></map>
+    </view>
+
+    <view wx:if="{{amenities && amenities.amenities && Object.keys(amenities.amenities).length > 0}}">
+      <view class="section-title">周边配套</view>
+      <block wx:for="{{amenities.amenities}}" wx:for-item="pois" wx:for-index="catKey" wx:key="catKey">
+        <view class="amenity-category" wx:if="{{pois.length > 0}}">
+          <view class="amenity-cat-title">{{amenityLabels[catKey] || catKey}}</view>
+          <view class="amenity-list">
+            <view class="amenity-item" wx:for="{{pois}}" wx:for-item="poi" wx:key="name">
+              <view class="amenity-info">
+                <text class="amenity-name">{{poi.name}}</text>
+                <text class="amenity-addr" wx:if="{{poi.address}}">{{poi.address}}</text>
+              </view>
+              <text class="amenity-dist">{{poi.distanceText}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+    <view wx:elif="{{amenities && amenities.message}}" class="empty-state">
+      <text>{{amenities.message}}</text>
+    </view>
+    <view wx:elif="{{!blockIntro && !property.lat}}" class="empty-state"><text>加载中...</text></view>
+  </view>
+
+  <!-- 板块分析浮层 -->
+  <view class="analysis-overlay" wx:if="{{showAnalysis}}" bindtap="onCloseAnalysis">
+    <view class="analysis-modal" catchtap="">
+      <view class="analysis-header">
+        <text class="analysis-title">{{property.district}} 板块分析</text>
+        <view class="analysis-close" bindtap="onCloseAnalysis">×</view>
+      </view>
+      <view class="analysis-body" wx:if="{{analysis}}">
+        <view class="analysis-stats">
+          <view class="stat-item">
+            <text class="stat-val">{{analysis.total_active}}</text>
+            <text class="stat-label">在拍房源</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-val">{{analysis.avg_starting_price_wan}}万</text>
+            <text class="stat-label">均价</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-val">{{analysis.avg_discount_rate}}</text>
+            <text class="stat-label">平均折扣</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-val">{{analysis.avg_area}}m²</text>
+            <text class="stat-label">平均面积</text>
+          </view>
+        </view>
+        <view class="analysis-section">
+          <text class="as-title">价格区间</text>
+          <text class="as-text">{{analysis.priceRangeText}}</text>
+        </view>
+        <view class="analysis-section" wx:if="{{analysis.type_distribution}}">
+          <text class="as-title">物业类型</text>
+          <view class="as-tags">
+            <view class="as-tag" wx:for="{{analysis.type_distribution}}" wx:key="*this">
+              <text>{{index}} ×{{item}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="analysis-section" wx:if="{{analysis.status_distribution}}">
+          <text class="as-title">拍卖状态</text>
+          <view class="as-tags">
+            <view class="as-tag" wx:for="{{analysis.status_distribution}}" wx:key="*this">
+              <text>{{index}} ×{{item}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="analysis-loading" wx:else>
+        <text>加载中...</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部浮标栏 -->
+  <float-action-bar
+    primary-text="联系客服"
+    show-calc="{{true}}"
+    bind:share="onShare"
+    bind:calc="onCalc"
+    bind:contact="onContact"
+  />
+</view>

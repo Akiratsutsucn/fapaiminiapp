@@ -1,0 +1,15 @@
+<view class="history-page">
+  <view class="history-list" wx:if="{{list.length > 0}}">
+    <view class="history-item" wx:for="{{list}}" wx:key="unique" bindtap="onItemTap" data-item="{{item}}">
+      <view class="item-type-icon {{item.type === 'property' ? 'prop-icon' : 'art-icon'}}"></view>
+      <view class="item-info">
+        <text class="item-title">{{item.title || '查看详情'}}</text>
+        <text class="item-time">{{item.timeStr}}</text>
+      </view>
+      <view class="item-arrow"></view>
+    </view>
+  </view>
+  <view class="empty-state" wx:else>
+    <text>暂无浏览记录</text>
+  </view>
+</view>

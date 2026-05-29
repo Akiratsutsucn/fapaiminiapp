@@ -1,0 +1,13 @@
+[Unit]
+Description=法拍者联盟 Cookie 健康检测（淘宝+公拍网）
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/fapai
+EnvironmentFile=/opt/fapai/.env
+ExecStart=/opt/fapai/venv/bin/python -m scripts.check_cookie_health --platform all
+StandardOutput=append:/var/log/fapai/cookie-health.log
+StandardError=append:/var/log/fapai/cookie-health.log

@@ -1,0 +1,11 @@
+[Unit]
+Description=法拍者联盟 Daily Crawler Timer (3 AM)
+Requires=fapai-crawler.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

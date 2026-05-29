@@ -1,0 +1,21 @@
+<view class="page">
+  <block wx:if="{{loading}}">
+    <view class="empty-state"><text>加载中…</text></view>
+  </block>
+  <block wx:elif="{{articles.length === 0}}">
+    <view class="empty-state"><text>暂无收藏的文章</text></view>
+  </block>
+  <block wx:else>
+    <view class="article-list">
+      <view class="article-item" wx:for="{{articles}}" wx:key="fav_id" bindtap="onTapArticle" data-id="{{item.id}}">
+        <image class="article-cover" src="{{item.cover_image || ''}}" mode="aspectFill" />
+        <view class="article-info">
+          <text class="article-title">{{item.title}}</text>
+          <view class="article-meta">
+            <text class="article-time">{{item.fav_time}} 收藏</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

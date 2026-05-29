@@ -1,0 +1,33 @@
+.poster-page { padding: var(--spacing-md); padding-bottom: 200rpx; }
+.poster-preview { margin-bottom: var(--spacing-xl); }
+.poster-card { background: linear-gradient(160deg, var(--blue-900), var(--blue-700)); border-radius: var(--radius-lg); padding: var(--spacing-xl); text-align: center; color: #fff; }
+.poster-brand { margin-bottom: var(--spacing-lg); }
+.poster-name { font-size: var(--font-xxl); font-weight: 700; display: block; }
+.poster-slogan { font-size: var(--font-sm); opacity: 0.7; margin-top: var(--spacing-xs); display: block; }
+.poster-agent { margin-bottom: var(--spacing-lg); padding: var(--spacing-sm); background: rgba(255,255,255,0.1); border-radius: var(--radius-sm); }
+.agent-label { font-size: var(--font-xs); opacity: 0.7; display: block; }
+.agent-name { font-size: var(--font-md); font-weight: 600; display: block; margin-top: 4rpx; }
+.poster-qr { width: 320rpx; height: 320rpx; background: #fff; border-radius: var(--radius-md); margin: 0 auto; display: flex; align-items: center; justify-content: center; padding: 12rpx; box-sizing: border-box; }
+.poster-qr-img { width: 100%; height: 100%; }
+.poster-qr-error { color: var(--danger); font-size: var(--font-sm); }
+.poster-qr-loading { display: flex; gap: 12rpx; }
+.loading-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: var(--blue-300); animation: dot-pulse 1.2s infinite ease-in-out; }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-pulse { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.1); } }
+.poster-tip { display: block; margin-top: var(--spacing-md); font-size: var(--font-xs); opacity: 0.7; }
+
+/* 绑定方式 */
+.bind-methods { background: var(--bg-card); border-radius: var(--radius-md); padding: var(--spacing-md); margin-bottom: var(--spacing-xl); }
+.bind-title { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); display: block; margin-bottom: var(--spacing-md); }
+.bind-item { display: flex; align-items: flex-start; margin-bottom: var(--spacing-md); }
+.bind-item:last-child { margin-bottom: 0; }
+.bind-num { width: 40rpx; height: 40rpx; border-radius: 50%; background: var(--blue-100); color: var(--blue-700); font-size: var(--font-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: var(--spacing-sm); margin-top: 4rpx; }
+.bind-text { flex: 1; }
+.bind-name { font-size: var(--font-sm); font-weight: 500; color: var(--text-primary); display: block; }
+.bind-desc { font-size: var(--font-xs); color: var(--text-hint); display: block; margin-top: 4rpx; }
+
+/* 操作按钮 */
+.poster-actions { display: flex; gap: var(--spacing-sm); }
+.poster-share-btn { flex: 2; height: 88rpx; }
+.poster-copy-btn { flex: 1; height: 88rpx; }

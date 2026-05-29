@@ -1,0 +1,10 @@
+.invite-header { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-md); background: var(--bg-card); }
+.invite-count { font-size: var(--font-md); font-weight: 500; }
+.invite-btn { padding: var(--spacing-sm) var(--spacing-lg); font-size: var(--font-sm); }
+.invite-item { display: flex; align-items: center; padding: var(--spacing-md); background: var(--bg-card); border-bottom: 1rpx solid var(--border-color); }
+.invite-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; background: var(--blue-100); margin-right: var(--spacing-md); }
+.invite-info { flex: 1; }
+.invite-nickname { font-size: var(--font-md); display: block; }
+.invite-time { font-size: var(--font-xs); color: var(--text-hint); }
+.empty-tip { font-size: var(--font-xs); color: var(--text-hint); margin-top: var(--spacing-sm); }
+.loading-state { text-align: center; padding: var(--spacing-xl); color: var(--text-hint); font-size: var(--font-sm); }

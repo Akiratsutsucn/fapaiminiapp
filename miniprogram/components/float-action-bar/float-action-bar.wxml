@@ -1,0 +1,23 @@
+<view class="float-bar safe-bottom">
+  <view class="bar-actions">
+    <button class="bar-btn bar-btn-button" open-type="share" hover-class="bar-btn-hover">
+      <view class="bar-icon icon-share"></view>
+      <text class="bar-label">分享</text>
+    </button>
+    <view class="bar-btn" wx:if="{{showCalc}}" bindtap="onCalc" hover-class="bar-btn-hover">
+      <view class="bar-icon icon-calc"></view>
+      <text class="bar-label">房贷计算</text>
+    </view>
+    <view class="bar-btn" wx:if="{{showAnalysis}}" bindtap="onAnalysis" hover-class="bar-btn-hover">
+      <view class="bar-icon icon-analysis"></view>
+      <text class="bar-label">板块分析</text>
+    </view>
+    <view class="bar-btn" wx:if="{{showSafeAuction}}" bindtap="onSafeAuction" hover-class="bar-btn-hover">
+      <view class="bar-icon icon-safe"></view>
+      <text class="bar-label">安全法拍</text>
+    </view>
+  </view>
+  <view class="bar-contact-btn" bindtap="onContact" hover-class="bar-contact-hover">
+    <text>{{primaryText}}</text>
+  </view>
+</view>

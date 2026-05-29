@@ -1,0 +1,27 @@
+.gallery {
+  position: relative;
+  width: 100%;
+  height: 560rpx;
+  background: var(--blue-900);
+}
+
+.swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.swiper-image {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-counter {
+  position: absolute;
+  bottom: 50rpx;
+  right: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: var(--font-xs);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=每天检测一次 Cookie 健康（淘宝/公拍网）
+Requires=fapai-cookie-health.service
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格十一：莫兰迪蓝优雅风 V2 - 法拍者联盟</title>
+<style>
+/* ============================================================
+   1. RESET + 基础
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #eef1f6;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 32px 20px;
+}
+
+/* ============================================================
+   2. 设计令牌 (继承 Style10 莫兰迪蓝体系)
+   ============================================================ */
+:root {
+  --blue-900: #1a2f52; --blue-800: #1e3a6e; --blue-700: #2d4a7a;
+  --blue-600: #3a5a8c; --blue-500: #4a6fa0; --blue-400: #6a8cb8;
+  --blue-300: #8aaad0; --blue-200: #b8cce0; --blue-100: #dce8f2;
+  --blue-50: #f0f5fa;
+  --neutral-900: #1c2433; --neutral-800: #2a3548; --neutral-700: #3d4f6a;
+  --neutral-600: #5a6e88; --neutral-500: #7a8fa8; --neutral-400: #9aafc5;
+  --neutral-300: #c0cedc; --neutral-200: #dde6ef; --neutral-100: #f0f4f8;
+  --neutral-50: #f8fafc;
+  --success: #4a8c7a; --warning: #c4935a; --danger: #b85a5a; --info: #4a6fa0;
+  --bg-page: #eef1f6; --bg-card: #f5f8fb; --bg-screen: #f0f4f8;
+  --shadow-sm: 0 1px 4px rgba(30,58,110,0.08);
+  --shadow-md: 0 4px 16px rgba(30,58,110,0.10);
+  --shadow-lg: 0 8px 32px rgba(30,58,110,0.12);
+  --float-shadow: 0 6px 20px rgba(30,58,110,0.18);
+  --wechat-green: #07C160;
+}
+
+/* ============================================================
+   3. 页面标题
+   ============================================================ */
+.style-header { text-align: center; margin-bottom: 32px; }
+.style-header h1 { font-size: 24px; font-weight: 800; color: var(--blue-800); letter-spacing: 2px; }
+.style-header p { font-size: 13px; color: var(--neutral-500); margin-top: 6px; letter-spacing: 1px; }
+
+/* ============================================================
+   4. 响应式网格布局 (2×4 → 2×2 → 1列)
+   ============================================================ */
+.screens-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 375px);
+  gap: 28px; justify-content: center;
+}
+@media (max-width: 1700px) { .screens-grid { grid-template-columns: repeat(2, 375px); } }
+@media (max-width: 900px)  { .screens-grid { grid-template-columns: 375px; } }
+
+/* ============================================================
+   5. 手机框架
+   ============================================================ */
+.phone-col { display: flex; flex-direction: column; align-items: center; }
+.phone-label {
+  font-size: 12px; font-weight: 700; color: var(--blue-700);
+  letter-spacing: 2px; margin-bottom: 12px;
+  padding: 4px 16px; background: var(--bg-card); border-radius: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.phone-frame {
+  width: 375px; background: var(--bg-screen);
+  border-radius: 44px; overflow: hidden;
+  box-shadow: 0 12px 48px rgba(30,58,110,0.14), 0 2px 8px rgba(30,58,110,0.08);
+  border: 1.5px solid rgba(74,111,160,0.12);
+  position: relative;
+}
+.phone-frame::before {
+  content: ''; position: absolute; z-index: 10; pointer-events: none;
+  top: 0; left: 30%; right: 30%; height: 1px;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent);
+}
+
+/* ============================================================
+   6. 状态栏
+   ============================================================ */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 28px 8px; font-size: 12px; font-weight: 700;
+  color: #fff; background: var(--blue-800);
+}
+.status-icons { display: flex; align-items: center; gap: 6px; }
+.status-icons svg { width: 14px; height: 14px; }
+
+/* ============================================================
+   7. 导航栏
+   ============================================================ */
+.nav-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; height: 44px; background: var(--blue-800); color: #fff;
+}
+.nav-bar-left { display: flex; align-items: center; gap: 8px; }
+.nav-bar-title { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+.nav-bar-sub { font-size: 10px; opacity: 0.7; }
+.nav-bar-right { display: flex; align-items: center; gap: 14px; }
+.nav-back { display: flex; align-items: center; gap: 2px; cursor: pointer; }
+.nav-back svg { width: 18px; height: 18px; }
+
+.nav-bar-detail {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; height: 44px; background: var(--blue-800); color: #fff;
+}
+
+/* 城市选择 */
+.city-select {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 14px; font-weight: 700; cursor: pointer; color: #fff;
+}
+.city-select svg { width: 14px; height: 14px; }
+
+/* ============================================================
+   8. 屏幕内容区
+   ============================================================ */
+.screen-body {
+  background: var(--bg-screen); overflow-y: auto;
+  position: relative; padding-bottom: 60px;
+}
+/* 隐藏滚动条 */
+.screen-body::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   9. 底部导航 (2 Tab)
+   ============================================================ */
+.tab-bar {
+  display: flex; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 56px; background: var(--bg-card);
+  border-top: 1px solid var(--neutral-200); z-index: 20;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; cursor: pointer;
+  color: var(--neutral-400); transition: color 0.2s;
+}
+.tab-item.active { color: var(--blue-600); }
+.tab-item svg { width: 22px; height: 22px; }
+.tab-item .tab-label { font-size: 10px; font-weight: 600; }
+
+/* ============================================================
+   10. 图标系统
+   ============================================================ */
+.icon-svg { width: 20px; height: 20px; }
+.icon-svg.sm { width: 16px; height: 16px; }
+.icon-svg.lg { width: 28px; height: 28px; }
+.icon-svg.xl { width: 40px; height: 40px; }
+
+/* ============================================================
+   11. 登录页 (Screen 1)
+   ============================================================ */
+.login-bg {
+  background: linear-gradient(160deg, var(--blue-900) 0%, var(--blue-700) 40%, var(--blue-600) 100%);
+  min-height: 568px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative;
+  padding: 40px 32px;
+}
+.login-bg::before {
+  content: ''; position: absolute; top: -60px; right: -60px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+}
+.login-bg::after {
+  content: ''; position: absolute; bottom: -40px; left: -40px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+}
+.login-logo {
+  width: 72px; height: 72px; border-radius: 18px; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25); margin-bottom: 20px;
+  border: 2px solid rgba(255,255,255,0.3); z-index: 1;
+}
+.login-logo img { width: 100%; height: 100%; object-fit: cover; }
+.login-brand { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 3px; z-index: 1; margin-bottom: 6px; }
+.login-slogan { font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 2px; z-index: 1; margin-bottom: 48px; }
+.login-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; max-width: 280px; padding: 14px;
+  background: var(--wechat-green); color: #fff; border: none;
+  border-radius: 28px; font-size: 16px; font-weight: 700;
+  cursor: pointer; z-index: 1; transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 8px 24px rgba(7,193,96,0.35);
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(7,193,96,0.45); }
+.login-btn svg { width: 22px; height: 22px; }
+.login-agreement {
+  margin-top: 24px; font-size: 10px; color: rgba(255,255,255,0.4);
+  text-align: center; z-index: 1; line-height: 1.6;
+}
+.login-agreement span { text-decoration: underline; cursor: pointer; }
+
+/* ============================================================
+   12. Banner 轮播 (首页)
+   ============================================================ */
+.banner-section { padding: 12px 16px 0; }
+.banner-track { position: relative; border-radius: 14px; overflow: hidden; height: 130px; }
+.banner-slide {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 20px 18px;
+  background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 0.5s; color: #fff;
+}
+.banner-slide.active { opacity: 1; }
+.banner-slide::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(26,47,82,0.85) 0%, rgba(26,47,82,0.2) 60%, rgba(26,47,82,0.05) 100%);
+}
+.banner-slide:nth-child(1) { background: linear-gradient(135deg, #1e3a6e, #3a5a8c); }
+.banner-slide:nth-child(2) { background: linear-gradient(135deg, #2d4a7a, #4a6fa0); }
+.banner-slide:nth-child(3) { background: linear-gradient(135deg, #1a2f52, #6a8cb8); }
+.banner-tag {
+  position: relative; z-index: 1; font-size: 10px; font-weight: 700;
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+  padding: 4px 10px; border-radius: 10px; align-self: flex-start;
+  margin-bottom: 8px; letter-spacing: 1px;
+}
+.banner-title { position: relative; z-index: 1; font-size: 18px; font-weight: 800; letter-spacing: 1px; }
+.banner-sub { position: relative; z-index: 1; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+.banner-dots {
+  display: flex; justify-content: center; gap: 6px; margin-top: 10px;
+}
+.banner-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--blue-200);
+  cursor: pointer; transition: all 0.3s;
+}
+.banner-dot.active { width: 18px; border-radius: 3px; background: var(--blue-500); }
+
+/* ============================================================
+   13. 行情数据卡片
+   ============================================================ */
+.market-section { padding: 14px 16px; }
+.market-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.market-card {
+  background: var(--bg-card); border-radius: 12px; padding: 12px 8px;
+  text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+}
+.market-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.market-card::before {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 2.5px;
+  border-radius: 0 0 2px 2px;
+}
+.market-card:nth-child(1)::before { background: linear-gradient(90deg, var(--success), #6ab89a); }
+.market-card:nth-child(2)::before { background: linear-gradient(90deg, var(--blue-500), #6a8cb8); }
+.market-card:nth-child(3)::before { background: linear-gradient(90deg, var(--warning), #d4a86a); }
+.market-card:nth-child(4)::before { background: linear-gradient(90deg, var(--danger), #c87a7a); }
+.market-num { font-size: 22px; font-weight: 800; color: var(--blue-700); line-height: 1; }
+.market-label { font-size: 10px; color: var(--neutral-500); margin-top: 4px; font-weight: 600; }
+.market-all {
+  margin-top: 10px; text-align: center;
+}
+.market-all a {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700; color: var(--blue-600);
+  text-decoration: none; padding: 6px 16px;
+  background: var(--bg-card); border-radius: 16px;
+  box-shadow: var(--shadow-sm); transition: all 0.2s;
+}
+.market-all a:hover { background: var(--blue-50); color: var(--blue-700); }
+
+/* ============================================================
+   14. 法拍秘籍轮播
+   ============================================================ */
+.secret-section { padding: 0 16px 14px; }
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: 14px; font-weight: 800; color: var(--neutral-800);
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::before {
+  content: ''; width: 3px; height: 14px; background: var(--blue-500);
+  border-radius: 2px;
+}
+.section-more { font-size: 11px; color: var(--neutral-500); cursor: pointer; }
+.carousel-box {
+  background: var(--bg-card); border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.carousel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px; border-bottom: 1px solid var(--neutral-200);
+}
+.carousel-header-left { display: flex; align-items: center; gap: 10px; }
+.wechat-icon {
+  width: 36px; height: 36px; border-radius: 8px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wechat-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.carousel-header-txt { font-size: 13px; font-weight: 700; color: var(--neutral-800); }
+.carousel-header-sub { font-size: 10px; color: var(--neutral-500); margin-top: 1px; }
+.carousel-more { font-size: 10px; color: var(--blue-500); cursor: pointer; }
+.carousel-track { position: relative; }
+.carousel-slide {
+  display: none; align-items: center; gap: 12px;
+  padding: 14px; cursor: pointer;
+}
+.carousel-slide.active { display: flex; }
+.cs-thumb {
+  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
+  flex-shrink: 0;
+}
+.cs-info { flex: 1; min-width: 0; }
+.cs-tag {
+  display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px;
+  border-radius: 4px; margin-bottom: 4px; letter-spacing: 0.5px;
+}
+.cs-tag.top { background: rgba(184,90,90,0.12); color: var(--danger); }
+.cs-tag.hot { background: rgba(196,147,90,0.12); color: var(--warning); }
+.cs-tag.dry { background: rgba(74,140,122,0.12); color: var(--success); }
+.cs-title {
+  font-size: 12px; font-weight: 700; color: var(--neutral-800);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cs-meta { font-size: 10px; color: var(--neutral-500); margin-top: 2px; }
+.carousel-dots {
+  display: flex; justify-content: center; gap: 5px; padding: 0 0 12px;
+}
+.carousel-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--blue-200);
+  cursor: pointer; transition: all 0.3s;
+}
+.carousel-dot.active { width: 14px; border-radius: 3px; background: var(--blue-500); }
+
+/* ============================================================
+   15. 房源卡片
+   ============================================================ */
+.house-section { padding: 0 16px 14px; }
+.house-card {
+  background: var(--bg-card); border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.25s;
+  margin-bottom: 12px;
+}
+.house-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.house-img {
+  position: relative; height: 140px; background: var(--blue-100);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.house-img img { width: 100%; height: 100%; object-fit: cover; }
+.house-img .img-placeholder {
+  font-size: 40px; color: var(--blue-300);
+}
+.house-img .house-tag {
+  position: absolute; top: 10px; left: 10px;
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px;
+  color: #fff; letter-spacing: 0.5px;
+}
+.house-tag.auction { background: var(--danger); }
+.house-tag.new { background: var(--success); }
+.house-tag.view { background: var(--blue-500); }
+.house-info { padding: 12px 14px; }
+.house-area { font-size: 10px; color: var(--neutral-500); margin-bottom: 4px; }
+.house-title { font-size: 14px; font-weight: 700; color: var(--neutral-800); margin-bottom: 6px; }
+.house-meta-row {
+  display: flex; gap: 12px; font-size: 10px; color: var(--neutral-500);
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.house-meta-row span { display: flex; align-items: center; gap: 2px; }
+.house-price-row { display: flex; align-items: baseline; justify-content: space-between; }
+.price-main { font-size: 20px; font-weight: 800; color: var(--danger); }
+.price-main small { font-size: 12px; font-weight: 600; }
+.price-unit { font-size: 10px; color: var(--neutral-500); }
+.price-orig { font-size: 11px; color: var(--neutral-400); text-decoration: line-through; }
+.auction-time { font-size: 10px; color: var(--neutral-500); text-align: right; }
+
+/* ============================================================
+   16. 筛选排序行
+   ============================================================ */
+.filter-row {
+  display: flex; gap: 8px; padding: 10px 16px;
+  background: var(--bg-card); border-bottom: 1px solid var(--neutral-200);
+}
+.filter-select {
+  flex: 1; height: 32px; display: flex; align-items: center; justify-content: center;
+  gap: 4px; background: var(--bg-screen); border: 1px solid rgba(74,111,160,0.15);
+  border-radius: 10px; font-size: 11px; color: var(--neutral-700);
+  font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.filter-select:hover { border-color: var(--blue-400); }
+.filter-select svg { width: 10px; height: 10px; color: var(--neutral-500); }
+.sort-row {
+  display: flex; padding: 8px 16px; gap: 0;
+  background: var(--bg-screen);
+}
+.sort-btn {
+  flex: 1; text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--neutral-500); cursor: pointer; padding: 6px 0;
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.sort-btn.active { color: var(--blue-600); border-bottom-color: var(--blue-500); }
+
+/* 房源列表计数 */
+.result-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px; font-size: 11px; color: var(--neutral-500);
+}
+.result-count { font-weight: 600; color: var(--neutral-700); }
+
+/* ============================================================
+   17. 浮标系统
+   ============================================================ */
+.float-group {
+  position: absolute; bottom: 70px; right: 14px; z-index: 15;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.float-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--bg-card); box-shadow: var(--float-shadow);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: transform 0.2s; color: var(--blue-600);
+}
+.float-btn:hover { transform: scale(1.1); }
+.float-btn svg { width: 18px; height: 18px; }
+
+/* 底部浮标栏 (详情页/文章页) */
+.float-bar {
+  display: flex; gap: 0; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 52px; background: var(--bg-card); z-index: 20;
+  border-top: 1px solid var(--neutral-200);
+}
+.float-bar-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; cursor: pointer;
+  color: var(--neutral-500); font-size: 9px; font-weight: 600;
+  transition: color 0.2s;
+}
+.float-bar-item:hover { color: var(--blue-600); }
+.float-bar-item svg { width: 18px; height: 18px; }
+.float-bar-item.primary {
+  background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+  color: #fff; font-size: 11px;
+}
+.float-bar-item.primary:hover { color: #fff; opacity: 0.9; }
+
+/* ============================================================
+   18. 房源详情
+   ============================================================ */
+.detail-gallery {
+  position: relative; height: 220px; background: var(--blue-100);
+  overflow: hidden;
+}
+.gallery-slide {
+  position: absolute; inset: 0; background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 0.4s;
+}
+.gallery-slide.active { opacity: 1; }
+.gallery-slide:nth-child(1) { background: linear-gradient(135deg, #3a5a8c, #6a8cb8); }
+.gallery-slide:nth-child(2) { background: linear-gradient(135deg, #2d4a7a, #8aaad0); }
+.gallery-slide:nth-child(3) { background: linear-gradient(135deg, #1e3a6e, #b8cce0); }
+.gallery-slide:nth-child(4) { background: linear-gradient(135deg, #1a2f52, #6a8cb8); }
+.gallery-dots {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; z-index: 5;
+}
+.gallery-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.4); cursor: pointer; transition: all 0.3s;
+}
+.gallery-dot.active { background: #fff; width: 16px; border-radius: 3px; }
+.gallery-badge {
+  position: absolute; top: 12px; right: 12px; z-index: 5;
+  font-size: 10px; color: #fff; background: rgba(0,0,0,0.4);
+  padding: 3px 8px; border-radius: 8px;
+}
+.gallery-tag {
+  position: absolute; top: 12px; left: 12px; z-index: 5;
+  font-size: 10px; font-weight: 700; color: #fff;
+  background: var(--danger); padding: 3px 8px; border-radius: 4px;
+}
+.detail-content { padding: 0 16px; }
+.detail-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 14px 0 10px;
+}
+.detail-title { font-size: 15px; font-weight: 700; color: var(--neutral-800); flex: 1; }
+.detail-area { font-size: 11px; color: var(--neutral-500); margin-top: 3px; }
+.fav-btn { cursor: pointer; color: var(--neutral-400); flex-shrink: 0; margin-top: 2px; }
+.fav-btn.active { color: var(--danger); fill: var(--danger); }
+
+/* 价格信息网格 */
+.price-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  background: var(--bg-card); border-radius: 12px;
+  padding: 14px 12px; margin-bottom: 14px; box-shadow: var(--shadow-sm);
+}
+.price-item { text-align: center; }
+.price-item .pi-label { font-size: 10px; color: var(--neutral-500); margin-bottom: 2px; }
+.price-item .pi-val { font-size: 16px; font-weight: 800; color: var(--blue-700); }
+.price-item .pi-val.danger { color: var(--danger); }
+.price-item .pi-val.success { color: var(--success); }
+.price-item .pi-val.warning { color: var(--warning); }
+
+/* 开拍时间 */
+.auction-time-box {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: linear-gradient(135deg, rgba(184,90,90,0.06), rgba(184,90,90,0.02));
+  border-radius: 10px; margin-bottom: 14px; border: 1px solid rgba(184,90,90,0.15);
+}
+.auction-time-box .at-icon { font-size: 20px; }
+.auction-time-box .at-label { font-size: 10px; color: var(--neutral-500); }
+.auction-time-box .at-time { font-size: 13px; font-weight: 700; color: var(--danger); }
+
+/* 详情 Tab 切换 */
+.detail-tabs {
+  display: flex; border-bottom: 2px solid var(--neutral-200);
+  margin-bottom: 0;
+}
+.detail-tab {
+  flex: 1; text-align: center; padding: 10px 0; font-size: 11px;
+  font-weight: 700; color: var(--neutral-500); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.detail-tab.active { color: var(--blue-600); border-bottom-color: var(--blue-500); }
+.tab-panel { display: none; padding: 14px 0; }
+.tab-panel.active { display: block; }
+
+/* 信息行 */
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--neutral-100);
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 11px; color: var(--neutral-500); }
+.info-value { font-size: 11px; color: var(--neutral-700); font-weight: 600; text-align: right; }
+
+/* ============================================================
+   19. 公众号文章页
+   ============================================================ */
+.article-cover {
+  width: 100%; height: 200px; object-fit: cover;
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-400));
+}
+.article-body { padding: 18px 16px; }
+.article-title { font-size: 17px; font-weight: 800; color: var(--neutral-800); line-height: 1.5; }
+.article-author {
+  display: flex; align-items: center; gap: 8px; margin: 10px 0;
+  font-size: 11px; color: var(--neutral-500);
+}
+.article-text {
+  font-size: 12px; color: var(--neutral-600); line-height: 2;
+  margin-top: 14px;
+}
+.article-text p { margin-bottom: 10px; text-indent: 2em; }
+
+/* 公众号底部栏 */
+.mp-bar {
+  display: flex; align-items: center; padding: 10px 16px;
+  background: var(--bg-card); border-top: 1px solid var(--neutral-200);
+  gap: 10px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+}
+.mp-avatar {
+  width: 36px; height: 36px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+}
+.mp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mp-info { flex: 1; }
+.mp-name { font-size: 12px; font-weight: 700; color: var(--neutral-800); }
+.mp-desc { font-size: 9px; color: var(--neutral-500); }
+.mp-actions { display: flex; gap: 16px; align-items: center; }
+.mp-action {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 9px; color: var(--neutral-500); cursor: pointer;
+}
+.mp-action svg { width: 18px; height: 18px; }
+.mp-follow {
+  padding: 5px 14px; background: var(--wechat-green); color: #fff;
+  border: none; border-radius: 4px; font-size: 11px; font-weight: 700;
+  cursor: pointer;
+}
+
+/* ============================================================
+   20. 联系客服弹窗
+   ============================================================ */
+.modal-overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.45); display: flex;
+  align-items: flex-end; justify-content: center;
+}
+.service-modal {
+  width: 100%; background: var(--bg-card);
+  border-radius: 20px 20px 0 0; padding: 24px 20px 32px;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sm-title { font-size: 16px; font-weight: 800; color: var(--neutral-800); text-align: center; margin-bottom: 20px; }
+.sm-row {
+  display: flex; align-items: center; gap: 12px; padding: 14px;
+  background: var(--bg-screen); border-radius: 12px; margin-bottom: 10px;
+  cursor: pointer; transition: background 0.2s;
+}
+.sm-row:hover { background: var(--blue-50); }
+.sm-icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sm-icon.phone { background: rgba(74,111,160,0.1); color: var(--blue-600); }
+.sm-icon.online { background: rgba(7,193,96,0.1); color: var(--wechat-green); }
+.sm-info { flex: 1; }
+.sm-label { font-size: 13px; font-weight: 700; color: var(--neutral-700); }
+.sm-sub { font-size: 10px; color: var(--neutral-500); margin-top: 2px; }
+.sm-cancel {
+  width: 100%; padding: 14px; text-align: center; margin-top: 8px;
+  background: var(--bg-screen); border: none; border-radius: 14px;
+  font-size: 14px; font-weight: 600; color: var(--neutral-500); cursor: pointer;
+}
+
+/* ============================================================
+   21. 我的页面
+   ============================================================ */
+.profile-header {
+  background: linear-gradient(160deg, var(--blue-900), var(--blue-700));
+  padding: 20px 20px 24px; color: #fff; position: relative;
+}
+.profile-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.profile-avatar {
+  width: 60px; height: 60px; border-radius: 50%; overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0;
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { font-size: 17px; font-weight: 700; }
+.profile-phone { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+.profile-edit {
+  margin-left: auto; color: rgba(255,255,255,0.7); cursor: pointer;
+}
+.profile-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 4px; margin-top: 4px;
+}
+.profile-badge.agent { background: rgba(196,147,90,0.2); color: var(--warning); }
+.profile-stats {
+  display: flex; justify-content: space-around; text-align: center;
+}
+.profile-stat .ps-num { font-size: 18px; font-weight: 800; }
+.profile-stat .ps-label { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+
+/* 服务宫格 */
+.service-section { padding: 16px; }
+.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.service-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 8px; background: var(--bg-card); border-radius: 12px;
+  cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);
+  text-decoration: none;
+}
+.service-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.service-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.service-icon.s1 { background: rgba(74,111,160,0.1); color: var(--blue-600); }
+.service-icon.s2 { background: rgba(196,147,90,0.1); color: var(--warning); }
+.service-icon.s3 { background: rgba(74,140,122,0.1); color: var(--success); }
+.service-icon.s4 { background: rgba(184,90,90,0.1); color: var(--danger); }
+.service-icon.s5 { background: rgba(74,111,160,0.1); color: var(--blue-500); }
+.service-icon.s6 { background: rgba(196,147,90,0.1); color: var(--warning); }
+.service-label { font-size: 11px; font-weight: 600; color: var(--neutral-700); }
+
+/* ============================================================
+   22. 表单页面 (选房需求)
+   ============================================================ */
+.form-page { padding: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-label {
+  font-size: 12px; font-weight: 700; color: var(--neutral-700);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.form-label .required { color: var(--danger); font-size: 14px; }
+.form-input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--neutral-300);
+  border-radius: 10px; font-size: 12px; color: var(--neutral-700);
+  background: var(--bg-card); transition: border-color 0.2s;
+  font-family: inherit;
+}
+.form-input:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(74,111,160,0.08); }
+.form-input::placeholder { color: var(--neutral-400); }
+.form-radio-group { display: flex; gap: 10px; }
+.form-radio {
+  flex: 1; padding: 10px; text-align: center;
+  border: 1px solid var(--neutral-300); border-radius: 10px;
+  font-size: 12px; color: var(--neutral-600); cursor: pointer;
+  background: var(--bg-card); transition: all 0.2s;
+}
+.form-radio.active { border-color: var(--blue-500); color: var(--blue-600); background: rgba(74,111,160,0.05); }
+.form-select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--neutral-300);
+  border-radius: 10px; font-size: 12px; color: var(--neutral-700);
+  background: var(--bg-card); font-family: inherit; cursor: pointer;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aafc5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.form-submit {
+  width: 100%; padding: 14px; background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+  color: #fff; border: none; border-radius: 14px; font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: 20px; transition: all 0.2s;
+  box-shadow: 0 6px 20px rgba(74,111,160,0.3);
+}
+.form-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(74,111,160,0.4); }
+
+/* ============================================================
+   23. 导航栏白色变体
+   ============================================================ */
+.nav-bar-white {
+  background: var(--bg-card); color: var(--neutral-800);
+  border-bottom: 1px solid var(--neutral-200);
+}
+.nav-bar-white .city-select { color: var(--neutral-800); }
+
+/* 房源列表页筛选面板 */
+.dropdown-panel {
+  position: absolute; top: 38px; left: 0; right: 0; z-index: 30;
+  background: var(--bg-card); border-radius: 12px; padding: 8px 0;
+  box-shadow: var(--shadow-lg); display: none;
+}
+.dropdown-panel.show { display: block; }
+.dd-option {
+  padding: 8px 16px; font-size: 12px; color: var(--neutral-700);
+  cursor: pointer; transition: background 0.15s;
+}
+.dd-option:hover { background: var(--blue-50); }
+.dd-option.selected { color: var(--blue-600); font-weight: 700; background: rgba(74,111,160,0.06); }
+
+/* 筛选相对定位 */
+.filter-group { position: relative; flex: 1; }
+
+/* 返回顶部浮标 */
+.float-top { bottom: 126px; }
+
+/* 收藏页面列表 */
+.collection-card {
+  background: var(--bg-card); border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow-sm); margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 页面标题 ============ -->
+<div class="style-header">
+  <h1>风格十一：莫兰迪蓝优雅风 V2</h1>
+  <p>法拍者联盟 · 小程序 UI 设计方案（8 屏）</p>
+</div>
+
+<!-- ============ 手机屏幕网格 ============ -->
+<div class="screens-grid">
+
+  <!-- ============================================================
+       SCREEN 1: 登录页
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">登录页</div>
+    <div class="phone-frame">
+      <div class="screen-body" style="padding-bottom:0;">
+        <div class="login-bg">
+          <div class="login-logo">
+            <img src="file:///D:/Private/Desktop/test/logo.jpg" alt="法拍者联盟" onerror="this.style.display='none'">
+          </div>
+          <div class="login-brand">法拍者联盟</div>
+          <div class="login-slogan">专业法拍房信息服务平台</div>
+          <button class="login-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+              <path d="M20.6 8A7.5 7.5 0 0013 5.2C10.5 5.2 8.4 6.7 7.4 8.8 6.4 6.7 4.3 5.2 1.8 5.2A7.5 7.5 0 007 9.5c0 2.5 0 5 0 5s0 2.5 0 5a7.5 7.5 0 005.2-2.1c1 2.1 3.1 3.6 5.6 3.6s4.6-1.5 5.6-3.6"/>
+            </svg>
+            微信授权登录
+          </button>
+          <div class="login-agreement">
+            登录即表示同意 <span>《用户协议》</span> 和 <span>《隐私政策》</span><br>
+            授权头像和昵称后进行登录
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 2: 首页
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">首页</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="status-icons">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="5" height="12" rx="0.5"/><rect x="9" y="3" width="5" height="15" rx="0.5"/><rect x="17" y="1" width="5" height="17" rx="0.5"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 9l2 2 4-4"/><path d="M17 7l2 2 4-4"/><rect x="7" y="3" width="10" height="18" rx="2"/></svg>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <div class="city-select">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          上海
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:700;letter-spacing:1px;">法拍者联盟</div>
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c1-2 3-5 3-9s-2-7-3-9c-1 2-3 5-3 9s2 7 3 9z"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+      </div>
+      <div class="screen-body" style="height:656px;">
+
+        <!-- Banner 轮播 -->
+        <div class="banner-section">
+          <div class="banner-track">
+            <div class="banner-slide active">
+              <div class="banner-tag">🔍 捡漏推荐</div>
+              <div class="banner-title">法拍房腾房终极指南</div>
+              <div class="banner-sub">3个步骤，把"法院不兜底"变成"自己说了算"</div>
+            </div>
+            <div class="banner-slide">
+              <div class="banner-tag">⚡ 热门必读</div>
+              <div class="banner-title">法拍房"免死金牌"</div>
+              <div class="banner-sub">就看这2个字，避开90%腾房坑</div>
+            </div>
+            <div class="banner-slide">
+              <div class="banner-tag">📖 深度分析</div>
+              <div class="banner-title">上海法拍市场周报</div>
+              <div class="banner-sub">本周成交趋势与捡漏机会分析</div>
+            </div>
+          </div>
+          <div class="banner-dots">
+            <span class="banner-dot active"></span>
+            <span class="banner-dot"></span>
+            <span class="banner-dot"></span>
+          </div>
+        </div>
+
+        <!-- 行情数据 -->
+        <div class="market-section">
+          <div class="market-grid">
+            <div class="market-card">
+              <div class="market-num">128</div>
+              <div class="market-label">捡漏房源</div>
+            </div>
+            <div class="market-card">
+              <div class="market-num">36</div>
+              <div class="market-label">即将开拍</div>
+            </div>
+            <div class="market-card">
+              <div class="market-num">892</div>
+              <div class="market-label">昨日商家</div>
+            </div>
+            <div class="market-card">
+              <div class="market-num">47</div>
+              <div class="market-label">昨日成交</div>
+            </div>
+          </div>
+          <div class="market-all">
+            <a href="#">查看全部房源 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+          </div>
+        </div>
+
+        <!-- 法拍秘籍轮播 -->
+        <div class="secret-section">
+          <div class="section-header">
+            <div class="section-title">法拍秘籍</div>
+            <span class="section-more">更多 ›</span>
+          </div>
+          <div class="carousel-box">
+            <div class="carousel-header">
+              <div class="carousel-header-left">
+                <div class="wechat-icon">
+                  <img src="file:///D:/Private/Desktop/test/logo.jpg" alt="法拍者联盟" onerror="this.style.display='none'">
+                </div>
+                <div>
+                  <div class="carousel-header-txt">法拍者联盟</div>
+                  <div class="carousel-header-sub">公众号精选 · 最新推文</div>
+                </div>
+              </div>
+              <span class="carousel-more">全部文章 ›</span>
+            </div>
+            <div class="carousel-track" id="secretCarousel">
+              <div class="carousel-slide active">
+                <img class="cs-thumb" src="https://mmbiz.qpic.cn/mmbiz_jpg/example1/640" alt="" onerror="this.style.background='var(--blue-100)';this.style.minWidth='56px'">
+                <div class="cs-info">
+                  <span class="cs-tag top">置顶</span>
+                  <div class="cs-title">法拍房腾房"免死金牌"：就看这2个字</div>
+                  <div class="cs-meta">2026-04-18 · 阅读 2.3万</div>
+                </div>
+              </div>
+              <div class="carousel-slide">
+                <img class="cs-thumb" src="https://mmbiz.qpic.cn/mmbiz_jpg/example2/640" alt="" onerror="this.style.background='var(--blue-100)';this.style.minWidth='56px'">
+                <div class="cs-info">
+                  <span class="cs-tag hot">热门</span>
+                  <div class="cs-title">法拍房腾房的「终极保命指南」3个步骤</div>
+                  <div class="cs-meta">2026-04-12 · 阅读 1.8万</div>
+                </div>
+              </div>
+              <div class="carousel-slide">
+                <img class="cs-thumb" src="https://mmbiz.qpic.cn/mmbiz_jpg/example3/640" alt="" onerror="this.style.background='var(--blue-100)';this.style.minWidth='56px'">
+                <div class="cs-info">
+                  <span class="cs-tag dry">干货</span>
+                  <div class="cs-title">法拍房腾房最坑的3个"隐形陷阱"</div>
+                  <div class="cs-meta">2026-04-05 · 阅读 1.5万</div>
+                </div>
+              </div>
+            </div>
+            <div class="carousel-dots" id="secretDots">
+              <span class="carousel-dot active"></span>
+              <span class="carousel-dot"></span>
+              <span class="carousel-dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 精选房源 -->
+        <div class="house-section">
+          <div class="section-header">
+            <div class="section-title">精选房源</div>
+            <div class="filter-row" style="padding:0;background:none;border:none;gap:6px;">
+              <span class="filter-select" style="flex:none;padding:0 10px;font-size:10px;">区域 ▼</span>
+              <span class="filter-select" style="flex:none;padding:0 10px;font-size:10px;">起拍价 ▼</span>
+            </div>
+          </div>
+
+          <!-- 房源卡片 1 -->
+          <div class="house-card">
+            <div class="house-img">
+              <div class="img-placeholder">🏠</div>
+              <span class="house-tag auction">即将开拍</span>
+            </div>
+            <div class="house-info">
+              <div class="house-area">浦东新区 · 陆家嘴</div>
+              <div class="house-title">陆家嘴花园二期 3室2厅</div>
+              <div class="house-meta-row">
+                <span>二拍</span><span>128㎡</span><span>5.3万/㎡</span>
+              </div>
+              <div class="house-price-row">
+                <div><span class="price-main"><small>¥</small>680<small>万</small></span></div>
+                <div>
+                  <div class="auction-time">开拍 2026-05-20 10:00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 房源卡片 2 -->
+          <div class="house-card">
+            <div class="house-img">
+              <div class="img-placeholder">🏢</div>
+              <span class="house-tag new">今日新增</span>
+            </div>
+            <div class="house-info">
+              <div class="house-area">静安区 · 南京西路</div>
+              <div class="house-title">南京西路公馆 2室1厅</div>
+              <div class="house-meta-row">
+                <span>一拍</span><span>95㎡</span><span>7.8万/㎡</span>
+              </div>
+              <div class="house-price-row">
+                <div><span class="price-main"><small>¥</small>740<small>万</small></span></div>
+                <div>
+                  <div class="auction-time">开拍 2026-05-22 10:00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 浮标 -->
+        <div class="float-group float-top">
+          <div class="float-btn" title="返回顶部">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          </div>
+          <div class="float-btn" title="联系客服">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部导航 -->
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="tab-label">首页</span>
+        </div>
+        <div class="tab-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="tab-label">我的</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 3: 房源列表
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">房源列表</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="nav-bar">
+        <div class="nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="nav-bar-title">房源列表</div>
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <div class="screen-body" style="height:656px;">
+
+        <!-- 筛选行 -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <div class="filter-select" onclick="this.nextElementSibling.classList.toggle('show')">
+              区域 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="dropdown-panel">
+              <div class="dd-option selected">全部区域</div><div class="dd-option">浦东新区</div><div class="dd-option">静安区</div><div class="dd-option">徐汇区</div><div class="dd-option">长宁区</div><div class="dd-option">黄浦区</div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-select" onclick="this.nextElementSibling.classList.toggle('show')">
+              起拍价 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="dropdown-panel">
+              <div class="dd-option selected">不限</div><div class="dd-option">100万以下</div><div class="dd-option">100-300万</div><div class="dd-option">300-500万</div><div class="dd-option">500万以上</div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-select" onclick="this.nextElementSibling.classList.toggle('show')">
+              更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="dropdown-panel">
+              <div class="dd-option">拍品名称</div><div class="dd-option">法院评估价</div><div class="dd-option">建筑面积</div><div class="dd-option">拍卖状态</div><div class="dd-option">拍卖轮次</div><div class="dd-option">税费</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 排序行 -->
+        <div class="sort-row">
+          <div class="sort-btn active">默认</div>
+          <div class="sort-btn">起拍价</div>
+          <div class="sort-btn">评估价</div>
+          <div class="sort-btn">面积</div>
+        </div>
+
+        <div class="result-bar"><span class="result-count">共 342 套房源</span><span>上海地区</span></div>
+
+        <!-- 房源列表 -->
+        <div style="padding: 0 16px;">
+          <div class="house-card">
+            <div class="house-img"><div class="img-placeholder">🏠</div><span class="house-tag auction">一拍</span></div>
+            <div class="house-info">
+              <div class="house-area">浦东新区 · 碧云国际社区</div>
+              <div class="house-title">碧云国际 4室2厅 豪华装修</div>
+              <div class="house-meta-row"><span>一拍</span><span>168㎡</span><span>5.2万/㎡</span></div>
+              <div class="house-price-row">
+                <div><span class="price-main"><small>¥</small>875<small>万</small></span></div>
+                <div class="auction-time">开拍 2026-05-18 10:00</div>
+              </div>
+            </div>
+          </div>
+          <div class="house-card">
+            <div class="house-img"><div class="img-placeholder">🏢</div><span class="house-tag view">变卖</span></div>
+            <div class="house-info">
+              <div class="house-area">徐汇区 · 新天地</div>
+              <div class="house-title">新天地河滨花园 3室2厅</div>
+              <div class="house-meta-row"><span>变卖</span><span>142㎡</span><span>6.8万/㎡</span></div>
+              <div class="house-price-row">
+                <div><span class="price-main"><small>¥</small>965<small>万</small></span></div>
+                <div class="auction-time">开拍 2026-05-19 10:00</div>
+              </div>
+            </div>
+          </div>
+          <div class="house-card">
+            <div class="house-img"><div class="img-placeholder">🏘️</div><span class="house-tag auction">二拍</span></div>
+            <div class="house-info">
+              <div class="house-area">静安区 · 大宁</div>
+              <div class="house-title">大宁瑞仕花园 2室2厅</div>
+              <div class="house-meta-row"><span>二拍</span><span>108㎡</span><span>4.5万/㎡</span></div>
+              <div class="house-price-row">
+                <div><span class="price-main"><small>¥</small>486<small>万</small></span></div>
+                <div class="auction-time">开拍 2026-05-21 10:00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 4: 房源详情
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">房源详情</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="nav-bar-detail">
+        <div class="nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="nav-bar-title">房源详情</div>
+        <div style="display:flex;gap:14px;">
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+      </div>
+      <div class="screen-body" style="height:656px;padding-bottom:52px;">
+
+        <!-- 轮播图 -->
+        <div class="detail-gallery">
+          <div class="gallery-slide active"></div>
+          <div class="gallery-slide"></div>
+          <div class="gallery-slide"></div>
+          <div class="gallery-slide"></div>
+          <span class="gallery-tag">即将开拍</span>
+          <span class="gallery-badge">1/4</span>
+          <div class="gallery-dots">
+            <span class="gallery-dot active"></span>
+            <span class="gallery-dot"></span>
+            <span class="gallery-dot"></span>
+            <span class="gallery-dot"></span>
+          </div>
+        </div>
+
+        <div class="detail-content">
+          <!-- 标题 -->
+          <div class="detail-header">
+            <div>
+              <div class="detail-title">陆家嘴花园二期 3室2厅2卫</div>
+              <div class="detail-area">浦东新区 · 陆家嘴街道</div>
+            </div>
+            <div class="fav-btn" id="favBtn" onclick="this.classList.toggle('active')">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            </div>
+          </div>
+
+          <!-- 价格网格 -->
+          <div class="price-grid">
+            <div class="price-item">
+              <div class="pi-label">起拍价</div>
+              <div class="pi-val danger">680万</div>
+            </div>
+            <div class="price-item">
+              <div class="pi-label">评估价</div>
+              <div class="pi-val">850万</div>
+            </div>
+            <div class="price-item">
+              <div class="pi-label">折扣</div>
+              <div class="pi-val success">8.0折</div>
+            </div>
+            <div class="price-item">
+              <div class="pi-label">保证金</div>
+              <div class="pi-val warning">68万</div>
+            </div>
+          </div>
+
+          <!-- 开拍时间 -->
+          <div class="auction-time-box">
+            <span class="at-icon">⏰</span>
+            <div>
+              <div class="at-label">开拍时间</div>
+              <div class="at-time">2026年5月20日 10:00</div>
+            </div>
+          </div>
+
+          <!-- Tab 切换 -->
+          <div class="detail-tabs" id="detailTabs">
+            <div class="detail-tab active" onclick="switchTab(0)">基本信息</div>
+            <div class="detail-tab" onclick="switchTab(1)">法院公告</div>
+            <div class="detail-tab" onclick="switchTab(2)">小区详情</div>
+            <div class="detail-tab" onclick="switchTab(3)">周边配套</div>
+          </div>
+
+          <!-- Tab 面板 -->
+          <div id="tabPanels">
+            <div class="tab-panel active">
+              <div class="info-row"><span class="info-label">小区名称</span><span class="info-value">陆家嘴花园二期</span></div>
+              <div class="info-row"><span class="info-label">建筑面积</span><span class="info-value">128.5㎡</span></div>
+              <div class="info-row"><span class="info-label">户型</span><span class="info-value">3室2厅2卫</span></div>
+              <div class="info-row"><span class="info-label">所在楼层</span><span class="info-value">12层 / 共26层</span></div>
+              <div class="info-row"><span class="info-label">朝向</span><span class="info-value">南北通透</span></div>
+              <div class="info-row"><span class="info-label">装修情况</span><span class="info-value">精装修</span></div>
+            </div>
+            <div class="tab-panel">
+              <div class="info-row"><span class="info-label">拍卖法院</span><span class="info-value">上海市浦东新区人民法院</span></div>
+              <div class="info-row"><span class="info-label">案号</span><span class="info-value">(2026)沪0115执1234号</span></div>
+              <div class="info-row"><span class="info-label">拍卖方式</span><span class="info-value">设有保留价的增价拍卖</span></div>
+              <div class="info-row"><span class="info-label">加价幅度</span><span class="info-value">5万元</span></div>
+              <div class="info-row"><span class="info-label">咨询电话</span><span class="info-value">400-007-6786</span></div>
+              <div class="info-row"><span class="info-label">看样时间</span><span class="info-value">2026-05-15 14:00</span></div>
+            </div>
+            <div class="tab-panel">
+              <div class="info-row"><span class="info-label">物业类型</span><span class="info-value">住宅</span></div>
+              <div class="info-row"><span class="info-label">建筑年代</span><span class="info-value">2015年</span></div>
+              <div class="info-row"><span class="info-label">容积率</span><span class="info-value">2.8</span></div>
+              <div class="info-row"><span class="info-label">绿化率</span><span class="info-value">38%</span></div>
+              <div class="info-row"><span class="info-label">物业费</span><span class="info-value">4.5元/㎡·月</span></div>
+              <div class="info-row"><span class="info-label">停车位</span><span class="info-value">1:1.2</span></div>
+            </div>
+            <div class="tab-panel">
+              <div class="info-row"><span class="info-label">地铁</span><span class="info-value">9号线 商城路站 步行5分钟</span></div>
+              <div class="info-row"><span class="info-label">学校</span><span class="info-value">福山外国语小学 步行8分钟</span></div>
+              <div class="info-row"><span class="info-label">医院</span><span class="info-value">东方医院 车程10分钟</span></div>
+              <div class="info-row"><span class="info-label">商场</span><span class="info-value">正大广场 步行15分钟</span></div>
+              <div class="info-row"><span class="info-label">公园</span><span class="info-value">陆家嘴中心绿地 步行10分钟</span></div>
+              <div class="info-row"><span class="info-label">银行</span><span class="info-value">工商银行/建设银行 步行5分钟</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部浮标栏 -->
+        <div class="float-bar">
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            分享
+          </div>
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            联系客服
+          </div>
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            板块分析
+          </div>
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            安全法拍
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 5: 公众号文章页
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">公众号文章页</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="nav-bar-detail">
+        <div class="nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="nav-bar-title">拍来盟科技</div>
+        <div style="display:flex;gap:14px;">
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>
+          <svg class="icon-svg sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+      </div>
+      <div class="screen-body" style="height:656px;padding-bottom:52px;">
+        <div class="article-cover" style="display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:32px;">📰</div>
+        <div class="article-body">
+          <div class="article-title">法拍房腾房"免死金牌"：就看这2个字，直接避开90%腾房坑</div>
+          <div class="article-author">
+            <span>法拍者联盟</span><span>·</span><span>2026年4月18日</span>
+          </div>
+          <div class="article-text">
+            <p>在法拍房交易中，"腾房"一直是买受人最头疼的问题之一。许多竞买人在成功拍下房产后，却发现原房主拒绝搬离，导致交房遥遥无期。</p>
+            <p>根据最高人民法院的相关司法解释，法院在拍卖公告中明确载明的"现状交付"四个字，实际上已经意味着法院不对腾房问题承担责任。然而，如果拍卖公告中写明了"负责交付"这四个字，情况就完全不同了。</p>
+            <p>今天我们就来详细解读这关键的两个字——"交付"，以及它背后蕴含的法律含义和实操价值。</p>
+          </div>
+        </div>
+
+        <!-- 底部浮标 -->
+        <div class="float-bar">
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>
+            分享
+          </div>
+          <div class="float-bar-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            收藏
+          </div>
+          <div class="float-bar-item primary">
+            联系客服
+          </div>
+        </div>
+
+        <!-- 公众号底部栏 -->
+        <div class="mp-bar">
+          <div class="mp-avatar">
+            <img src="file:///D:/Private/Desktop/test/logo.jpg" alt="" onerror="this.style.display='none'">
+          </div>
+          <div class="mp-info">
+            <div class="mp-name">拍来盟科技</div>
+            <div class="mp-desc">专业法拍房信息服务平台</div>
+          </div>
+          <div class="mp-actions">
+            <div class="mp-action">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/></svg>
+              点赞
+            </div>
+            <div class="mp-action">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              留言
+            </div>
+            <button class="mp-follow">关注</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 6: 联系客服（展示完整客服页样式）
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">联系客服</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="nav-bar-detail">
+        <div class="nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="nav-bar-title">联系客服</div>
+        <div></div>
+      </div>
+      <div class="screen-body" style="height:656px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:rgba(74,111,160,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-600)" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <div style="font-size:16px;font-weight:800;color:var(--neutral-800);">需要帮助？</div>
+          <div style="font-size:11px;color:var(--neutral-500);margin-top:4px;">我们随时为您服务</div>
+        </div>
+
+        <div class="service-modal" style="width:100%;border-radius:16px;box-shadow:var(--shadow-md);">
+          <div class="sm-row">
+            <div class="sm-icon phone">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </div>
+            <div class="sm-info">
+              <div class="sm-label">联系电话</div>
+              <div class="sm-sub">周一至周六 8:00 ~ 18:00</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:var(--blue-600);">400-007-6786</div>
+          </div>
+
+          <div class="sm-row">
+            <div class="sm-icon online">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div class="sm-info">
+              <div class="sm-label">在线客服</div>
+              <div class="sm-sub">周一至周六 8:00 ~ 18:00</div>
+            </div>
+            <div style="font-size:11px;color:var(--wechat-green);font-weight:700;">点击对话 →</div>
+          </div>
+
+          <button class="sm-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 7: 我的
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">我的</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="screen-body" style="height:700px;">
+
+        <!-- 个人头部 -->
+        <div class="profile-header">
+          <div class="profile-top">
+            <div class="profile-avatar">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="35" r="20" fill="rgba(255,255,255,0.3)"/><ellipse cx="50" cy="85" rx="30" ry="20" fill="rgba(255,255,255,0.3)"/></svg>
+            </div>
+            <div>
+              <div class="profile-name">谭哥</div>
+              <div class="profile-phone">138****8888</div>
+              <div class="profile-badge agent">代理商</div>
+            </div>
+            <div class="profile-edit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="profile-stat"><div class="ps-num">12</div><div class="ps-label">关注房源</div></div>
+            <div class="profile-stat"><div class="ps-num">3</div><div class="ps-label">参拍次数</div></div>
+            <div class="profile-stat"><div class="ps-num">1</div><div class="ps-label">成功竞拍</div></div>
+          </div>
+        </div>
+
+        <!-- 我的服务 -->
+        <div class="service-section">
+          <div class="section-header">
+            <div class="section-title">我的服务</div>
+          </div>
+          <div class="service-grid">
+            <div class="service-item">
+              <div class="service-icon s1">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+              </div>
+              <div class="service-label">房源收藏</div>
+            </div>
+            <div class="service-item">
+              <div class="service-icon s2">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="service-label">文章收藏</div>
+            </div>
+            <div class="service-item">
+              <div class="service-icon s3">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="service-label">选房需求</div>
+            </div>
+            <div class="service-item">
+              <div class="service-icon s4">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div class="service-label">浏览记录</div>
+            </div>
+            <div class="service-item">
+              <div class="service-icon s5">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="service-label">联系客服</div>
+            </div>
+            <div class="service-item">
+              <div class="service-icon s6">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </div>
+              <div class="service-label">邀请分享</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部导航 -->
+      <div class="tab-bar">
+        <div class="tab-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="tab-label">首页</span>
+        </div>
+        <div class="tab-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="tab-label">我的</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 8: 选房需求
+       ============================================================ -->
+  <div class="phone-col">
+    <div class="phone-label">选房需求</div>
+    <div class="phone-frame" style="height:812px;">
+      <div class="status-bar"><span>9:41</span><div class="status-icons">●●●●</div></div>
+      <div class="nav-bar-detail">
+        <div class="nav-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="nav-bar-title">选房需求</div>
+        <div></div>
+      </div>
+      <div class="screen-body" style="height:656px;">
+        <div class="form-page">
+          <div style="font-size:11px;color:var(--neutral-500);margin-bottom:16px;">
+            请填写以下信息，我们将为您精准匹配房源
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 姓名</div>
+            <input class="form-input" placeholder="请输入您的姓名">
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 性别</div>
+            <div class="form-radio-group">
+              <div class="form-radio active">男</div>
+              <div class="form-radio">女</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 手机号</div>
+            <input class="form-input" placeholder="请输入手机号码" type="tel">
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 居住城市</div>
+            <select class="form-select">
+              <option value="">请选择城市</option>
+              <option>上海</option><option>北京</option><option>深圳</option><option>广州</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 购房用途</div>
+            <div class="form-radio-group">
+              <div class="form-radio active">投资</div>
+              <div class="form-radio">自住</div>
+              <div class="form-radio">不限</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 购房预算</div>
+            <select class="form-select">
+              <option value="">请选择预算范围</option>
+              <option>100万以下</option><option>100-300万</option><option>300-500万</option><option>500-1000万</option><option>1000万以上</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">自有资金</div>
+            <input class="form-input" placeholder="请输入自有资金（万元）">
+          </div>
+
+          <div class="form-group">
+            <div class="form-label"><span class="required">*</span> 购房区域</div>
+            <input class="form-input" placeholder="请输入意向区域，如：浦东新区">
+          </div>
+
+          <button class="form-submit">提交需求</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screens-grid -->
+
+<!-- ============================================================
+     JavaScript 交互
+     ============================================================ -->
+<script>
+(function() {
+  // 1. Banner 轮播
+  var bannerSlides = document.querySelectorAll('.banner-slide');
+  var bannerDots = document.querySelectorAll('.banner-dot');
+  var bannerIdx = 0;
+  function bannerGo(n) {
+    if (!bannerSlides.length) return;
+    bannerSlides[bannerIdx].classList.remove('active');
+    bannerDots[bannerIdx].classList.remove('active');
+    bannerIdx = (n + bannerSlides.length) % bannerSlides.length;
+    bannerSlides[bannerIdx].classList.add('active');
+    bannerDots[bannerIdx].classList.add('active');
+  }
+  setInterval(function() { bannerGo(bannerIdx + 1); }, 3000);
+  bannerDots.forEach(function(d, i) { d.addEventListener('click', function() { bannerGo(i); }); });
+
+  // 2. 法拍秘籍轮播
+  var secretSlides = document.querySelectorAll('#secretCarousel .carousel-slide');
+  var secretDots = document.querySelectorAll('#secretDots .carousel-dot');
+  var secretIdx = 0;
+  function secretGo(n) {
+    if (!secretSlides.length) return;
+    secretSlides[secretIdx].classList.remove('active');
+    secretDots[secretIdx].classList.remove('active');
+    secretIdx = (n + secretSlides.length) % secretSlides.length;
+    secretSlides[secretIdx].classList.add('active');
+    secretDots[secretIdx].classList.add('active');
+  }
+  setInterval(function() { secretGo(secretIdx + 1); }, 4000);
+  secretDots.forEach(function(d, i) { d.addEventListener('click', function() { secretGo(i); }); });
+
+  // 3. 房源详情轮播图
+  var gallerySlides = document.querySelectorAll('.gallery-slide');
+  var galleryDots = document.querySelectorAll('.gallery-dot');
+  var galleryIdx = 0;
+  function galleryGo(n) {
+    if (!gallerySlides.length) return;
+    gallerySlides[galleryIdx].classList.remove('active');
+    galleryDots[galleryIdx].classList.remove('active');
+    galleryIdx = (n + gallerySlides.length) % gallerySlides.length;
+    gallerySlides[galleryIdx].classList.add('active');
+    galleryDots[galleryIdx].classList.add('active');
+    var badge = document.querySelector('.gallery-badge');
+    if (badge) badge.textContent = (galleryIdx + 1) + '/4';
+  }
+  setInterval(function() { galleryGo(galleryIdx + 1); }, 3000);
+  galleryDots.forEach(function(d, i) { d.addEventListener('click', function() { galleryGo(i); }); });
+
+  // 4. 排序按钮切换
+  document.querySelectorAll('.sort-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      this.parentElement.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+    });
+  });
+
+  // 5. 表单单选按钮组切换
+  document.querySelectorAll('.form-radio-group').forEach(function(group) {
+    group.querySelectorAll('.form-radio').forEach(function(radio) {
+      radio.addEventListener('click', function() {
+        this.parentElement.querySelectorAll('.form-radio').forEach(function(r) { r.classList.remove('active'); });
+        this.classList.add('active');
+      });
+    });
+  });
+
+  // 6. 下拉筛选选项选择
+  document.querySelectorAll('.dd-option').forEach(function(opt) {
+    opt.addEventListener('click', function(e) {
+      var panel = this.parentElement;
+      panel.querySelectorAll('.dd-option').forEach(function(o) { o.classList.remove('selected'); });
+      this.classList.add('selected');
+      panel.classList.remove('show');
+      e.stopPropagation();
+    });
+  });
+
+  // 7. 点击其他地方关闭下拉
+  document.addEventListener('click', function() {
+    document.querySelectorAll('.dropdown-panel.show').forEach(function(p) { p.classList.remove('show'); });
+  });
+
+  // 8. 详情 Tab 切换 (全局函数)
+  window.switchTab = function(n) {
+    var tabs = document.querySelectorAll('#detailTabs .detail-tab');
+    var panels = document.querySelectorAll('#tabPanels .tab-panel');
+    tabs.forEach(function(t) { t.classList.remove('active'); });
+    panels.forEach(function(p) { p.classList.remove('active'); });
+    if (tabs[n]) tabs[n].classList.add('active');
+    if (panels[n]) panels[n].classList.add('active');
+  };
+
+})();
+</script>
+
+</body>
+</html>

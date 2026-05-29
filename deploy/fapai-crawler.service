@@ -1,0 +1,13 @@
+[Unit]
+Description=法拍者联盟 Crawler One-shot Runner
+After=network.target fapai-backend.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/fapai
+EnvironmentFile=/opt/fapai/.env
+ExecStart=/opt/fapai/venv/bin/python -m crawler.main
+StandardOutput=append:/var/log/fapai/crawler.log
+StandardError=append:/var/log/fapai/crawler-error.log

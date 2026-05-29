@@ -1,0 +1,81 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/agreement/agreement",
+    "pages/privacy/privacy",
+    "pages/index/index",
+    "pages/property-list/property-list",
+    "pages/property-detail/property-detail",
+    "pages/article/article",
+    "pages/customer-service/customer-service",
+    "pages/mortgage-calculator/mortgage-calculator",
+    "pages/map-property/map-property",
+    "pages/mine/mine"
+  ],
+  "subpackages": [
+    {
+      "root": "subpackages/user",
+      "name": "user",
+      "pages": [
+        "favorites/favorites",
+        "article-favs/article-favs",
+        "history/history",
+        "demand-form/demand-form"
+      ]
+    },
+    {
+      "root": "subpackages/agent",
+      "name": "agent",
+      "pages": [
+        "invite-list/invite-list",
+        "invite-poster/invite-poster"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["user"]
+    },
+    "pages/mine/mine": {
+      "network": "all",
+      "packages": ["user", "agent"]
+    }
+  },
+  "window": {
+    "navigationBarBackgroundColor": "#1a2f52",
+    "navigationBarTitleText": "法拍者联盟",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f6f8",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8a8a8a",
+    "selectedColor": "#FF6B35",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab-home.png",
+        "selectedIconPath": "images/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "images/tab-mine.png",
+        "selectedIconPath": "images/tab-mine-active.png"
+      }
+    ]
+  },
+  "requiredPrivateInfos": ["getLocation"],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取您的位置信息以展示附近房源"
+    }
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

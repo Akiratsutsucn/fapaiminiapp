@@ -1,0 +1,63 @@
+// 房源服务
+import { request } from '../utils/request';
+
+export interface PropertyListParams {
+  city_id?: number;
+  district?: string;
+  price_min?: number;
+  price_max?: number;
+  keyword?: string;
+  property_type?: string;
+  auction_status?: string;
+  auction_round?: string;
+  sort_by?: string;
+  sort_order?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export async function getProperties(params: PropertyListParams): Promise<PaginatedResponse<PropertyItem>> {
+  const qs = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v as any)}`)
+    .join('&');
+  return request<PaginatedResponse<PropertyItem>>({ url: `/properties?${qs}` });
+}
+
+export async function getPropertyDetail(id: number): Promise<PropertyDetail> {
+  return request<PropertyDetail>({ url: `/properties/${id}` });
+}
+
+export async function getRecommendedProperties(cityId?: number, pageSize: number = 6): Promise<PropertyItem[]> {
+  let url = `/properties/recommend?page_size=${pageSize}`;
+  if (cityId) url += `&city_id=${cityId}`;
+  return request<PropertyItem[]>({ url });
+}
+
+export async function getMarketStats(cityId?: number): Promise<MarketStats> {
+  let url = '/market-stats';
+  if (cityId) url += `?city_id=${cityId}`;
+  return request<MarketStats>({ url });
+}
+
+export async function getBanners(cityId?: number): Promise<BannerItem[]> {
+  let url = '/banners';
+  if (cityId) url += `?city_id=${cityId}`;
+  return request<BannerItem[]>({ url });
+}
+
+export async function getCities(): Promise<CityItem[]> {
+  return request<CityItem[]>({ url: '/cities' });
+}
+
+export async function getMapMarkers(cityId: number = 310000): Promise<any[]> {
+  return request<any[]>({ url: `/properties/map-markers?city_id=${cityId}` });
+}
+
+export async function getDistrictAnalysis(propertyId: number): Promise<DistrictAnalysis> {
+  return request<DistrictAnalysis>({ url: `/properties/${propertyId}/analysis` });
+}
+
+export async function getPropertyAmenities(propertyId: number): Promise<PropertyAmenities> {
+  return request<PropertyAmenities>({ url: `/properties/${propertyId}/amenities` });
+}

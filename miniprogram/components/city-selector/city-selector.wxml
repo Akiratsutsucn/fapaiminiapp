@@ -1,0 +1,30 @@
+<view class="city-selector" bindtap="onToggle">
+  <view class="city-icon">
+    <view class="city-pin"></view>
+  </view>
+  <text class="city-name">{{currentCityName}}</text>
+  <view class="city-arrow"></view>
+</view>
+
+<view class="city-overlay {{visible ? 'show' : ''}}" bindtap="onClose">
+  <view class="city-panel" catchtap="noop">
+    <view class="panel-header">
+      <text class="panel-title">选择城市</text>
+      <view class="panel-close" bindtap="onClose"></view>
+    </view>
+    <view class="city-list">
+      <view
+        class="city-item {{city.city_id === currentCityId ? 'active' : ''}}"
+        wx:for="{{cities}}"
+        wx:for-item="city"
+        wx:key="city_id"
+        bindtap="onSelect"
+        data-city-id="{{city.city_id}}"
+        data-city-name="{{city.city_name}}"
+      >
+        <text>{{city.city_name}}</text>
+        <view class="city-check" wx:if="{{city.city_id === currentCityId}}"></view>
+      </view>
+    </view>
+  </view>
+</view>

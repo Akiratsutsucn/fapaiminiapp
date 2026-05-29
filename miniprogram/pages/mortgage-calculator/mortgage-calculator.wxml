@@ -1,0 +1,89 @@
+<view class="page">
+  <view class="card">
+    <view class="form-group">
+      <text class="label">房屋总价（万元）</text>
+      <input class="input" type="digit" placeholder="请输入房屋总价" value="{{totalPrice}}" bindinput="onTotalPriceInput" />
+    </view>
+    <view class="form-row">
+      <view class="form-group half">
+        <text class="label">首付比例</text>
+        <view class="ratio-group">
+          <view class="ratio-chip {{downPaymentRatio === 30 ? 'active' : ''}}" bindtap="onDownPaymentRatio" data-value="{{30}}">30%</view>
+          <view class="ratio-chip {{downPaymentRatio === 40 ? 'active' : ''}}" bindtap="onDownPaymentRatio" data-value="{{40}}">40%</view>
+          <view class="ratio-chip {{downPaymentRatio === 50 ? 'active' : ''}}" bindtap="onDownPaymentRatio" data-value="{{50}}">50%</view>
+        </view>
+      </view>
+      <view class="form-group half">
+        <text class="label">首付金额（万元）</text>
+        <input class="input" type="digit" placeholder="0" value="{{downPayment}}" bindinput="onDownPaymentInput" />
+      </view>
+    </view>
+    <view class="form-group">
+      <text class="label">贷款年限</text>
+      <view class="ratio-group">
+        <view class="ratio-chip {{loanYears === 10 ? 'active' : ''}}" bindtap="onLoanYears" data-value="{{10}}">10年</view>
+        <view class="ratio-chip {{loanYears === 20 ? 'active' : ''}}" bindtap="onLoanYears" data-value="{{20}}">20年</view>
+        <view class="ratio-chip {{loanYears === 30 ? 'active' : ''}}" bindtap="onLoanYears" data-value="{{30}}">30年</view>
+      </view>
+    </view>
+    <view class="form-group">
+      <text class="label">贷款利率（%）</text>
+      <view class="rate-tabs">
+        <view class="rate-tab {{rateType === 'commercial' ? 'active' : ''}}" bindtap="onRateType" data-type="commercial">商业贷款</view>
+        <view class="rate-tab {{rateType === 'fund' ? 'active' : ''}}" bindtap="onRateType" data-type="fund">公积金</view>
+        <view class="rate-tab {{rateType === 'mixed' ? 'active' : ''}}" bindtap="onRateType" data-type="mixed">组合贷款</view>
+      </view>
+      <view class="rate-inputs" wx:if="{{rateType === 'mixed'}}">
+        <view class="form-group half">
+          <text class="label">商贷利率</text>
+          <input class="input" type="digit" placeholder="3.5" value="{{commercialRate}}" bindinput="onCommercialRateInput" />
+        </view>
+        <view class="form-group half">
+          <text class="label">公积金利率</text>
+          <input class="input" type="digit" placeholder="2.85" value="{{fundRate}}" bindinput="onFundRateInput" />
+        </view>
+        <view class="form-group half">
+          <text class="label">公积金贷款金额（万元）</text>
+          <input class="input" type="digit" placeholder="最高60万" value="{{fundAmount}}" bindinput="onFundAmountInput" />
+        </view>
+      </view>
+      <input wx:else class="input" type="digit" placeholder="请输入年利率" value="{{rateInput}}" bindinput="onRateInput" />
+    </view>
+    <view class="btn-row">
+      <button class="btn-primary" bindtap="onCalculate">开始计算</button>
+    </view>
+  </view>
+
+  <view class="card result-card" wx:if="{{calculated}}">
+    <view class="tabs">
+      <view class="tab {{calcType === 'equal' ? 'active' : ''}}" bindtap="onCalcType" data-type="equal">等额本息</view>
+      <view class="tab {{calcType === 'principal' ? 'active' : ''}}" bindtap="onCalcType" data-type="principal">等额本金</view>
+    </view>
+
+    <view class="result-highlight">
+      <text class="result-label">月供参考</text>
+      <text class="result-number">{{calcType === 'equal' ? result.monthly : result.firstMonthly}}</text>
+      <text class="result-unit">元/月</text>
+      <text class="result-sub" wx:if="{{calcType === 'principal'}}">首月 {{result.firstMonthly}} 元，逐月递减 {{result.monthlyDecrease}} 元</text>
+    </view>
+
+    <view class="result-grid">
+      <view class="result-item">
+        <text class="ri-label">贷款总额</text>
+        <text class="ri-value">{{result.loanAmount}}万</text>
+      </view>
+      <view class="result-item">
+        <text class="ri-label">利息总额</text>
+        <text class="ri-value accent">{{result.totalInterest}}万</text>
+      </view>
+      <view class="result-item">
+        <text class="ri-label">还款总额</text>
+        <text class="ri-value">{{result.totalPayment}}万</text>
+      </view>
+      <view class="result-item">
+        <text class="ri-label">参考月收入</text>
+        <text class="ri-value">{{result.minIncome}}元</text>
+      </view>
+    </view>
+  </view>
+</view>

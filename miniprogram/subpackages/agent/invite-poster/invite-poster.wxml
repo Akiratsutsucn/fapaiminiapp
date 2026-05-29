@@ -1,0 +1,54 @@
+<view class="poster-page">
+  <view class="poster-preview">
+    <view class="poster-card">
+      <view class="poster-brand">
+        <text class="poster-name">法拍者联盟</text>
+        <text class="poster-slogan">专业法拍房信息服务平台</text>
+      </view>
+      <view class="poster-agent" wx:if="{{agentNickname}}">
+        <text class="agent-label">推荐人</text>
+        <text class="agent-name">{{agentNickname}}</text>
+      </view>
+      <view class="poster-qr">
+        <image wx:if="{{qrUrl}}" class="poster-qr-img" src="{{qrUrl}}" mode="aspectFit" />
+        <view wx:elif="{{qrError}}" class="poster-qr-error">小程序码加载失败</view>
+        <view wx:else class="poster-qr-loading">
+          <view class="loading-dot"></view>
+          <view class="loading-dot"></view>
+          <view class="loading-dot"></view>
+        </view>
+      </view>
+      <text class="poster-tip">长按识别进入小程序</text>
+    </view>
+  </view>
+
+  <view class="bind-methods">
+    <text class="bind-title">推荐绑定方式</text>
+    <view class="bind-item">
+      <view class="bind-num">1</view>
+      <view class="bind-text">
+        <text class="bind-name">分享小程序首页</text>
+        <text class="bind-desc">好友通过你的分享进入小程序，自动绑定推荐关系</text>
+      </view>
+    </view>
+    <view class="bind-item">
+      <view class="bind-num">2</view>
+      <view class="bind-text">
+        <text class="bind-name">分享房源列表</text>
+        <text class="bind-desc">分享任意房源列表页给好友，绑定推荐关系</text>
+      </view>
+    </view>
+    <view class="bind-item">
+      <view class="bind-num">3</view>
+      <view class="bind-text">
+        <text class="bind-name">分享房源详情</text>
+        <text class="bind-desc">分享任意房源详情页给好友，绑定推荐关系</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="poster-actions">
+    <button class="poster-share-btn btn-primary" open-type="share">分享给好友</button>
+    <button class="poster-copy-btn btn-outline" bindtap="onCopyLink">复制链接</button>
+  </view>
+</view>

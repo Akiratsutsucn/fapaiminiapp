@@ -1,0 +1,24 @@
+<view class="invite-page">
+  <view class="invite-header">
+    <text class="invite-count">已邀请 {{list.length}} 人</text>
+    <button class="invite-btn btn-primary" bindtap="onCreatePoster">生成邀请海报</button>
+  </view>
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中…</text>
+  </view>
+  <block wx:elif="{{list.length > 0}}">
+    <view class="invite-list">
+      <view class="invite-item" wx:for="{{list}}" wx:key="id">
+        <image class="invite-avatar" src="{{item.avatar_url || ''}}" mode="aspectFill" />
+        <view class="invite-info">
+          <text class="invite-nickname">{{item.nickname || '微信用户'}}</text>
+          <text class="invite-time">{{item.created_at || ''}}</text>
+        </view>
+      </view>
+    </view>
+  </block>
+  <view class="empty-state" wx:else>
+    <text>暂无邀请记录</text>
+    <text class="empty-tip">分享小程序给好友，邀请他们加入</text>
+  </view>
+</view>

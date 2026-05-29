@@ -1,0 +1,113 @@
+<view class="list-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <view class="search-icon"></view>
+      <input class="search-input" placeholder="搜索小区名、标题" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
+      <view class="search-clear" wx:if="{{keyword}}" bindtap="onClearKeyword">
+        <view class="search-clear-icon"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-item {{activeFilterPanel === 'district' ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="district">
+      <text>{{selectedDistrict || '区域'}}</text><view class="filter-arrow"></view>
+    </view>
+    <view class="filter-item {{activeFilterPanel === 'price' ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="price">
+      <text>{{priceLabel || '起拍价'}}</text><view class="filter-arrow"></view>
+    </view>
+    <view class="filter-item {{activeFilterPanel === 'more' ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="more">
+      <text>更多</text><view class="filter-arrow"></view>
+    </view>
+  </view>
+
+  <!-- 排序栏 -->
+  <view class="sort-bar">
+    <view class="sort-item {{sortBy === 'default' ? 'active' : ''}}" bindtap="onSort" data-sort="default">默认</view>
+    <view class="sort-item {{sortBy === 'starting_price' ? 'active' : ''}}" bindtap="onSort" data-sort="starting_price">
+      起拍价<view class="sort-icon {{sortBy === 'starting_price' ? sortOrder : ''}}"></view>
+    </view>
+    <view class="sort-item {{sortBy === 'appraisal_price' ? 'active' : ''}}" bindtap="onSort" data-sort="appraisal_price">
+      评估价<view class="sort-icon {{sortBy === 'appraisal_price' ? sortOrder : ''}}"></view>
+    </view>
+    <view class="sort-item {{sortBy === 'area' ? 'active' : ''}}" bindtap="onSort" data-sort="area">
+      面积<view class="sort-icon {{sortBy === 'area' ? sortOrder : ''}}"></view>
+    </view>
+  </view>
+
+  <!-- 筛选面板 -->
+  <view class="filter-panel" wx:if="{{activeFilterPanel}}">
+    <view class="panel-mask" bindtap="onClosePanel"></view>
+    <view class="panel-content">
+      <!-- 区域筛选 -->
+      <view class="filter-options" wx:if="{{activeFilterPanel === 'district'}}">
+        <view class="option-item {{!selectedDistrict ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="">全部区域</view>
+        <view class="option-item {{selectedDistrict === '浦东新区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="浦东新区">浦东新区</view>
+        <view class="option-item {{selectedDistrict === '静安区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="静安区">静安区</view>
+        <view class="option-item {{selectedDistrict === '徐汇区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="徐汇区">徐汇区</view>
+        <view class="option-item {{selectedDistrict === '黄浦区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="黄浦区">黄浦区</view>
+        <view class="option-item {{selectedDistrict === '长宁区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="长宁区">长宁区</view>
+        <view class="option-item {{selectedDistrict === '虹口区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="虹口区">虹口区</view>
+        <view class="option-item {{selectedDistrict === '杨浦区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="杨浦区">杨浦区</view>
+      </view>
+      <!-- 价格筛选 -->
+      <view class="filter-options" wx:if="{{activeFilterPanel === 'price'}}">
+        <view class="option-item {{!priceRange ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="">不限</view>
+        <view class="option-item {{priceRange === '0-1000000' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="0-1000000">100万以下</view>
+        <view class="option-item {{priceRange === '1000000-3000000' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="1000000-3000000">100-300万</view>
+        <view class="option-item {{priceRange === '3000000-5000000' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="3000000-5000000">300-500万</view>
+        <view class="option-item {{priceRange === '5000000-' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="5000000-">500万以上</view>
+      </view>
+      <!-- 更多筛选 -->
+      <view class="filter-options" wx:if="{{activeFilterPanel === 'more'}}">
+        <view class="filter-group">
+          <text class="filter-group-title">物业类型</text>
+          <view class="option-row">
+            <view class="option-item {{!selectedPropertyType ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="">全部</view>
+            <view class="option-item {{selectedPropertyType === '住宅' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="住宅">住宅</view>
+            <view class="option-item {{selectedPropertyType === '商业' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="商业">商业</view>
+            <view class="option-item {{selectedPropertyType === '工业' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="工业">工业</view>
+            <view class="option-item {{selectedPropertyType === '办公' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="办公">办公</view>
+          </view>
+        </view>
+        <view class="filter-group">
+          <text class="filter-group-title">拍卖状态</text>
+          <view class="option-row">
+            <view class="option-item {{!selectedAuctionStatus ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="">全部</view>
+            <view class="option-item {{selectedAuctionStatus === '即将开拍' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="即将开拍">即将开拍</view>
+            <view class="option-item {{selectedAuctionStatus === '进行中' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="进行中">进行中</view>
+            <view class="option-item {{selectedAuctionStatus === '中止' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="中止">中止</view>
+            <view class="option-item {{selectedAuctionStatus === '撤回' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="撤回">撤回</view>
+          </view>
+        </view>
+        <view class="filter-group">
+          <text class="filter-group-title">拍卖轮次</text>
+          <view class="option-row">
+            <view class="option-item {{!selectedAuctionRound ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="">全部</view>
+            <view class="option-item {{selectedAuctionRound === '一拍' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="一拍">一拍</view>
+            <view class="option-item {{selectedAuctionRound === '二拍' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="二拍">二拍</view>
+            <view class="option-item {{selectedAuctionRound === '变卖' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="变卖">变卖</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 结果计数 -->
+  <view class="result-count">共 {{total}} 套房源</view>
+
+  <!-- 房源列表 -->
+  <view wx:if="{{list.length > 0}}">
+    <house-card wx:for="{{list}}" wx:key="id" property="{{item}}" />
+  </view>
+  <view class="empty-state" wx:else>
+    <text>暂无符合条件的房源</text>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{hasMore}}">
+    <text class="load-text" bindtap="onLoadMore">{{loading ? '加载中...' : '加载更多'}}</text>
+  </view>
+</view>
