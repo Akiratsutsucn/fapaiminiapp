@@ -8,6 +8,7 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
 
 
@@ -495,21 +496,11 @@ class JDDetailParser(AbstractParser):
         if extracted_city:
             item.province_city = extracted_city
 
-        # Community name
-        community = self._extract_by_label(
-            text,
-            r'(?:小区|坐落于|位于)(.{2,30}?(?:小区|花园|苑|新城|公寓|城|湾|庭|园|里|村))'
-        )
+        # Community name —— 只从当前标的的 title / address 提取，
+        # 不从整页 text 搜索（页面含推荐位等其它房源，会抓错小区名）
+        community = extract_community_from_title(item.title or "")
         if not community and item.address:
-            comm_match = re.search(
-                r'((?:(?!市|区|镇|省)[一-鿿\w]){2,12}'
-                r'(?:花园|苑|新城|公寓|城(?!区)|湾|庭|园|里|村|嘉园))',
-                item.address
-            )
-            if comm_match:
-                community = comm_match.group(1)
-            if community and "路" in community:
-                community = ""
+            community = extract_community_from_title(item.address)
         item.community_name = community or ""
 
         # District: from label, then from address using generic extraction

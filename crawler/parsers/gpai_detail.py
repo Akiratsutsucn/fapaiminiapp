@@ -8,6 +8,7 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
 
 
@@ -532,8 +533,13 @@ class GPaiDetailParser(AbstractParser):
         # 防止超长地址（数据库 address 字段限 256）
         item.address = (addr or "")[:240]
 
-        # Community name from multiple sources
-        community = self._extract_by_label(text, r'小区[：:]\s*(.{2,30}?)(?:\s|$)')
+        # Community name —— 优先从当前标的 title/address 用专用提取器（最准、不会抓到页面其它房源）
+        community = extract_community_from_title(item.title or "")
+        if not community and item.address:
+            community = extract_community_from_title(item.address)
+        # 兜底：原有的标签/正则提取（仅当专用提取器没结果时）
+        if not community:
+            community = self._extract_by_label(text, r'小区[：:]\s*(.{2,30}?)(?:\s|$)')
         if not community:
             community = self._find_row_value(soup, "小区")
         if not community and item.address:

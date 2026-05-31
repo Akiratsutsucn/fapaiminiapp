@@ -17,6 +17,7 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.text_extractor import extract_community_from_title
 
 
 # Category mapping
@@ -331,19 +332,16 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
                 auction_address,
                 "communityName", "community", "village", "estateName", "plotName"
             ) or ""
+        # 优先用专用提取器从当前标的 title/address 取（比下面的粗正则更准）
+        if not community:
+            community = extract_community_from_title(item.title or "") or ""
+        if not community and item.address:
+            community = extract_community_from_title(str(item.address)) or ""
         if not community and item.address:
             comm_match = re.search(
                 r'((?:(?!市|区|镇|省)[一-鿿\w]){2,12}'
                 r'(?:花园|苑|新城|公寓|城(?!区)|湾|庭|园|里|村|嘉园|弄))',
                 str(item.address)
-            )
-            if comm_match:
-                community = comm_match.group(1)
-        if not community and item.title:
-            comm_match = re.search(
-                r'((?:(?!市|区|镇|省)[一-鿿\w]){2,12}'
-                r'(?:花园|苑|新城|公寓|城(?!区)|湾|庭|园|里|村|嘉园|弄))',
-                item.title
             )
             if comm_match:
                 community = comm_match.group(1)
