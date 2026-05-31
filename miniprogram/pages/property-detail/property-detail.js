@@ -18,6 +18,7 @@ Page({
         appraisalPriceWan: '',
         depositWan: '',
         discount: '',
+        discountLabel: '折扣',
         countdown: '',
         auctionTimeFull: '',
         showAnalysis: false,
@@ -41,6 +42,10 @@ Page({
         communityGreenRatePct: '',
         startingUnitPriceWan: '',
         communityDiscountText: '',
+        dealRefUnitPriceWan: '',
+        dealRefSourceLabel: '',
+        dealRefDiscountText: '',
+        dealRefBargainDelta: '',
     },
     onLoad(options) {
         const id = parseInt(options.id);
@@ -138,6 +143,24 @@ Page({
                     }
                 }
             }
+            let dealRefUnitPriceWan = '';
+            let dealRefSourceLabel = '';
+            let dealRefDiscountText = '';
+            let dealRefBargainDelta = '';
+            const dr = property.deal_reference;
+            if (dr && dr.unit_price > 0) {
+                dealRefUnitPriceWan = (dr.unit_price / 10000).toFixed(2);
+                dealRefSourceLabel = dr.source_label || '市场参考';
+                if (property.starting_unit_price) {
+                    const off = (1 - property.starting_unit_price / dr.unit_price) * 10;
+                    dealRefDiscountText = off > 0 ? off.toFixed(1) + ' 折' : '高于市场价';
+                    if (off > 0 && property.area) {
+                        const delta = (dr.unit_price - property.starting_unit_price) * property.area / 10000;
+                        if (delta > 0)
+                            dealRefBargainDelta = delta.toFixed(1);
+                    }
+                }
+            }
             this.setData({
                 property,
                 statusLabel: (0, format_1.statusLabel)(property.auction_status),
@@ -145,7 +168,8 @@ Page({
                 startingPriceWan: (0, format_1.formatPriceWan)(property.starting_price),
                 appraisalPriceWan: (0, format_1.formatPriceWan)(property.appraisal_price),
                 depositWan: (0, format_1.formatPriceWan)(property.deposit),
-                discount: property.court_discount_rate ? (0, format_1.formatDiscount)(property.court_discount_rate) : '--',
+                discount: (property.court_discount_rate && property.court_discount_rate < 1) ? (0, format_1.formatDiscount)(property.court_discount_rate) : (property.court_discount_rate >= 1 ? '超人气' : '--'),
+                discountLabel: (property.court_discount_rate && property.court_discount_rate >= 1) ? '人气' : '折扣',
                 countdown: (0, format_1.formatCountdown)(property.auction_start_time),
                 auctionTimeFull: property.auction_start_time ? (0, format_1.formatDate)(property.auction_start_time, 'YYYY-MM-DD HH:mm') : '时间待定',
                 beikePriceWan,
@@ -162,6 +186,10 @@ Page({
                 communityGreenRatePct,
                 startingUnitPriceWan,
                 communityDiscountText,
+                dealRefUnitPriceWan,
+                dealRefSourceLabel,
+                dealRefDiscountText,
+                dealRefBargainDelta,
             });
             this.checkFavoriteStatus(id);
         }

@@ -20,6 +20,7 @@ router = APIRouter()
 CITIES = [
     {"city_id": 310000, "city_name": "上海", "is_active": True},
     {"city_id": 330200, "city_name": "宁波", "is_active": True},
+    {"city_id": 330100, "city_name": "杭州", "is_active": True},
 ]
 
 ARCHIVE_DIR = Path(app_settings.IMAGE_STORAGE_PATH) / "archives"

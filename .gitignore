@@ -5,6 +5,9 @@
 .credentials
 .gpai_credentials
 凭据.txt
+住宅IP代理.txt
+住宅*代理*.txt
+代理*.txt
 xiaochengxu.pem
 *.pem
 *.key
@@ -147,3 +150,7 @@ backend/uploads/
 # ===== 其它项目临时 =====
 fapai-ui-demo.zip
 acme.sh-master.zip
+
+# 调试截图
+gpai_search.png
+*_search.png

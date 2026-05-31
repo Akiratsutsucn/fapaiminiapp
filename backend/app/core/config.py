@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # 小程序码生成的版本：develop / trial / release。发布到线上后改为 release
     WECHAT_ENV_VERSION: str = "trial"
 
+    # ===== wechat official account (公众号 拍来盟科技) =====
+    # 已认证服务号，用于把公众号已群发文章同步到文章管理。
+    # 注意：调用接口前需把生产服务器 IP 加入公众号后台「IP白名单」。
+    WECHAT_MP_APPID: str = ""
+    WECHAT_MP_APPSECRET: str = ""
+
     # ===== jwt =====
     SECRET_KEY: str = "change-me-in-production"
     # access_token 比前端的 idle 超时多 5 分钟，确保用户在最后一次点击之前 token 还有效

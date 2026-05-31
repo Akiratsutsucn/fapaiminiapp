@@ -18,6 +18,7 @@ Page({
     appraisalPriceWan: '',
     depositWan: '',
     discount: '',
+    discountLabel: '折扣',
     countdown: '',
     auctionTimeFull: '',
     showAnalysis: false,
@@ -43,6 +44,11 @@ Page({
     communityGreenRatePct: '',
     startingUnitPriceWan: '',
     communityDiscountText: '',
+    // 同房型成交参考（deal_reference 兜底：贝壳缺失时用平台市场成交价）
+    dealRefUnitPriceWan: '',   // 参考成交单价（万/㎡）
+    dealRefSourceLabel: '',    // 来源标签：贝壳近30天/贝壳均价/市场参考/平台成交价
+    dealRefDiscountText: '',   // 起拍价相对参考价的折扣
+    dealRefBargainDelta: '',   // 按面积估算捡漏空间（万）
   },
 
   onLoad(options: any) {
@@ -154,6 +160,26 @@ Page({
         }
       }
 
+      // 同房型成交参考（后端 deal_reference 已按优先级兜底好：
+      // 贝壳近30天 → 贝壳均价 → 平台市场成交单价 → 平台最新成交单价）
+      let dealRefUnitPriceWan = '';
+      let dealRefSourceLabel = '';
+      let dealRefDiscountText = '';
+      let dealRefBargainDelta = '';
+      const dr = property.deal_reference;
+      if (dr && dr.unit_price > 0) {
+        dealRefUnitPriceWan = (dr.unit_price / 10000).toFixed(2);
+        dealRefSourceLabel = dr.source_label || '市场参考';
+        if (property.starting_unit_price) {
+          const off = (1 - property.starting_unit_price / dr.unit_price) * 10;
+          dealRefDiscountText = off > 0 ? off.toFixed(1) + ' 折' : '高于市场价';
+          if (off > 0 && property.area) {
+            const delta = (dr.unit_price - property.starting_unit_price) * property.area / 10000;
+            if (delta > 0) dealRefBargainDelta = delta.toFixed(1);
+          }
+        }
+      }
+
       this.setData({
         property,
         statusLabel: statusLabel(property.auction_status),
@@ -161,7 +187,8 @@ Page({
         startingPriceWan: formatPriceWan(property.starting_price),
         appraisalPriceWan: formatPriceWan(property.appraisal_price),
         depositWan: formatPriceWan(property.deposit),
-        discount: property.court_discount_rate ? formatDiscount(property.court_discount_rate) : '--',
+        discount: (property.court_discount_rate && property.court_discount_rate < 1) ? formatDiscount(property.court_discount_rate) : (property.court_discount_rate >= 1 ? '超人气' : '--'),
+        discountLabel: (property.court_discount_rate && property.court_discount_rate >= 1) ? '人气' : '折扣',
         countdown: formatCountdown(property.auction_start_time),
         auctionTimeFull: property.auction_start_time ? formatDate(property.auction_start_time, 'YYYY-MM-DD HH:mm') : '时间待定',
         beikePriceWan,
@@ -178,6 +205,10 @@ Page({
         communityGreenRatePct,
         startingUnitPriceWan,
         communityDiscountText,
+        dealRefUnitPriceWan,
+        dealRefSourceLabel,
+        dealRefDiscountText,
+        dealRefBargainDelta,
       });
       this.checkFavoriteStatus(id);
     } catch (e) {

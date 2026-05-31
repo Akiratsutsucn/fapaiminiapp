@@ -26,6 +26,9 @@ Component({
             const showAsYi = wan >= 10000;
             const saving = (p.appraisal_price || 0) - (p.starting_price || 0);
             const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
+            const rate = p.court_discount_rate || 0;
+            const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
+            const hotTag = rate >= 1 ? '超人气' : '';
             this.setData({
                 coverImage: p.cover_image || '/images/default-house.png',
                 statusLabel: (0, format_1.statusLabel)(p.auction_status),
@@ -39,7 +42,8 @@ Component({
                 area: p.area ? p.area.toFixed(2) : '',
                 layout: p.layout || '',
                 title: p.title || '',
-                discount: p.court_discount_rate ? (0, format_1.formatDiscount)(p.court_discount_rate) : '',
+                discount,
+                hotTag,
                 savingWan,
                 auctionTime: p.auction_start_time ? (0, format_1.formatDate)(p.auction_start_time, 'MM-DD HH:mm') : '',
             });
@@ -59,6 +63,7 @@ Component({
         layout: '',
         title: '',
         discount: '',
+        hotTag: '',
         savingWan: '',
         auctionTime: '',
     },

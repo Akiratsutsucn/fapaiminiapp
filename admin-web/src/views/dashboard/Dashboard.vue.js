@@ -132,225 +132,236 @@ const __VLS_18 = __VLS_17({
     value: (330200),
     label: "宁波",
 }, ...__VLS_functionalComponentArgsRest(__VLS_17));
-var __VLS_3;
-const __VLS_20 = {}.TRow;
-/** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
+const __VLS_20 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_21 = __VLS_asFunctionalComponent(__VLS_20, new __VLS_20({
+    value: (330100),
+    label: "杭州",
+}));
+const __VLS_22 = __VLS_21({
+    value: (330100),
+    label: "杭州",
+}, ...__VLS_functionalComponentArgsRest(__VLS_21));
+var __VLS_3;
+const __VLS_24 = {}.TRow;
+/** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
+// @ts-ignore
+const __VLS_25 = __VLS_asFunctionalComponent(__VLS_24, new __VLS_24({
     gutter: (16),
     ...{ class: "stat-cards" },
 }));
-const __VLS_22 = __VLS_21({
+const __VLS_26 = __VLS_25({
     gutter: (16),
     ...{ class: "stat-cards" },
-}, ...__VLS_functionalComponentArgsRest(__VLS_21));
-__VLS_23.slots.default;
+}, ...__VLS_functionalComponentArgsRest(__VLS_25));
+__VLS_27.slots.default;
 for (const [card] of __VLS_getVForSourceType((__VLS_ctx.cards))) {
-    const __VLS_24 = {}.TCol;
+    const __VLS_28 = {}.TCol;
     /** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
     // @ts-ignore
-    const __VLS_25 = __VLS_asFunctionalComponent(__VLS_24, new __VLS_24({
-        span: (3),
-        key: (card.label),
-    }));
-    const __VLS_26 = __VLS_25({
-        span: (3),
-        key: (card.label),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_25));
-    __VLS_27.slots.default;
-    const __VLS_28 = {}.TCard;
-    /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
-    // @ts-ignore
     const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
-        title: (card.label),
-        hoverShadow: true,
+        span: (3),
+        key: (card.label),
     }));
     const __VLS_30 = __VLS_29({
-        title: (card.label),
-        hoverShadow: true,
+        span: (3),
+        key: (card.label),
     }, ...__VLS_functionalComponentArgsRest(__VLS_29));
     __VLS_31.slots.default;
+    const __VLS_32 = {}.TCard;
+    /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
+    // @ts-ignore
+    const __VLS_33 = __VLS_asFunctionalComponent(__VLS_32, new __VLS_32({
+        title: (card.label),
+        hoverShadow: true,
+    }));
+    const __VLS_34 = __VLS_33({
+        title: (card.label),
+        hoverShadow: true,
+    }, ...__VLS_functionalComponentArgsRest(__VLS_33));
+    __VLS_35.slots.default;
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "stat-value" },
     });
     (card.value);
+    var __VLS_35;
     var __VLS_31;
-    var __VLS_27;
 }
-var __VLS_23;
-const __VLS_32 = {}.TRow;
+var __VLS_27;
+const __VLS_36 = {}.TRow;
 /** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
 // @ts-ignore
-const __VLS_33 = __VLS_asFunctionalComponent(__VLS_32, new __VLS_32({
-    gutter: (16),
-    ...{ style: {} },
-}));
-const __VLS_34 = __VLS_33({
-    gutter: (16),
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_33));
-__VLS_35.slots.default;
-const __VLS_36 = {}.TCol;
-/** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
-// @ts-ignore
 const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
-    span: (6),
+    gutter: (16),
+    ...{ style: {} },
 }));
 const __VLS_38 = __VLS_37({
-    span: (6),
+    gutter: (16),
+    ...{ style: {} },
 }, ...__VLS_functionalComponentArgsRest(__VLS_37));
 __VLS_39.slots.default;
-const __VLS_40 = {}.TCard;
-/** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
-// @ts-ignore
-const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
-    title: "爬虫运行状态",
-}));
-const __VLS_42 = __VLS_41({
-    title: "爬虫运行状态",
-}, ...__VLS_functionalComponentArgsRest(__VLS_41));
-__VLS_43.slots.default;
-const __VLS_44 = {}.TDescriptions;
-/** @type {[typeof __VLS_components.TDescriptions, typeof __VLS_components.tDescriptions, ]} */ ;
-// @ts-ignore
-const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
-    items: (__VLS_ctx.crawlerItems),
-}));
-const __VLS_46 = __VLS_45({
-    items: (__VLS_ctx.crawlerItems),
-}, ...__VLS_functionalComponentArgsRest(__VLS_45));
-const __VLS_48 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "small",
-    loading: (__VLS_ctx.triggerLoading),
-    ...{ style: {} },
-}));
-const __VLS_50 = __VLS_49({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "small",
-    loading: (__VLS_ctx.triggerLoading),
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_49));
-let __VLS_52;
-let __VLS_53;
-let __VLS_54;
-const __VLS_55 = {
-    onClick: (__VLS_ctx.onTriggerCrawl)
-};
-__VLS_51.slots.default;
-var __VLS_51;
-var __VLS_43;
-var __VLS_39;
-const __VLS_56 = {}.TCol;
+const __VLS_40 = {}.TCol;
 /** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
 // @ts-ignore
-const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
+const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
     span: (6),
 }));
-const __VLS_58 = __VLS_57({
+const __VLS_42 = __VLS_41({
     span: (6),
-}, ...__VLS_functionalComponentArgsRest(__VLS_57));
-__VLS_59.slots.default;
-const __VLS_60 = {}.TCard;
+}, ...__VLS_functionalComponentArgsRest(__VLS_41));
+__VLS_43.slots.default;
+const __VLS_44 = {}.TCard;
 /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
 // @ts-ignore
-const __VLS_61 = __VLS_asFunctionalComponent(__VLS_60, new __VLS_60({
-    title: "快速入口",
+const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
+    title: "爬虫运行状态",
 }));
-const __VLS_62 = __VLS_61({
-    title: "快速入口",
-}, ...__VLS_functionalComponentArgsRest(__VLS_61));
-__VLS_63.slots.default;
-const __VLS_64 = {}.TSpace;
-/** @type {[typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, ]} */ ;
+const __VLS_46 = __VLS_45({
+    title: "爬虫运行状态",
+}, ...__VLS_functionalComponentArgsRest(__VLS_45));
+__VLS_47.slots.default;
+const __VLS_48 = {}.TDescriptions;
+/** @type {[typeof __VLS_components.TDescriptions, typeof __VLS_components.tDescriptions, ]} */ ;
 // @ts-ignore
-const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
-    direction: "vertical",
-    ...{ style: {} },
+const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
+    items: (__VLS_ctx.crawlerItems),
 }));
-const __VLS_66 = __VLS_65({
-    direction: "vertical",
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_65));
-__VLS_67.slots.default;
-const __VLS_68 = {}.TButton;
+const __VLS_50 = __VLS_49({
+    items: (__VLS_ctx.crawlerItems),
+}, ...__VLS_functionalComponentArgsRest(__VLS_49));
+const __VLS_52 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
+const __VLS_53 = __VLS_asFunctionalComponent(__VLS_52, new __VLS_52({
+    ...{ 'onClick': {} },
+    theme: "primary",
+    size: "small",
+    loading: (__VLS_ctx.triggerLoading),
+    ...{ style: {} },
+}));
+const __VLS_54 = __VLS_53({
+    ...{ 'onClick': {} },
+    theme: "primary",
+    size: "small",
+    loading: (__VLS_ctx.triggerLoading),
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_53));
+let __VLS_56;
+let __VLS_57;
+let __VLS_58;
+const __VLS_59 = {
+    onClick: (__VLS_ctx.onTriggerCrawl)
+};
+__VLS_55.slots.default;
+var __VLS_55;
+var __VLS_47;
+var __VLS_43;
+const __VLS_60 = {}.TCol;
+/** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
+// @ts-ignore
+const __VLS_61 = __VLS_asFunctionalComponent(__VLS_60, new __VLS_60({
+    span: (6),
+}));
+const __VLS_62 = __VLS_61({
+    span: (6),
+}, ...__VLS_functionalComponentArgsRest(__VLS_61));
+__VLS_63.slots.default;
+const __VLS_64 = {}.TCard;
+/** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
+// @ts-ignore
+const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
+    title: "快速入口",
+}));
+const __VLS_66 = __VLS_65({
+    title: "快速入口",
+}, ...__VLS_functionalComponentArgsRest(__VLS_65));
+__VLS_67.slots.default;
+const __VLS_68 = {}.TSpace;
+/** @type {[typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, ]} */ ;
+// @ts-ignore
 const __VLS_69 = __VLS_asFunctionalComponent(__VLS_68, new __VLS_68({
+    direction: "vertical",
+    ...{ style: {} },
+}));
+const __VLS_70 = __VLS_69({
+    direction: "vertical",
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_69));
+__VLS_71.slots.default;
+const __VLS_72 = {}.TButton;
+/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+// @ts-ignore
+const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
 }));
-const __VLS_70 = __VLS_69({
+const __VLS_74 = __VLS_73({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_69));
-let __VLS_72;
-let __VLS_73;
-let __VLS_74;
-const __VLS_75 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_73));
+let __VLS_76;
+let __VLS_77;
+let __VLS_78;
+const __VLS_79 = {
     onClick: (...[$event]) => {
         __VLS_ctx.router.push('/properties');
     }
 };
-__VLS_71.slots.default;
-var __VLS_71;
-const __VLS_76 = {}.TButton;
+__VLS_75.slots.default;
+var __VLS_75;
+const __VLS_80 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_77 = __VLS_asFunctionalComponent(__VLS_76, new __VLS_76({
+const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
 }));
-const __VLS_78 = __VLS_77({
+const __VLS_82 = __VLS_81({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_77));
-let __VLS_80;
-let __VLS_81;
-let __VLS_82;
-const __VLS_83 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_81));
+let __VLS_84;
+let __VLS_85;
+let __VLS_86;
+const __VLS_87 = {
     onClick: (...[$event]) => {
         __VLS_ctx.router.push('/demands');
     }
 };
-__VLS_79.slots.default;
-var __VLS_79;
-const __VLS_84 = {}.TButton;
+__VLS_83.slots.default;
+var __VLS_83;
+const __VLS_88 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_85 = __VLS_asFunctionalComponent(__VLS_84, new __VLS_84({
+const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
 }));
-const __VLS_86 = __VLS_85({
+const __VLS_90 = __VLS_89({
     ...{ 'onClick': {} },
     variant: "outline",
     block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_85));
-let __VLS_88;
-let __VLS_89;
-let __VLS_90;
-const __VLS_91 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_89));
+let __VLS_92;
+let __VLS_93;
+let __VLS_94;
+const __VLS_95 = {
     onClick: (...[$event]) => {
         __VLS_ctx.router.push('/articles');
     }
 };
-__VLS_87.slots.default;
-var __VLS_87;
+__VLS_91.slots.default;
+var __VLS_91;
+var __VLS_71;
 var __VLS_67;
 var __VLS_63;
-var __VLS_59;
-var __VLS_35;
+var __VLS_39;
 /** @type {__VLS_StyleScopedClasses['dashboard']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-header']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;

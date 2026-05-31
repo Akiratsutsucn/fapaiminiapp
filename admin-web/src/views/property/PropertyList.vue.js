@@ -15,12 +15,15 @@ const filters = reactive({
 // 区市下拉：根据当前城市动态切换
 const SH_DISTRICTS = ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区', '嘉定区', '浦东新区', '金山区', '松江区', '青浦区', '奉贤区', '崇明区'];
 const NB_DISTRICTS = ['海曙区', '江北区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'];
+const HZ_DISTRICTS = ['上城区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'];
 const districtOptions = computed(() => {
     if (filters.city_id === 310000)
         return SH_DISTRICTS;
     if (filters.city_id === 330200)
         return NB_DISTRICTS;
-    return [...SH_DISTRICTS, ...NB_DISTRICTS];
+    if (filters.city_id === 330100)
+        return HZ_DISTRICTS;
+    return [...SH_DISTRICTS, ...NB_DISTRICTS, ...HZ_DISTRICTS];
 });
 const pagination = reactive({
     current: 1,
@@ -330,552 +333,563 @@ const __VLS_22 = __VLS_21({
     value: (330200),
     label: "宁波",
 }, ...__VLS_functionalComponentArgsRest(__VLS_21));
-var __VLS_7;
-const __VLS_24 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+const __VLS_24 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_25 = __VLS_asFunctionalComponent(__VLS_24, new __VLS_24({
+    value: (330100),
+    label: "杭州",
+}));
+const __VLS_26 = __VLS_25({
+    value: (330100),
+    label: "杭州",
+}, ...__VLS_functionalComponentArgsRest(__VLS_25));
+var __VLS_7;
+const __VLS_28 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+// @ts-ignore
+const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.district),
     placeholder: "区市",
     clearable: true,
     ...{ style: {} },
 }));
-const __VLS_26 = __VLS_25({
+const __VLS_30 = __VLS_29({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.district),
     placeholder: "区市",
     clearable: true,
     ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_25));
-let __VLS_28;
-let __VLS_29;
-let __VLS_30;
-const __VLS_31 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_29));
+let __VLS_32;
+let __VLS_33;
+let __VLS_34;
+const __VLS_35 = {
     onChange: (__VLS_ctx.onSearch)
 };
-__VLS_27.slots.default;
+__VLS_31.slots.default;
 for (const [d] of __VLS_getVForSourceType((__VLS_ctx.districtOptions))) {
-    const __VLS_32 = {}.TOption;
+    const __VLS_36 = {}.TOption;
     /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
     // @ts-ignore
-    const __VLS_33 = __VLS_asFunctionalComponent(__VLS_32, new __VLS_32({
+    const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
         key: (d),
         value: (d),
         label: (d),
     }));
-    const __VLS_34 = __VLS_33({
+    const __VLS_38 = __VLS_37({
         key: (d),
         value: (d),
         label: (d),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_33));
+    }, ...__VLS_functionalComponentArgsRest(__VLS_37));
 }
-var __VLS_27;
-const __VLS_36 = {}.TInput;
+var __VLS_31;
+const __VLS_40 = {}.TInput;
 /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
 // @ts-ignore
-const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
+const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.keyword),
     placeholder: "搜索标题",
     clearable: true,
     ...{ style: {} },
 }));
-const __VLS_38 = __VLS_37({
+const __VLS_42 = __VLS_41({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.keyword),
     placeholder: "搜索标题",
     clearable: true,
     ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_37));
-let __VLS_40;
-let __VLS_41;
-let __VLS_42;
-const __VLS_43 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_41));
+let __VLS_44;
+let __VLS_45;
+let __VLS_46;
+const __VLS_47 = {
     onChange: (__VLS_ctx.onSearch)
 };
-var __VLS_39;
-const __VLS_44 = {}.TSelect;
+var __VLS_43;
+const __VLS_48 = {}.TSelect;
 /** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
 // @ts-ignore
-const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
+const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.auction_status),
     placeholder: "拍卖状态",
     clearable: true,
     ...{ style: {} },
 }));
-const __VLS_46 = __VLS_45({
+const __VLS_50 = __VLS_49({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.auction_status),
     placeholder: "拍卖状态",
     clearable: true,
     ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_45));
-let __VLS_48;
-let __VLS_49;
-let __VLS_50;
-const __VLS_51 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_49));
+let __VLS_52;
+let __VLS_53;
+let __VLS_54;
+const __VLS_55 = {
     onChange: (__VLS_ctx.onSearch)
 };
-__VLS_47.slots.default;
-const __VLS_52 = {}.TOption;
-/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
-// @ts-ignore
-const __VLS_53 = __VLS_asFunctionalComponent(__VLS_52, new __VLS_52({
-    value: "即将开拍",
-    label: "即将开拍",
-}));
-const __VLS_54 = __VLS_53({
-    value: "即将开拍",
-    label: "即将开拍",
-}, ...__VLS_functionalComponentArgsRest(__VLS_53));
+__VLS_51.slots.default;
 const __VLS_56 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
-    value: "进行中",
-    label: "进行中",
+    value: "即将开拍",
+    label: "即将开拍",
 }));
 const __VLS_58 = __VLS_57({
-    value: "进行中",
-    label: "进行中",
+    value: "即将开拍",
+    label: "即将开拍",
 }, ...__VLS_functionalComponentArgsRest(__VLS_57));
 const __VLS_60 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_61 = __VLS_asFunctionalComponent(__VLS_60, new __VLS_60({
-    value: "已结束",
-    label: "已结束",
+    value: "进行中",
+    label: "进行中",
 }));
 const __VLS_62 = __VLS_61({
-    value: "已结束",
-    label: "已结束",
+    value: "进行中",
+    label: "进行中",
 }, ...__VLS_functionalComponentArgsRest(__VLS_61));
 const __VLS_64 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
-    value: "已成交",
-    label: "已成交",
+    value: "已结束",
+    label: "已结束",
 }));
 const __VLS_66 = __VLS_65({
-    value: "已成交",
-    label: "已成交",
+    value: "已结束",
+    label: "已结束",
 }, ...__VLS_functionalComponentArgsRest(__VLS_65));
 const __VLS_68 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_69 = __VLS_asFunctionalComponent(__VLS_68, new __VLS_68({
-    value: "中止",
-    label: "中止",
+    value: "已成交",
+    label: "已成交",
 }));
 const __VLS_70 = __VLS_69({
-    value: "中止",
-    label: "中止",
+    value: "已成交",
+    label: "已成交",
 }, ...__VLS_functionalComponentArgsRest(__VLS_69));
 const __VLS_72 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
-    value: "撤回",
-    label: "撤回",
+    value: "中止",
+    label: "中止",
 }));
 const __VLS_74 = __VLS_73({
-    value: "撤回",
-    label: "撤回",
+    value: "中止",
+    label: "中止",
 }, ...__VLS_functionalComponentArgsRest(__VLS_73));
-var __VLS_47;
-const __VLS_76 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
-// @ts-ignore
-const __VLS_77 = __VLS_asFunctionalComponent(__VLS_76, new __VLS_76({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.property_type),
-    placeholder: "物业类型",
-    clearable: true,
-    ...{ style: {} },
-}));
-const __VLS_78 = __VLS_77({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.property_type),
-    placeholder: "物业类型",
-    clearable: true,
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_77));
-let __VLS_80;
-let __VLS_81;
-let __VLS_82;
-const __VLS_83 = {
-    onChange: (__VLS_ctx.onSearch)
-};
-__VLS_79.slots.default;
-const __VLS_84 = {}.TOption;
+const __VLS_76 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
-const __VLS_85 = __VLS_asFunctionalComponent(__VLS_84, new __VLS_84({
-    value: "住宅",
-    label: "住宅",
+const __VLS_77 = __VLS_asFunctionalComponent(__VLS_76, new __VLS_76({
+    value: "撤回",
+    label: "撤回",
 }));
-const __VLS_86 = __VLS_85({
-    value: "住宅",
-    label: "住宅",
-}, ...__VLS_functionalComponentArgsRest(__VLS_85));
+const __VLS_78 = __VLS_77({
+    value: "撤回",
+    label: "撤回",
+}, ...__VLS_functionalComponentArgsRest(__VLS_77));
+var __VLS_51;
+const __VLS_80 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+// @ts-ignore
+const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.property_type),
+    placeholder: "物业类型",
+    clearable: true,
+    ...{ style: {} },
+}));
+const __VLS_82 = __VLS_81({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.property_type),
+    placeholder: "物业类型",
+    clearable: true,
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_81));
+let __VLS_84;
+let __VLS_85;
+let __VLS_86;
+const __VLS_87 = {
+    onChange: (__VLS_ctx.onSearch)
+};
+__VLS_83.slots.default;
 const __VLS_88 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
-    value: "商业",
-    label: "商业",
+    value: "住宅",
+    label: "住宅",
 }));
 const __VLS_90 = __VLS_89({
-    value: "商业",
-    label: "商业",
+    value: "住宅",
+    label: "住宅",
 }, ...__VLS_functionalComponentArgsRest(__VLS_89));
 const __VLS_92 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_93 = __VLS_asFunctionalComponent(__VLS_92, new __VLS_92({
-    value: "工业",
-    label: "工业",
+    value: "商业",
+    label: "商业",
 }));
 const __VLS_94 = __VLS_93({
-    value: "工业",
-    label: "工业",
+    value: "商业",
+    label: "商业",
 }, ...__VLS_functionalComponentArgsRest(__VLS_93));
-var __VLS_79;
-const __VLS_96 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
-// @ts-ignore
-const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.auction_round),
-    placeholder: "拍卖轮次",
-    clearable: true,
-    ...{ style: {} },
-}));
-const __VLS_98 = __VLS_97({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.auction_round),
-    placeholder: "拍卖轮次",
-    clearable: true,
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_97));
-let __VLS_100;
-let __VLS_101;
-let __VLS_102;
-const __VLS_103 = {
-    onChange: (__VLS_ctx.onSearch)
-};
-__VLS_99.slots.default;
-const __VLS_104 = {}.TOption;
+const __VLS_96 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
-const __VLS_105 = __VLS_asFunctionalComponent(__VLS_104, new __VLS_104({
-    value: "一拍",
-    label: "一拍",
+const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
+    value: "工业",
+    label: "工业",
 }));
-const __VLS_106 = __VLS_105({
-    value: "一拍",
-    label: "一拍",
-}, ...__VLS_functionalComponentArgsRest(__VLS_105));
+const __VLS_98 = __VLS_97({
+    value: "工业",
+    label: "工业",
+}, ...__VLS_functionalComponentArgsRest(__VLS_97));
+var __VLS_83;
+const __VLS_100 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+// @ts-ignore
+const __VLS_101 = __VLS_asFunctionalComponent(__VLS_100, new __VLS_100({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.auction_round),
+    placeholder: "拍卖轮次",
+    clearable: true,
+    ...{ style: {} },
+}));
+const __VLS_102 = __VLS_101({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.auction_round),
+    placeholder: "拍卖轮次",
+    clearable: true,
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_101));
+let __VLS_104;
+let __VLS_105;
+let __VLS_106;
+const __VLS_107 = {
+    onChange: (__VLS_ctx.onSearch)
+};
+__VLS_103.slots.default;
 const __VLS_108 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_109 = __VLS_asFunctionalComponent(__VLS_108, new __VLS_108({
-    value: "二拍",
-    label: "二拍",
+    value: "一拍",
+    label: "一拍",
 }));
 const __VLS_110 = __VLS_109({
-    value: "二拍",
-    label: "二拍",
+    value: "一拍",
+    label: "一拍",
 }, ...__VLS_functionalComponentArgsRest(__VLS_109));
 const __VLS_112 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_113 = __VLS_asFunctionalComponent(__VLS_112, new __VLS_112({
-    value: "变卖",
-    label: "变卖",
+    value: "二拍",
+    label: "二拍",
 }));
 const __VLS_114 = __VLS_113({
-    value: "变卖",
-    label: "变卖",
+    value: "二拍",
+    label: "二拍",
 }, ...__VLS_functionalComponentArgsRest(__VLS_113));
 const __VLS_116 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_117 = __VLS_asFunctionalComponent(__VLS_116, new __VLS_116({
-    value: "再次拍卖",
-    label: "再次拍卖",
+    value: "变卖",
+    label: "变卖",
 }));
 const __VLS_118 = __VLS_117({
-    value: "再次拍卖",
-    label: "再次拍卖",
+    value: "变卖",
+    label: "变卖",
 }, ...__VLS_functionalComponentArgsRest(__VLS_117));
-var __VLS_99;
-const __VLS_120 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
-// @ts-ignore
-const __VLS_121 = __VLS_asFunctionalComponent(__VLS_120, new __VLS_120({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.area_range),
-    placeholder: "面积",
-    clearable: true,
-    ...{ style: {} },
-}));
-const __VLS_122 = __VLS_121({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.area_range),
-    placeholder: "面积",
-    clearable: true,
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_121));
-let __VLS_124;
-let __VLS_125;
-let __VLS_126;
-const __VLS_127 = {
-    onChange: (__VLS_ctx.onAreaRangeChange)
-};
-__VLS_123.slots.default;
-const __VLS_128 = {}.TOption;
+const __VLS_120 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
-const __VLS_129 = __VLS_asFunctionalComponent(__VLS_128, new __VLS_128({
-    value: "0-50",
-    label: "50㎡以下",
+const __VLS_121 = __VLS_asFunctionalComponent(__VLS_120, new __VLS_120({
+    value: "再次拍卖",
+    label: "再次拍卖",
 }));
-const __VLS_130 = __VLS_129({
-    value: "0-50",
-    label: "50㎡以下",
-}, ...__VLS_functionalComponentArgsRest(__VLS_129));
+const __VLS_122 = __VLS_121({
+    value: "再次拍卖",
+    label: "再次拍卖",
+}, ...__VLS_functionalComponentArgsRest(__VLS_121));
+var __VLS_103;
+const __VLS_124 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+// @ts-ignore
+const __VLS_125 = __VLS_asFunctionalComponent(__VLS_124, new __VLS_124({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.area_range),
+    placeholder: "面积",
+    clearable: true,
+    ...{ style: {} },
+}));
+const __VLS_126 = __VLS_125({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.area_range),
+    placeholder: "面积",
+    clearable: true,
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_125));
+let __VLS_128;
+let __VLS_129;
+let __VLS_130;
+const __VLS_131 = {
+    onChange: (__VLS_ctx.onAreaRangeChange)
+};
+__VLS_127.slots.default;
 const __VLS_132 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_133 = __VLS_asFunctionalComponent(__VLS_132, new __VLS_132({
-    value: "50-90",
-    label: "50-90㎡",
+    value: "0-50",
+    label: "50㎡以下",
 }));
 const __VLS_134 = __VLS_133({
-    value: "50-90",
-    label: "50-90㎡",
+    value: "0-50",
+    label: "50㎡以下",
 }, ...__VLS_functionalComponentArgsRest(__VLS_133));
 const __VLS_136 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_137 = __VLS_asFunctionalComponent(__VLS_136, new __VLS_136({
-    value: "90-120",
-    label: "90-120㎡",
+    value: "50-90",
+    label: "50-90㎡",
 }));
 const __VLS_138 = __VLS_137({
-    value: "90-120",
-    label: "90-120㎡",
+    value: "50-90",
+    label: "50-90㎡",
 }, ...__VLS_functionalComponentArgsRest(__VLS_137));
 const __VLS_140 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_141 = __VLS_asFunctionalComponent(__VLS_140, new __VLS_140({
-    value: "120-200",
-    label: "120-200㎡",
+    value: "90-120",
+    label: "90-120㎡",
 }));
 const __VLS_142 = __VLS_141({
-    value: "120-200",
-    label: "120-200㎡",
+    value: "90-120",
+    label: "90-120㎡",
 }, ...__VLS_functionalComponentArgsRest(__VLS_141));
 const __VLS_144 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_145 = __VLS_asFunctionalComponent(__VLS_144, new __VLS_144({
-    value: "200-99999",
-    label: "200㎡以上",
+    value: "120-200",
+    label: "120-200㎡",
 }));
 const __VLS_146 = __VLS_145({
-    value: "200-99999",
-    label: "200㎡以上",
+    value: "120-200",
+    label: "120-200㎡",
 }, ...__VLS_functionalComponentArgsRest(__VLS_145));
-var __VLS_123;
-const __VLS_148 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
-// @ts-ignore
-const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.price_range),
-    placeholder: "起拍价",
-    clearable: true,
-    ...{ style: {} },
-}));
-const __VLS_150 = __VLS_149({
-    ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.price_range),
-    placeholder: "起拍价",
-    clearable: true,
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_149));
-let __VLS_152;
-let __VLS_153;
-let __VLS_154;
-const __VLS_155 = {
-    onChange: (__VLS_ctx.onPriceRangeChange)
-};
-__VLS_151.slots.default;
-const __VLS_156 = {}.TOption;
+const __VLS_148 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
-const __VLS_157 = __VLS_asFunctionalComponent(__VLS_156, new __VLS_156({
-    value: "0-1000000",
-    label: "100万以下",
+const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
+    value: "200-99999",
+    label: "200㎡以上",
 }));
-const __VLS_158 = __VLS_157({
-    value: "0-1000000",
-    label: "100万以下",
-}, ...__VLS_functionalComponentArgsRest(__VLS_157));
+const __VLS_150 = __VLS_149({
+    value: "200-99999",
+    label: "200㎡以上",
+}, ...__VLS_functionalComponentArgsRest(__VLS_149));
+var __VLS_127;
+const __VLS_152 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+// @ts-ignore
+const __VLS_153 = __VLS_asFunctionalComponent(__VLS_152, new __VLS_152({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.price_range),
+    placeholder: "起拍价",
+    clearable: true,
+    ...{ style: {} },
+}));
+const __VLS_154 = __VLS_153({
+    ...{ 'onChange': {} },
+    modelValue: (__VLS_ctx.filters.price_range),
+    placeholder: "起拍价",
+    clearable: true,
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_153));
+let __VLS_156;
+let __VLS_157;
+let __VLS_158;
+const __VLS_159 = {
+    onChange: (__VLS_ctx.onPriceRangeChange)
+};
+__VLS_155.slots.default;
 const __VLS_160 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_161 = __VLS_asFunctionalComponent(__VLS_160, new __VLS_160({
-    value: "1000000-3000000",
-    label: "100-300万",
+    value: "0-1000000",
+    label: "100万以下",
 }));
 const __VLS_162 = __VLS_161({
-    value: "1000000-3000000",
-    label: "100-300万",
+    value: "0-1000000",
+    label: "100万以下",
 }, ...__VLS_functionalComponentArgsRest(__VLS_161));
 const __VLS_164 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_165 = __VLS_asFunctionalComponent(__VLS_164, new __VLS_164({
-    value: "3000000-5000000",
-    label: "300-500万",
+    value: "1000000-3000000",
+    label: "100-300万",
 }));
 const __VLS_166 = __VLS_165({
-    value: "3000000-5000000",
-    label: "300-500万",
+    value: "1000000-3000000",
+    label: "100-300万",
 }, ...__VLS_functionalComponentArgsRest(__VLS_165));
 const __VLS_168 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_169 = __VLS_asFunctionalComponent(__VLS_168, new __VLS_168({
-    value: "5000000-10000000",
-    label: "500-1000万",
+    value: "3000000-5000000",
+    label: "300-500万",
 }));
 const __VLS_170 = __VLS_169({
-    value: "5000000-10000000",
-    label: "500-1000万",
+    value: "3000000-5000000",
+    label: "300-500万",
 }, ...__VLS_functionalComponentArgsRest(__VLS_169));
 const __VLS_172 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_173 = __VLS_asFunctionalComponent(__VLS_172, new __VLS_172({
-    value: "10000000-99999999999",
-    label: "1000万以上",
+    value: "5000000-10000000",
+    label: "500-1000万",
 }));
 const __VLS_174 = __VLS_173({
-    value: "10000000-99999999999",
-    label: "1000万以上",
+    value: "5000000-10000000",
+    label: "500-1000万",
 }, ...__VLS_functionalComponentArgsRest(__VLS_173));
-var __VLS_151;
-const __VLS_176 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+const __VLS_176 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_177 = __VLS_asFunctionalComponent(__VLS_176, new __VLS_176({
-    ...{ 'onClick': {} },
-    theme: "primary",
+    value: "10000000-99999999999",
+    label: "1000万以上",
 }));
 const __VLS_178 = __VLS_177({
-    ...{ 'onClick': {} },
-    theme: "primary",
+    value: "10000000-99999999999",
+    label: "1000万以上",
 }, ...__VLS_functionalComponentArgsRest(__VLS_177));
-let __VLS_180;
-let __VLS_181;
-let __VLS_182;
-const __VLS_183 = {
-    onClick: (__VLS_ctx.loadData)
-};
-__VLS_179.slots.default;
-var __VLS_179;
-const __VLS_184 = {}.TButton;
+var __VLS_155;
+const __VLS_180 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_185 = __VLS_asFunctionalComponent(__VLS_184, new __VLS_184({
+const __VLS_181 = __VLS_asFunctionalComponent(__VLS_180, new __VLS_180({
+    ...{ 'onClick': {} },
+    theme: "primary",
+}));
+const __VLS_182 = __VLS_181({
+    ...{ 'onClick': {} },
+    theme: "primary",
+}, ...__VLS_functionalComponentArgsRest(__VLS_181));
+let __VLS_184;
+let __VLS_185;
+let __VLS_186;
+const __VLS_187 = {
+    onClick: (__VLS_ctx.loadData)
+};
+__VLS_183.slots.default;
+var __VLS_183;
+const __VLS_188 = {}.TButton;
+/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+// @ts-ignore
+const __VLS_189 = __VLS_asFunctionalComponent(__VLS_188, new __VLS_188({
     ...{ 'onClick': {} },
     variant: "outline",
 }));
-const __VLS_186 = __VLS_185({
+const __VLS_190 = __VLS_189({
     ...{ 'onClick': {} },
     variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_185));
-let __VLS_188;
-let __VLS_189;
-let __VLS_190;
-const __VLS_191 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_189));
+let __VLS_192;
+let __VLS_193;
+let __VLS_194;
+const __VLS_195 = {
     onClick: (...[$event]) => {
         __VLS_ctx.router.push('/properties/edit');
     }
 };
-__VLS_187.slots.default;
-var __VLS_187;
-const __VLS_192 = {}.TButton;
+__VLS_191.slots.default;
+var __VLS_191;
+const __VLS_196 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_193 = __VLS_asFunctionalComponent(__VLS_192, new __VLS_192({
+const __VLS_197 = __VLS_asFunctionalComponent(__VLS_196, new __VLS_196({
     ...{ 'onClick': {} },
     variant: "outline",
 }));
-const __VLS_194 = __VLS_193({
+const __VLS_198 = __VLS_197({
     ...{ 'onClick': {} },
     variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_193));
-let __VLS_196;
-let __VLS_197;
-let __VLS_198;
-const __VLS_199 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_197));
+let __VLS_200;
+let __VLS_201;
+let __VLS_202;
+const __VLS_203 = {
     onClick: (() => __VLS_ctx.onExport('xlsx'))
 };
-__VLS_195.slots.default;
-var __VLS_195;
-const __VLS_200 = {}.TButton;
+__VLS_199.slots.default;
+var __VLS_199;
+const __VLS_204 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_201 = __VLS_asFunctionalComponent(__VLS_200, new __VLS_200({
+const __VLS_205 = __VLS_asFunctionalComponent(__VLS_204, new __VLS_204({
     ...{ 'onClick': {} },
     variant: "outline",
 }));
-const __VLS_202 = __VLS_201({
+const __VLS_206 = __VLS_205({
     ...{ 'onClick': {} },
     variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_201));
-let __VLS_204;
-let __VLS_205;
-let __VLS_206;
-const __VLS_207 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_205));
+let __VLS_208;
+let __VLS_209;
+let __VLS_210;
+const __VLS_211 = {
     onClick: (() => __VLS_ctx.onExport('csv'))
 };
-__VLS_203.slots.default;
-var __VLS_203;
-const __VLS_208 = {}.TButton;
+__VLS_207.slots.default;
+var __VLS_207;
+const __VLS_212 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_209 = __VLS_asFunctionalComponent(__VLS_208, new __VLS_208({
+const __VLS_213 = __VLS_asFunctionalComponent(__VLS_212, new __VLS_212({
     ...{ 'onClick': {} },
     variant: "outline",
 }));
-const __VLS_210 = __VLS_209({
+const __VLS_214 = __VLS_213({
     ...{ 'onClick': {} },
     variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_209));
-let __VLS_212;
-let __VLS_213;
-let __VLS_214;
-const __VLS_215 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_213));
+let __VLS_216;
+let __VLS_217;
+let __VLS_218;
+const __VLS_219 = {
     onClick: (...[$event]) => {
         __VLS_ctx.showColumnPicker = true;
     }
 };
-__VLS_211.slots.default;
-var __VLS_211;
-const __VLS_216 = {}.TTable;
+__VLS_215.slots.default;
+var __VLS_215;
+const __VLS_220 = {}.TTable;
 /** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
 // @ts-ignore
-const __VLS_217 = __VLS_asFunctionalComponent(__VLS_216, new __VLS_216({
+const __VLS_221 = __VLS_asFunctionalComponent(__VLS_220, new __VLS_220({
     ...{ 'onPageChange': {} },
     data: (__VLS_ctx.list),
     columns: (__VLS_ctx.visibleColumns),
@@ -885,7 +899,7 @@ const __VLS_217 = __VLS_asFunctionalComponent(__VLS_216, new __VLS_216({
     maxHeight: (680),
     bordered: true,
 }));
-const __VLS_218 = __VLS_217({
+const __VLS_222 = __VLS_221({
     ...{ 'onPageChange': {} },
     data: (__VLS_ctx.list),
     columns: (__VLS_ctx.visibleColumns),
@@ -894,16 +908,16 @@ const __VLS_218 = __VLS_217({
     pagination: (__VLS_ctx.pagination),
     maxHeight: (680),
     bordered: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_217));
-let __VLS_220;
-let __VLS_221;
-let __VLS_222;
-const __VLS_223 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_221));
+let __VLS_224;
+let __VLS_225;
+let __VLS_226;
+const __VLS_227 = {
     onPageChange: (__VLS_ctx.onPageChange)
 };
-__VLS_219.slots.default;
+__VLS_223.slots.default;
 {
-    const { source_link: __VLS_thisSlot } = __VLS_219.slots;
+    const { source_link: __VLS_thisSlot } = __VLS_223.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
     if (row.source_url) {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.a, __VLS_intrinsicElements.a)({
@@ -921,161 +935,161 @@ __VLS_219.slots.default;
     }
 }
 {
-    const { auction_status: __VLS_thisSlot } = __VLS_219.slots;
+    const { auction_status: __VLS_thisSlot } = __VLS_223.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    const __VLS_224 = {}.TTag;
+    const __VLS_228 = {}.TTag;
     /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
     // @ts-ignore
-    const __VLS_225 = __VLS_asFunctionalComponent(__VLS_224, new __VLS_224({
+    const __VLS_229 = __VLS_asFunctionalComponent(__VLS_228, new __VLS_228({
         theme: (__VLS_ctx.statusTheme(row.auction_status)),
     }));
-    const __VLS_226 = __VLS_225({
+    const __VLS_230 = __VLS_229({
         theme: (__VLS_ctx.statusTheme(row.auction_status)),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_225));
-    __VLS_227.slots.default;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_229));
+    __VLS_231.slots.default;
     (row.auction_status);
-    var __VLS_227;
+    var __VLS_231;
 }
 {
-    const { op: __VLS_thisSlot } = __VLS_219.slots;
+    const { op: __VLS_thisSlot } = __VLS_223.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    const __VLS_228 = {}.TSpace;
+    const __VLS_232 = {}.TSpace;
     /** @type {[typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, ]} */ ;
     // @ts-ignore
-    const __VLS_229 = __VLS_asFunctionalComponent(__VLS_228, new __VLS_228({}));
-    const __VLS_230 = __VLS_229({}, ...__VLS_functionalComponentArgsRest(__VLS_229));
-    __VLS_231.slots.default;
-    const __VLS_232 = {}.TButton;
+    const __VLS_233 = __VLS_asFunctionalComponent(__VLS_232, new __VLS_232({}));
+    const __VLS_234 = __VLS_233({}, ...__VLS_functionalComponentArgsRest(__VLS_233));
+    __VLS_235.slots.default;
+    const __VLS_236 = {}.TButton;
     /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
     // @ts-ignore
-    const __VLS_233 = __VLS_asFunctionalComponent(__VLS_232, new __VLS_232({
+    const __VLS_237 = __VLS_asFunctionalComponent(__VLS_236, new __VLS_236({
         ...{ 'onClick': {} },
         variant: "text",
         size: "small",
     }));
-    const __VLS_234 = __VLS_233({
+    const __VLS_238 = __VLS_237({
         ...{ 'onClick': {} },
         variant: "text",
         size: "small",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_233));
-    let __VLS_236;
-    let __VLS_237;
-    let __VLS_238;
-    const __VLS_239 = {
+    }, ...__VLS_functionalComponentArgsRest(__VLS_237));
+    let __VLS_240;
+    let __VLS_241;
+    let __VLS_242;
+    const __VLS_243 = {
         onClick: (...[$event]) => {
             __VLS_ctx.router.push('/properties/edit/' + row.id);
         }
     };
-    __VLS_235.slots.default;
-    var __VLS_235;
-    const __VLS_240 = {}.TPopconfirm;
+    __VLS_239.slots.default;
+    var __VLS_239;
+    const __VLS_244 = {}.TPopconfirm;
     /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
     // @ts-ignore
-    const __VLS_241 = __VLS_asFunctionalComponent(__VLS_240, new __VLS_240({
+    const __VLS_245 = __VLS_asFunctionalComponent(__VLS_244, new __VLS_244({
         ...{ 'onConfirm': {} },
         content: "确定删除？",
     }));
-    const __VLS_242 = __VLS_241({
+    const __VLS_246 = __VLS_245({
         ...{ 'onConfirm': {} },
         content: "确定删除？",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_241));
-    let __VLS_244;
-    let __VLS_245;
-    let __VLS_246;
-    const __VLS_247 = {
+    }, ...__VLS_functionalComponentArgsRest(__VLS_245));
+    let __VLS_248;
+    let __VLS_249;
+    let __VLS_250;
+    const __VLS_251 = {
         onConfirm: (...[$event]) => {
             __VLS_ctx.onDelete(row.id);
         }
     };
-    __VLS_243.slots.default;
-    const __VLS_248 = {}.TButton;
+    __VLS_247.slots.default;
+    const __VLS_252 = {}.TButton;
     /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
     // @ts-ignore
-    const __VLS_249 = __VLS_asFunctionalComponent(__VLS_248, new __VLS_248({
+    const __VLS_253 = __VLS_asFunctionalComponent(__VLS_252, new __VLS_252({
         variant: "text",
         size: "small",
         theme: "danger",
     }));
-    const __VLS_250 = __VLS_249({
+    const __VLS_254 = __VLS_253({
         variant: "text",
         size: "small",
         theme: "danger",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_249));
-    __VLS_251.slots.default;
-    var __VLS_251;
-    var __VLS_243;
-    var __VLS_231;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_253));
+    __VLS_255.slots.default;
+    var __VLS_255;
+    var __VLS_247;
+    var __VLS_235;
 }
-var __VLS_219;
+var __VLS_223;
 var __VLS_3;
-const __VLS_252 = {}.TDialog;
+const __VLS_256 = {}.TDialog;
 /** @type {[typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, ]} */ ;
 // @ts-ignore
-const __VLS_253 = __VLS_asFunctionalComponent(__VLS_252, new __VLS_252({
+const __VLS_257 = __VLS_asFunctionalComponent(__VLS_256, new __VLS_256({
     visible: (__VLS_ctx.showColumnPicker),
     header: "列设置 — 勾选要显示的列",
     width: "560px",
     footer: (false),
 }));
-const __VLS_254 = __VLS_253({
+const __VLS_258 = __VLS_257({
     visible: (__VLS_ctx.showColumnPicker),
     header: "列设置 — 勾选要显示的列",
     width: "560px",
     footer: (false),
-}, ...__VLS_functionalComponentArgsRest(__VLS_253));
-__VLS_255.slots.default;
+}, ...__VLS_functionalComponentArgsRest(__VLS_257));
+__VLS_259.slots.default;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "col-picker" },
 });
 for (const [col] of __VLS_getVForSourceType((__VLS_ctx.ALL_COLUMNS))) {
-    const __VLS_256 = {}.TCheckbox;
+    const __VLS_260 = {}.TCheckbox;
     /** @type {[typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, ]} */ ;
     // @ts-ignore
-    const __VLS_257 = __VLS_asFunctionalComponent(__VLS_256, new __VLS_256({
+    const __VLS_261 = __VLS_asFunctionalComponent(__VLS_260, new __VLS_260({
         ...{ 'onChange': {} },
         key: (col.colKey),
         checked: (__VLS_ctx.selectedCols.includes(col.colKey)),
     }));
-    const __VLS_258 = __VLS_257({
+    const __VLS_262 = __VLS_261({
         ...{ 'onChange': {} },
         key: (col.colKey),
         checked: (__VLS_ctx.selectedCols.includes(col.colKey)),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_257));
-    let __VLS_260;
-    let __VLS_261;
-    let __VLS_262;
-    const __VLS_263 = {
+    }, ...__VLS_functionalComponentArgsRest(__VLS_261));
+    let __VLS_264;
+    let __VLS_265;
+    let __VLS_266;
+    const __VLS_267 = {
         onChange: ((v) => __VLS_ctx.toggleCol(col.colKey, v))
     };
-    __VLS_259.slots.default;
+    __VLS_263.slots.default;
     (col.title);
-    var __VLS_259;
+    var __VLS_263;
 }
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ style: {} },
 });
-const __VLS_264 = {}.TButton;
+const __VLS_268 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_265 = __VLS_asFunctionalComponent(__VLS_264, new __VLS_264({
+const __VLS_269 = __VLS_asFunctionalComponent(__VLS_268, new __VLS_268({
     ...{ 'onClick': {} },
     size: "small",
     variant: "text",
 }));
-const __VLS_266 = __VLS_265({
+const __VLS_270 = __VLS_269({
     ...{ 'onClick': {} },
     size: "small",
     variant: "text",
-}, ...__VLS_functionalComponentArgsRest(__VLS_265));
-let __VLS_268;
-let __VLS_269;
-let __VLS_270;
-const __VLS_271 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_269));
+let __VLS_272;
+let __VLS_273;
+let __VLS_274;
+const __VLS_275 = {
     onClick: (__VLS_ctx.resetCols)
 };
-__VLS_267.slots.default;
-var __VLS_267;
-var __VLS_255;
+__VLS_271.slots.default;
+var __VLS_271;
+var __VLS_259;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;

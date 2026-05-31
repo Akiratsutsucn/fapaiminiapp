@@ -6,6 +6,7 @@
         <t-option :value="0" label="全部" />
         <t-option :value="310000" label="上海" />
         <t-option :value="330200" label="宁波" />
+        <t-option :value="330100" label="杭州" />
       </t-select>
     </div>
     <t-row :gutter="16" class="stat-cards">

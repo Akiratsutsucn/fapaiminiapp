@@ -43,7 +43,7 @@ PLATFORM_FACTORY = {
     "公拍网": (GPaiCrawler, GPaiDetailParser),
 }
 
-CITY_ID_MAP = {"上海": 310000, "宁波": 330200}
+CITY_ID_MAP = {"上海": 310000, "宁波": 330200, "杭州": 330100}
 
 
 class CrawlRunResult:
@@ -373,12 +373,15 @@ class CrawlEngine:
                             auction_item = await parser.parse(html, item.source_url, city_id, extra=extra)
 
                         # 智能城市分配：根据解析出的 province_city 自动判定 city_id
-                        # 只保留上海/宁波，其他城市直接 skip
+                        # 只保留上海/宁波/杭州，其他城市直接 skip
                         pc = (auction_item.province_city or "").strip()
                         # 兼容 parser 偶尔解析异常的边界情况（如「江宁波市」「省宁波市」）
                         if "宁波" in pc:
                             auction_item.city_id = 330200
                             auction_item.province_city = "宁波"
+                        elif "杭州" in pc:
+                            auction_item.city_id = 330100
+                            auction_item.province_city = "杭州"
                         elif "上海" in pc:
                             auction_item.city_id = 310000
                             auction_item.province_city = "上海"

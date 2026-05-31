@@ -96,6 +96,18 @@ class CommunityInfoOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DealReferenceOut(BaseModel):
+    """同房型成交参考 —— 贝壳数据缺失时降级用拍卖平台自带市场成交价兜底。
+
+    优先级：贝壳近30天 → 贝壳均价 → 平台市场成交单价 → 平台最新成交单价。
+    source_label 标明数据来源，前端据此展示。
+    """
+    unit_price: float = 0.0          # 参考成交单价（元/㎡）
+    total_price: Optional[int] = None  # 按本房源面积估算的总价（元）
+    source_label: str = ""           # 贝壳近30天 / 贝壳均价 / 市场参考 / 平台成交价
+    updated_at: Optional[datetime] = None
+
+
 class PropertyListItem(BaseModel):
     id: int
     title: str = ""
@@ -174,6 +186,7 @@ class PropertyDetail(BaseModel):
     updated_at: Optional[datetime] = None
     images: list[PropertyImageOut] = []
     community_info: Optional[CommunityInfoOut] = None
+    deal_reference: Optional[DealReferenceOut] = None
 
     model_config = {"from_attributes": True}
 

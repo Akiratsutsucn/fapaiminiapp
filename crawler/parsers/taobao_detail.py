@@ -1,4 +1,10 @@
-"""Taobao SF detail page parser — extracts all ~45 fields from rendered HTML."""
+"""Taobao SF detail page parser — extracts all ~45 fields.
+
+新版淘宝拍卖详情页（pages-fast.m.taobao.com/.../dzc-detail）是 CSR 页面，
+房源数据放在 `window.__ICE_SUSPENSE_LOADER__.set('dzc-detail-ssr', {initData:{...}})`
+的结构化 JSON 里。优先从该 JSON 提取（可靠）；解析不到时回退旧版 HTML 选择器。
+"""
+import json
 import re
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -8,55 +14,306 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.city import city_name_by_id
+
+
+# catId → 物业类型（与 url_registry 分类映射一致）
+CAT_ID_PROPERTY_TYPE = {
+    "50025969": "住宅",
+    "200782003": "商业",
+    "200788003": "工业",
+    "200798003": "其他",
+    "50025970": "土地",
+}
 
 
 class TaobaoDetailParser(AbstractParser):
-    """Parse a Taobao SF (sf.taobao.com) detail page HTML into an AuctionItem."""
+    """Parse a Taobao SF detail page into an AuctionItem."""
 
     platform = "阿里拍卖"
 
     async def parse(self, html: str, source_url: str, city_id: int) -> AuctionItem:
-        soup = BeautifulSoup(html, "lxml")
         item = AuctionItem(
             source_url=source_url,
             auction_platform=Platform.ALI.value,
             city_id=city_id,
         )
 
-        # --- title ---
-        item.title = self._extract_title(soup)
+        # 优先：从新版页面的 initData JSON 提取
+        init_data = self._extract_init_data(html)
+        if init_data:
+            try:
+                self._parse_from_init_data(init_data, item, city_id, html)
+            except Exception as e:
+                logger.warning(f"[TaobaoDetail] initData 解析异常，回退 HTML：{e}")
+                init_data = None
 
-        # --- images ---
-        item.image_urls = self._extract_images(soup)
+        # 回退：旧版 HTML 选择器（initData 缺失或解析失败时）
+        if not init_data or not item.title or item.title.startswith("Ai"):
+            self._parse_from_html(html, item, city_id)
 
-        # --- price section ---
-        self._extract_prices(soup, item)
-
-        # --- property details table ---
-        self._extract_property_details(soup, item)
-
-        # --- auction info ---
-        self._extract_auction_info(soup, item)
-
-        # --- court info ---
-        self._extract_court_info(soup, item)
-
-        # --- statistics ---
-        self._extract_stats(soup, item)
-
-        # --- location ---
-        self._extract_location(soup, item, city_id)
-
-        # --- dates ---
-        self._extract_dates(soup, item)
-
-        # --- description ---
-        self._extract_description(soup, item)
-
-        # --- computed fields ---
         self._compute_derived_fields(item)
-
         return item
+
+    # ============================================================
+    # 新版：initData JSON 提取
+    # ============================================================
+
+    def _extract_init_data(self, html: str) -> dict | None:
+        """从 window.__ICE_SUSPENSE_LOADER__.set('dzc-detail-ssr', {...}) 提取 initData。
+
+        用括号配平截取完整 JSON（贪婪正则不可靠）。
+        """
+        marker = "__ICE_SUSPENSE_LOADER__.set("
+        idx = html.find(marker)
+        if idx < 0:
+            return None
+        start = html.find("{", idx)
+        if start < 0:
+            return None
+        depth = 0
+        instr = False
+        esc = False
+        end = -1
+        for i in range(start, len(html)):
+            ch = html[i]
+            if esc:
+                esc = False
+                continue
+            if ch == "\\":
+                esc = True
+                continue
+            if ch == '"':
+                instr = not instr
+                continue
+            if instr:
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        if end < 0:
+            return None
+        try:
+            obj = json.loads(html[start:end])
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning(f"[TaobaoDetail] initData JSON 解析失败：{e}")
+            return None
+        return obj.get("initData") or None
+
+    def _parse_from_init_data(self, d: dict, item: AuctionItem, city_id: int, html: str = "") -> None:
+        """从 initData 结构化数据填充 AuctionItem（主路径）。"""
+        # --- 标题 ---
+        item.title = d.get("title") or d.get("realTitle") or ""
+
+        # --- 图片（真实房源照片）---
+        imgs = d.get("imageList") or (d.get("headMedia") or {}).get("imageList") or []
+        urls = []
+        for u in imgs:
+            if not u:
+                continue
+            if u.startswith("//"):
+                u = "https:" + u
+            elif not u.startswith("http"):
+                continue
+            urls.append(u)
+        if not urls and d.get("pictUrl"):
+            pu = d["pictUrl"]
+            urls.append("https:" + pu if pu.startswith("//") else pu)
+        item.image_urls = urls
+
+        # --- 价格（initData 价格单位为「分」，需 ÷100 转元）---
+        item.starting_price = self._fen_to_yuan(d.get("startPrice"))
+        item.appraisal_price = self._fen_to_yuan(d.get("consultPrice"))
+        item.deposit = self._fen_to_yuan(d.get("foregiftPrice"))
+        item.increment_amount = self._fen_to_yuan(d.get("incrementPrice"))
+        # 市场参考：评估价兜底
+        item.market_deal_price = item.appraisal_price
+
+        # --- 起拍单价（otherPrice.bidCoreFields，单位万/㎡）---
+        for f in (d.get("otherPrice") or {}).get("bidCoreFields", []):
+            if f.get("key") == "SINGLE_METER_START_PRICE" and f.get("value"):
+                try:
+                    val = float(str(f["value"]).replace(",", "").strip())
+                    item.starting_unit_price = round(val * 10000, 2)  # 万/㎡ → 元/㎡
+                except ValueError:
+                    pass
+
+        # --- 地址 / 小区 ---
+        item.address = d.get("auctionAddress") or ""
+
+        # --- 位置：location="上海 上海市 普陀区" + divisions ---
+        item.province_city = city_name_by_id(city_id)
+        for div in d.get("divisions", []):
+            name = div.get("divisionName", "")
+            if name.endswith("区") or name.endswith("县"):
+                item.district = name
+        if not item.district:
+            item.district = extract_district(item.title, city_id) or ""
+
+        # --- 坐标 latlong=["lng","lat"] ---
+        latlong = d.get("latlong") or []
+        if len(latlong) == 2:
+            try:
+                item.lng = float(latlong[0])
+                item.lat = float(latlong[1])
+            except (ValueError, TypeError):
+                pass
+
+        # --- 物业类型（catId）---
+        cat_id = str(d.get("catId", ""))
+        if cat_id in CAT_ID_PROPERTY_TYPE:
+            item.property_type = CAT_ID_PROPERTY_TYPE[cat_id]
+
+        # --- 轮次（titleTag.preTags）---
+        for tag in (d.get("titleTag") or {}).get("preTags", []):
+            v = tag.get("value", "")
+            if v in ("一拍", "二拍", "变卖", "重新拍卖"):
+                item.auction_round = "变卖" if v == "变卖" else v
+                break
+
+        # --- 时间 ---
+        item.auction_start_time = self._parse_dt(d.get("startTime"))
+        item.auction_end_time = self._parse_dt(d.get("endTime"))
+
+        # --- 状态：依据时间 + bidStatus 推断 ---
+        item.auction_status = self._infer_status(d)
+
+        # --- 法院 ---
+        org = (d.get("associatedUnit") or {}).get("orgName")
+        item.court_name = org or None
+
+        # --- 公告 URL ---
+        notice = d.get("noticeUrl") or d.get("gongGaoUrl")
+        if notice:
+            item.announcement_url = ("https:" + notice) if notice.startswith("//") else notice
+
+        # --- 统计 ---
+        item.view_count = self._to_int(d.get("notifyNum"))
+        item.participant_count = self._to_int(d.get("applyNum"))
+
+        # --- 贷款 / 标签 ---
+        item.loan_support = bool(d.get("applyLoan") or d.get("loan"))
+
+        # --- 面积 / 户型 / 楼层：从 description 文本里抠（initData 无独立字段）---
+        self._fill_building_from_text(d, item, html)
+
+        # --- 描述 + 标签摘要 ---
+        tags = [t.get("value", "") for t in (d.get("benefit") or {}).get("itemTags", []) if t.get("value")]
+        desc_parts = []
+        if tags:
+            desc_parts.append("标签：" + "、".join(tags))
+        if d.get("bidLimitRule"):
+            desc_parts.append(d["bidLimitRule"])
+        item.description = "\n".join(desc_parts) if desc_parts else None
+
+        item.publish_date = item.publish_date or datetime.now()
+        item.source_updated_at = datetime.now()
+
+    def _fill_building_from_text(self, d: dict, item: AuctionItem, html: str = "") -> None:
+        """从 initData 文本字段 + 详情页渲染的 HTML 文本里提取面积、房屋类型等
+        （这些明细 initData 无结构化字段，散落在标的物介绍文本里）。"""
+        # 拼接可能含建筑信息的文本：标题、地址、+ 详情页 body 纯文本
+        parts = [str(d.get(k, "")) for k in ["title", "auctionAddress"]]
+        if html:
+            try:
+                body_text = BeautifulSoup(html, "lxml").get_text(" ")
+                parts.append(body_text)
+            except Exception:
+                pass
+        blob = " ".join(parts)
+
+        # 建筑面积
+        if not item.area:
+            m = re.search(r"建筑面积[：:]*\s*([\d,.]+)\s*(?:平方米|㎡|m²)", blob)
+            if m:
+                item.area = parse_area_sqm(m.group(1))
+        # 房屋类型（仅当未由 catId 确定时）
+        m = re.search(r"房屋类型[：:]*\s*([^\s；;，,。、]+)", blob)
+        if m:
+            item.property_type = item.property_type or m.group(1)
+        # 总层数
+        if not item.total_floors:
+            m = re.search(r"总层数[：:]*\s*(\d+)", blob)
+            if m:
+                item.total_floors = int(m.group(1))
+        # 建筑年代
+        if not item.build_year:
+            m = re.search(r"(?:建筑年代|竣工(?:日期|时间)?)[：:]*\s*(\d{4})", blob)
+            if m:
+                item.build_year = int(m.group(1))
+
+    def _infer_status(self, d: dict) -> str:
+        """依据开拍/结束时间推断拍卖状态。"""
+        now = datetime.now()
+        st = self._parse_dt(d.get("startTime"))
+        et = self._parse_dt(d.get("endTime"))
+        if st and now < st:
+            return "即将开拍"
+        if st and et and st <= now <= et:
+            return "进行中"
+        if et and now > et:
+            return "已结束"
+        return "即将开拍"
+
+    # ============================================================
+    # 小工具
+    # ============================================================
+
+    @staticmethod
+    def _to_int(v) -> int:
+        if v is None:
+            return 0
+        try:
+            return int(float(str(v).replace(",", "").strip()))
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
+    def _fen_to_yuan(v) -> int:
+        """initData 中价格字段单位为「分」，转为「元」。"""
+        if v is None:
+            return 0
+        try:
+            return int(round(float(str(v).replace(",", "").strip()) / 100))
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
+    def _parse_dt(s) -> datetime | None:
+        if not s:
+            return None
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(str(s).strip(), fmt)
+            except ValueError:
+                continue
+        return None
+
+    # ============================================================
+    # 旧版 HTML 解析（回退路径）
+    # ============================================================
+
+    def _parse_from_html(self, html: str, item: AuctionItem, city_id: int) -> None:
+        soup = BeautifulSoup(html, "lxml")
+        if not item.title or item.title.startswith("Ai"):
+            item.title = self._extract_title(soup)
+        if not item.image_urls:
+            item.image_urls = self._extract_images(soup)
+        if not item.starting_price:
+            self._extract_prices(soup, item)
+        self._extract_property_details(soup, item)
+        self._extract_auction_info(soup, item)
+        self._extract_court_info(soup, item)
+        self._extract_stats(soup, item)
+        if not item.district or not item.address:
+            self._extract_location(soup, item, city_id)
+        self._extract_dates(soup, item)
+        if not item.description:
+            self._extract_description(soup, item)
 
     # ============================================================
     # Extraction helpers
@@ -312,10 +569,7 @@ class TaobaoDetailParser(AbstractParser):
         text = soup.get_text()
 
         # Province/city
-        if city_id == 310000:
-            item.province_city = "上海"
-        elif city_id == 330200:
-            item.province_city = "宁波"
+        item.province_city = city_name_by_id(city_id)
 
         # District (区)
         district = self._extract_by_label_regex(text, r'(?:所在|标的)?区域[：:]?\s*(.+)')
@@ -369,16 +623,9 @@ class TaobaoDetailParser(AbstractParser):
                 desc = el.get_text(strip=True)[:5000]
                 break
 
-        # Attach extended data as JSON in description
-        extended = {
-            "loan_support": item.loan_support,
-            "has_attachments": item.has_attachments,
-        }
-
         parts = []
         if desc:
             parts.append(desc)
-        parts.append(f"【扩展信息】{extended}")
         item.description = "\n".join(parts)
 
     # ============================================================

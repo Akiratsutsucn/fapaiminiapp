@@ -7,6 +7,16 @@ const PRICE_LABELS = {
     '3000000-5000000': '300-500万',
     '5000000-': '500万以上',
 };
+const DISTRICTS_BY_CITY = {
+    310000: ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区', '嘉定区', '浦东新区', '金山区', '松江区', '青浦区', '奉贤区', '崇明区'],
+    330200: ['海曙区', '江北区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
+    330100: ['上城区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
+};
+function districtsForCity(cityId) {
+    if (cityId && DISTRICTS_BY_CITY[cityId])
+        return DISTRICTS_BY_CITY[cityId];
+    return DISTRICTS_BY_CITY[310000];
+}
 Page({
     data: {
         list: [],
@@ -18,6 +28,8 @@ Page({
         activeFilterPanel: '',
         keyword: '',
         selectedDistrict: '',
+        districtOptions: [],
+        currentCityId: 0,
         priceRange: '',
         priceLabel: '',
         selectedPropertyType: '',
@@ -33,6 +45,25 @@ Page({
         if (options.keyword) {
             this.setData({ keyword: options.keyword });
         }
+        const app = getApp();
+        const cityId = app.globalData.currentCityId || 0;
+        this.setData({ currentCityId: cityId, districtOptions: districtsForCity(cityId) });
+        this.loadList();
+    },
+    onShow() {
+        const app = getApp();
+        const cityId = app.globalData.currentCityId || 0;
+        if (cityId === this.data.currentCityId)
+            return;
+        const options = districtsForCity(cityId);
+        const stillValid = this.data.selectedDistrict && options.indexOf(this.data.selectedDistrict) >= 0;
+        this.setData({
+            currentCityId: cityId,
+            districtOptions: options,
+            selectedDistrict: stillValid ? this.data.selectedDistrict : '',
+            page: 1,
+            list: [],
+        });
         this.loadList();
     },
     onPullDownRefresh() {

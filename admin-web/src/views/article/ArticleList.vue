@@ -6,6 +6,7 @@
         <t-input v-model="filters.keyword" placeholder="搜索标题" clearable style="width:200px" @change="onSearch" />
         <t-button theme="primary" @click="onSearch">查询</t-button>
         <t-button variant="outline" @click="onAdd">添加文章</t-button>
+        <t-button theme="success" :loading="syncing" @click="onSyncFromMp">从公众号同步</t-button>
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #cover_image="{ row }">
@@ -14,6 +15,9 @@
         </template>
         <template #is_home_show="{ row }">
           <t-tag :theme="row.is_home_show ? 'success' : 'default'">{{ row.is_home_show ? '是' : '否' }}</t-tag>
+        </template>
+        <template #source="{ row }">
+          <t-tag :theme="row.source === 'wechat_mp' ? 'primary' : 'default'" variant="light">{{ row.source === 'wechat_mp' ? '公众号' : '手工' }}</t-tag>
         </template>
         <template #op="{ row }">
           <t-space>
@@ -41,9 +45,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { listArticles, createArticle, updateArticle, deleteArticle } from '@/api/articles'
+import { listArticles, createArticle, updateArticle, deleteArticle, syncArticlesFromMp } from '@/api/articles'
 
 const loading = ref(false)
+const syncing = ref(false)
 const list = ref<any[]>([])
 const filters = reactive({ keyword: '' })
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
@@ -52,6 +57,7 @@ const columns = [
   { colKey: 'id', title: 'ID', width: 70 },
   { colKey: 'cover_image', title: '封面', width: 90 },
   { colKey: 'title', title: '标题', ellipsis: true, width: 220 },
+  { colKey: 'source', title: '来源', width: 80 },
   { colKey: 'sort_order', title: '排序', width: 70 },
   { colKey: 'is_home_show', title: '首页展示', width: 90 },
   { colKey: 'published_at', title: '发布日期', width: 120 },
@@ -96,6 +102,20 @@ async function onDelete(id: number) {
   await deleteArticle(id)
   MessagePlugin.success('已删除')
   loadData()
+}
+
+async function onSyncFromMp() {
+  syncing.value = true
+  try {
+    const res: any = await syncArticlesFromMp(40)
+    MessagePlugin.success(res.message || '同步完成')
+    pagination.current = 1
+    loadData()
+  } catch (e: any) {
+    MessagePlugin.error(e?.response?.data?.detail || '同步失败，请检查公众号配置与 IP 白名单')
+  } finally {
+    syncing.value = false
+  }
 }
 </script>
 

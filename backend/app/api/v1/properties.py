@@ -11,8 +11,21 @@ from ...models.property import Property, PropertyImage
 from ...models.community import CommunityInfo
 from ...schemas import (
     PropertyListParams, PropertyListItem, PropertyDetail, PaginatedResponse,
-    MarketStatsOut,
+    MarketStatsOut, DealReferenceOut,
 )
+
+# 市场参考单价合理区间（元/㎡）。京东系部分房源成交单价存在单位错乱
+# （个别 >100万/㎡ 或万元未换算 <1000/㎡），超出区间视为脏数据丢弃。
+DEAL_UNIT_PRICE_MIN = 1000
+DEAL_UNIT_PRICE_MAX = 300000
+
+
+def _valid_unit_price(v) -> bool:
+    """成交单价是否在合理区间内。"""
+    try:
+        return v is not None and DEAL_UNIT_PRICE_MIN <= float(v) <= DEAL_UNIT_PRICE_MAX
+    except (TypeError, ValueError):
+        return False
 
 AMAP_API_KEY = os.getenv("AMAP_API_KEY", "")
 
@@ -347,6 +360,7 @@ async def get_property(property_id: int, db: AsyncSession = Depends(get_session)
     detail = PropertyDetail.model_validate(p)
 
     # Enrich with community info (Beike reference data)
+    community = None
     if p.community_name:
         community_q = select(CommunityInfo).where(CommunityInfo.name == p.community_name)
         community = (await db.execute(community_q)).scalar_one_or_none()
@@ -361,4 +375,33 @@ async def get_property(property_id: int, db: AsyncSession = Depends(get_session)
             from ...schemas import CommunityInfoOut
             detail.community_info = CommunityInfoOut.model_validate(community)
 
+    # 同房型成交参考兜底（E 方案）：
+    # 贝壳近30天 → 贝壳均价 → 平台市场成交单价 → 平台最新成交单价。
+    # 贝壳数据当前因风控基本抓不到，实际多走平台自带市场成交价。
+    detail.deal_reference = _build_deal_reference(p, community)
+
     return detail
+
+
+def _build_deal_reference(p: Property, community: CommunityInfo | None) -> DealReferenceOut | None:
+    """按优先级挑一个可信的成交单价作为「同房型成交参考」，并标注来源。"""
+    candidates = []
+    if community is not None:
+        candidates.append((getattr(community, "recent_avg_price_30d", None), "贝壳近30天",
+                           getattr(community, "last_crawled_at", None)))
+        candidates.append((getattr(community, "avg_price", None), "贝壳均价",
+                           getattr(community, "price_update_at", None)))
+    candidates.append((p.market_deal_unit_price, "市场参考", p.source_updated_at))
+    candidates.append((p.latest_deal_unit_price, "平台成交价", p.source_updated_at))
+
+    for unit_price, label, updated_at in candidates:
+        if _valid_unit_price(unit_price):
+            unit_price = float(unit_price)
+            total = int(unit_price * p.area) if p.area and p.area > 0 else None
+            return DealReferenceOut(
+                unit_price=round(unit_price, 2),
+                total_price=total,
+                source_label=label,
+                updated_at=updated_at,
+            )
+    return None

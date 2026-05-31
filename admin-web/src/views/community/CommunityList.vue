@@ -7,6 +7,7 @@
         <t-select v-model="filters.city_id" placeholder="城市" clearable style="width:120px" @change="onSearch">
           <t-option :value="310000" label="上海" />
           <t-option :value="330200" label="宁波" />
+          <t-option :value="330100" label="杭州" />
         </t-select>
         <t-button theme="primary" @click="onSearch">查询</t-button>
         <t-button variant="outline" @click="onAdd">添加小区</t-button>

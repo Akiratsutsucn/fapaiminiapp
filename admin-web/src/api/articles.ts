@@ -21,3 +21,7 @@ export function updateArticle(id: number, data: Record<string, any>) {
 export function deleteArticle(id: number) {
   return http.delete(`/articles/${id}`).then(r => r.data)
 }
+
+export function syncArticlesFromMp(limit = 40) {
+  return http.post('/articles/sync-from-mp', { limit }).then(r => r.data)
+}

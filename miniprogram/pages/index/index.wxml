@@ -11,7 +11,7 @@
 
   <!-- ============ Hero 大字报 ============ -->
   <view class="hero">
-    <view class="hero-tagline">FAPAI · 上海 / 宁波</view>
+    <view class="hero-tagline">FAPAI · 上海 / 宁波 / 杭州</view>
     <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
     <view class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源数据</view>
   </view>

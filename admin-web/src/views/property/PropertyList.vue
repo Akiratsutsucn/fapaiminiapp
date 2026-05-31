@@ -7,6 +7,7 @@
           <t-option :value="0" label="全部城市" />
           <t-option :value="310000" label="上海" />
           <t-option :value="330200" label="宁波" />
+          <t-option :value="330100" label="杭州" />
         </t-select>
         <t-select v-model="filters.district" placeholder="区市" clearable style="width:140px" @change="onSearch">
           <t-option v-for="d in districtOptions" :key="d" :value="d" :label="d" />
@@ -103,10 +104,12 @@ const filters = reactive({
 // 区市下拉：根据当前城市动态切换
 const SH_DISTRICTS = ['黄浦区','徐汇区','长宁区','静安区','普陀区','虹口区','杨浦区','闵行区','宝山区','嘉定区','浦东新区','金山区','松江区','青浦区','奉贤区','崇明区']
 const NB_DISTRICTS = ['海曙区','江北区','北仑区','镇海区','鄞州区','奉化区','余姚市','慈溪市','宁海县','象山县']
+const HZ_DISTRICTS = ['上城区','拱墅区','西湖区','滨江区','萧山区','余杭区','临平区','钱塘区','富阳区','临安区','桐庐县','淳安县','建德市']
 const districtOptions = computed(() => {
   if (filters.city_id === 310000) return SH_DISTRICTS
   if (filters.city_id === 330200) return NB_DISTRICTS
-  return [...SH_DISTRICTS, ...NB_DISTRICTS]
+  if (filters.city_id === 330100) return HZ_DISTRICTS
+  return [...SH_DISTRICTS, ...NB_DISTRICTS, ...HZ_DISTRICTS]
 })
 const pagination = reactive({
   current: 1,

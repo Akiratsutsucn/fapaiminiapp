@@ -31,7 +31,7 @@
     </view>
     <view class="price-item">
       <text class="price-value accent">{{discount}}</text>
-      <text class="price-label">折扣</text>
+      <text class="price-label">{{discountLabel}}</text>
     </view>
     <view class="price-item">
       <text class="price-value">{{depositWan}}</text>
@@ -77,7 +77,7 @@
     <!-- 价差分析点评 -->
     <view class="commentary-card" wx:if="{{commentary}}">
       <view class="commentary-header">
-        <view class="commentary-icon">★</view>
+        <view class="commentary-icon"></view>
         <view class="commentary-title">独家解读</view>
       </view>
       <view class="commentary-body">
@@ -164,34 +164,54 @@
         <view wx:if="{{property.community_info.huxing_summary}}" class="info-row"><text class="info-k">主力户型</text><text class="info-v">{{property.community_info.huxing_summary}}</text></view>
       </view>
 
-      <!-- 价差分析（仅当贝壳均价 + 起拍单价都存在） -->
-      <view class="cc-bargain" wx:if="{{property.community_info.avg_price && property.starting_unit_price}}">
-        <view class="cc-bargain-title">⚡ 价差分析</view>
+      <!-- 价差分析（基于同房型成交参考 deal_reference，贝壳缺失时用平台市场成交价兜底） -->
+      <view class="cc-bargain" wx:if="{{dealRefUnitPriceWan && startingUnitPriceWan}}">
+        <view class="cc-bargain-title">价差分析</view>
         <view class="cc-bargain-row">
           <view class="cb-item">
             <text class="cb-label">起拍单价</text>
             <text class="cb-value">{{startingUnitPriceWan}} 万/㎡</text>
           </view>
           <view class="cb-item">
-            <text class="cb-label">市场参考</text>
-            <text class="cb-value">{{communityAvgUnitPriceWan}} 万/㎡</text>
+            <text class="cb-label">{{dealRefSourceLabel}}</text>
+            <text class="cb-value">{{dealRefUnitPriceWan}} 万/㎡</text>
           </view>
           <view class="cb-item">
             <text class="cb-label">折扣空间</text>
-            <text class="cb-value accent">{{communityDiscountText}}</text>
+            <text class="cb-value accent">{{dealRefDiscountText}}</text>
           </view>
         </view>
-        <view wx:if="{{bargainDelta}}" class="cc-bargain-saving">按面积估算捡漏空间约 <text class="accent">{{bargainDelta}} 万</text></view>
+        <view wx:if="{{dealRefBargainDelta}}" class="cc-bargain-saving">按面积估算捡漏空间约 <text class="accent">{{dealRefBargainDelta}} 万</text></view>
       </view>
     </view>
 
-    <!-- 旧路径兜底（无 community_info 时仍显示房源自身字段） -->
+    <!-- 旧路径兜底（无 community_info 时显示房源自身字段 + 成交参考兜底） -->
     <view wx:elif="{{property.community_name}}" class="community-info">
       <view class="section-title">小区信息</view>
       <view class="info-row"><text class="info-k">小区名称</text><text class="info-v">{{property.community_name}}</text></view>
       <view class="info-row" wx:if="{{property.address}}"><text class="info-k">详细地址</text><text class="info-v">{{property.address}}</text></view>
       <view class="info-row" wx:if="{{property.build_year}}"><text class="info-k">建筑年代</text><text class="info-v">{{property.build_year}}年</text></view>
-      <view class="info-row"><text class="info-k">小区详情</text><text class="info-v">数据筹备中，稍后查看</text></view>
+
+      <!-- 价差分析兜底（贝壳无小区详情时，用平台市场成交价） -->
+      <view class="cc-bargain" wx:if="{{dealRefUnitPriceWan && startingUnitPriceWan}}">
+        <view class="cc-bargain-title">价差分析</view>
+        <view class="cc-bargain-row">
+          <view class="cb-item">
+            <text class="cb-label">起拍单价</text>
+            <text class="cb-value">{{startingUnitPriceWan}} 万/㎡</text>
+          </view>
+          <view class="cb-item">
+            <text class="cb-label">{{dealRefSourceLabel}}</text>
+            <text class="cb-value">{{dealRefUnitPriceWan}} 万/㎡</text>
+          </view>
+          <view class="cb-item">
+            <text class="cb-label">折扣空间</text>
+            <text class="cb-value accent">{{dealRefDiscountText}}</text>
+          </view>
+        </view>
+        <view wx:if="{{dealRefBargainDelta}}" class="cc-bargain-saving">按面积估算捡漏空间约 <text class="accent">{{dealRefBargainDelta}} 万</text></view>
+      </view>
+      <view wx:else class="info-row"><text class="info-k">小区详情</text><text class="info-v">数据筹备中，稍后查看</text></view>
     </view>
 
     <!-- 板块介绍（静态词典） -->

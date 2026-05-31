@@ -8,6 +8,7 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.city import city_name_by_id
 
 
 class JDDetailParser(AbstractParser):
@@ -26,7 +27,7 @@ class JDDetailParser(AbstractParser):
             source_url=source_url,
             auction_platform=Platform.JD.value,
             city_id=city_id,
-            province_city="上海" if city_id == 310000 else "宁波",
+            province_city=city_name_by_id(city_id) or "上海",
         )
 
         item.title = self._extract_title(soup, text, extra)
@@ -538,11 +539,6 @@ class JDDetailParser(AbstractParser):
         if desc_match:
             desc_parts.append(desc_match.group(1).strip()[:2000])
 
-        extended = {
-            "loan_support": item.loan_support,
-            "has_attachments": item.has_attachments,
-        }
-        desc_parts.append(f"【扩展信息】{extended}")
         item.description = "\n".join(desc_parts)
 
     # ============================================================

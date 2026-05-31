@@ -95,8 +95,17 @@ class PlaywrightBrowserManager:
         logger.info("Playwright browser started successfully")
 
     async def restart_with_new_proxy(self) -> None:
-        """换代理重启。被风控时调用此方法。"""
-        if self._current_proxy:
+        """换代理重启。被风控时调用此方法。
+
+        隧道代理（TUNNEL_IP_CHANGE_URL 已配）：入口不变，先触发换出口 IP，再重启浏览器
+        让新连接走新出口。非隧道：标记当前代理失效，重启时从池里挑下一个。
+        """
+        import asyncio
+        from . import tunnel_proxy
+        if tunnel_proxy.is_enabled():
+            await asyncio.to_thread(tunnel_proxy.trigger_ip_change, "playwright restart")
+            await asyncio.sleep(3)  # 等新 IP 生效
+        elif self._current_proxy:
             try:
                 from .anti_block import get_proxy_pool
                 get_proxy_pool().mark_bad(self._current_proxy, "playwright restart")

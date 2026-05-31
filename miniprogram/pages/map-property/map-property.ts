@@ -3,6 +3,7 @@ import { getMapMarkers } from '../../services/property';
 const CITY_CENTERS: Record<number, { lat: number; lng: number }> = {
   310000: { lat: 31.2304, lng: 121.4737 },
   330200: { lat: 29.8683, lng: 121.5440 },
+  330100: { lat: 30.2741, lng: 120.1551 },
 };
 
 Page({

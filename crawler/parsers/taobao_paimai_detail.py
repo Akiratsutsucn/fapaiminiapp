@@ -32,6 +32,7 @@ CATEGORY_MAP = {
 DIVISION_MAP = {
     "310000": "上海",
     "330200": "宁波",
+    "330100": "杭州",
 }
 
 
@@ -67,11 +68,15 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         if "data" in data:
             data = data["data"]
 
-        # Extract nested objects
-        auction_house = data.get("auctionHouse") or {}
-        auction_address = data.get("auctionAddress") or {}
-        ai_structure = data.get("aiStructure") or {}
-        benefit = data.get("benefit") or {}
+        # Extract nested objects（initData 中部分字段可能是 str 而非 dict，需保护）
+        auction_house = data.get("auctionHouse")
+        auction_house = auction_house if isinstance(auction_house, dict) else {}
+        auction_address = data.get("auctionAddress")
+        auction_address = auction_address if isinstance(auction_address, dict) else {}
+        ai_structure = data.get("aiStructure")
+        ai_structure = ai_structure if isinstance(ai_structure, dict) else {}
+        benefit = data.get("benefit")
+        benefit = benefit if isinstance(benefit, dict) else {}
 
         item = AuctionItem(
             source_url=source_url,
@@ -116,9 +121,10 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         item.increment_amount = _cents_to_yuan(data.get("incrementPrice", 0))
         item.latest_total_price = _cents_to_yuan(data.get("currentPriceLong", 0))
 
-        # Appraisal price — use dedicated field, not market_deal_price
+        # Appraisal price — initData 中评估价在 consultPrice（otherPrice 里 CONSULT_PRICE
+        # 的 title 即"评估价"）；旧 MTOP 格式用 appraisalPrice 等字段。
         appr = _safe_get(data, "appraisalPrice", "evaluatePrice", "assessPrice",
-                         "appraisedPrice", "valuationPrice")
+                         "appraisedPrice", "valuationPrice", "consultPrice")
         if appr:
             item.appraisal_price = _cents_to_yuan(appr)
         if not item.appraisal_price and benefit:
@@ -129,14 +135,14 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         if not item.appraisal_price and item.market_deal_price > 0:
             item.appraisal_price = item.market_deal_price
 
-        # Listing min price
-        listing = data.get("consultPrice", 0)
-        if listing:
-            item.listing_min_price = _cents_to_yuan(listing)
-        if not item.listing_min_price:
-            ref_price = benefit.get("referencePrice") or benefit.get("referencePriceCent")
-            if ref_price:
-                item.listing_min_price = _cents_to_yuan(ref_price)
+        # 市场参考价缺失时用评估价兜底（与 deal_reference 逻辑一致）
+        if not item.market_deal_price and item.appraisal_price > 0:
+            item.market_deal_price = item.appraisal_price
+
+        # Listing min price（referencePrice 兜底；consultPrice 已用作评估价）
+        ref_price = benefit.get("referencePrice") or benefit.get("referencePriceCent")
+        if ref_price:
+            item.listing_min_price = _cents_to_yuan(ref_price)
 
         # Loan support
         item.loan_support = bool(
@@ -234,10 +240,8 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
             item.province_city = DIVISION_MAP.get(
                 div_code, divisions[0].get("divisionName", "")
             )
-        elif city_id == 310000:
-            item.province_city = "上海"
-        elif city_id == 330200:
-            item.province_city = "宁波"
+        else:
+            item.province_city = DIVISION_MAP.get(str(city_id), "")
 
         # District from location string: "上海 上海市 长宁区"
         loc = data.get("location", "")
@@ -289,8 +293,17 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         if not item.address:
             item.address = extra.get("address", "")
 
+        # Geolocation: initData 的 latlong=["lng","lat"]（字符串数组）优先
+        latlong = data.get("latlong")
+        if isinstance(latlong, list) and len(latlong) == 2:
+            try:
+                item.lng = float(latlong[0])
+                item.lat = float(latlong[1])
+            except (ValueError, TypeError):
+                pass
+
         # Geolocation from auctionAddress or map data
-        if isinstance(auction_address, dict):
+        if (item.lat is None or item.lng is None) and isinstance(auction_address, dict):
             api_lat = auction_address.get("lat") or auction_address.get("latitude")
             api_lng = auction_address.get("lng") or auction_address.get("longitude")
             if api_lat and api_lng:
@@ -569,13 +582,6 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         parts = []
         if item.description:
             parts.append(item.description)
-
-        # Add key extended info
-        extended = {
-            "loan_support": item.loan_support,
-            "has_attachments": item.has_attachments,
-        }
-        parts.append(f"【扩展信息】{extended}")
 
         item.description = "\n".join(parts)
 

@@ -42,6 +42,7 @@ from crawler.anti_block import http_get_with_retry  # noqa: E402
 CITY_MAP = {
     310000: ("sh", "上海"),
     330200: ("nb", "宁波"),
+    330100: ("hz", "杭州"),
 }
 
 DEFAULT_HEADERS = {
@@ -59,7 +60,15 @@ def city_meta(city_id: int) -> tuple[str, str]:
     return CITY_MAP.get(city_id, CITY_MAP[310000])
 
 
-def _build_headers(city_en: str) -> dict:
+def _city_id_from_en(city_en: str) -> int | None:
+    """城市英文缩写（sh/nb/hz）反查 city_id。"""
+    for cid, (en, _name) in CITY_MAP.items():
+        if en == city_en:
+            return cid
+    return None
+
+
+def _build_sug_headers(city_en: str) -> dict:
     headers = dict(DEFAULT_HEADERS)
     headers["Referer"] = f"https://{city_en}.ke.com/"
     if settings.BEIKE_COOKIE:
@@ -98,7 +107,7 @@ async def search_via_sug_api(
         f"?cityId={city_id}&cityName={quote(city_name)}"
         f"&channel=site&keyword={quote(keyword)}&query={quote(keyword)}"
     )
-    headers = _build_headers(city_en)
+    headers = _build_sug_headers(city_en)
 
     resp = await http_get_with_retry(
         url,
@@ -141,6 +150,86 @@ async def search_via_sug_api(
     return None
 
 
+async def fetch_community_detail(
+    client: httpx.AsyncClient, city_id: int, resblock_id: int
+) -> dict:
+    """抓贝壳小区详情页 hz.ke.com/xiaoqu/{id}/ 并解析富字段。
+
+    返回字段 dict（缺失项不含），失败返回空 dict。用 anti_block 框架做重试+换IP。
+    """
+    city_en, _ = city_meta(city_id)
+    url = f"https://{city_en}.ke.com/xiaoqu/{resblock_id}/"
+    headers = _build_sug_headers(city_en)
+    resp = await http_get_with_retry(
+        url, headers=headers, cookie_str=settings.BEIKE_COOKIE or None,
+        timeout=20, max_retries=3,
+    )
+    if not resp or resp.status_code != 200:
+        return {}
+
+    html = resp.text
+    out: dict = {}
+
+    # label-content 配对（建筑类型/房屋总数/楼栋总数/绿化率/容积率/建成年代/物业费用/物业公司/开发商）
+    pairs = re.findall(
+        r'xiaoquInfoLabel["\'][^>]*>([^<]+)<.*?xiaoquInfoContent["\'][^>]*>([^<]*)',
+        html, re.S,
+    )
+    info = {k.strip(): v.strip() for k, v in pairs}
+
+    def _has(v: str) -> bool:
+        return bool(v) and v not in ("暂无信息", "暂无数据", "-", "—")
+
+    # 均价
+    m = re.search(r'均价[:：]\s*([\d.]+)\s*元', html)
+    if m:
+        out["avg_price"] = _safe_float(m.group(1))
+    # 坐标
+    mm = re.search(r'resblockPosition["\':,\s]+([\d.]+),([\d.]+)', html)
+    if mm:
+        out["lng"] = _safe_float(mm.group(1))
+        out["lat"] = _safe_float(mm.group(2))
+    # 建成年代（"2008年建成" / "2008"）
+    by = info.get("建成年代", "")
+    if _has(by):
+        ym = re.search(r'(\d{4})', by)
+        if ym:
+            out["build_year_start"] = int(ym.group(1))
+    # 房屋总数 / 楼栋总数
+    if _has(info.get("房屋总数", "")):
+        n = _safe_int(info["房屋总数"])
+        if n:
+            out["total_units"] = n
+    if _has(info.get("楼栋总数", "")):
+        n = _safe_int(info["楼栋总数"])
+        if n:
+            out["total_buildings"] = n
+    # 绿化率 / 容积率
+    if _has(info.get("绿化率", "")):
+        gr = re.search(r'([\d.]+)', info["绿化率"])
+        if gr:
+            out["green_rate"] = round(float(gr.group(1)) / 100, 4)
+    if _has(info.get("容积率", "")):
+        pr = re.search(r'([\d.]+)', info["容积率"])
+        if pr:
+            out["plot_ratio"] = float(pr.group(1))
+    # 物业费 / 物业公司 / 开发商 / 建筑类型
+    if _has(info.get("物业费用", "")):
+        out["property_fee"] = info["物业费用"][:64]
+    if _has(info.get("物业公司", "")):
+        out["property_company"] = info["物业公司"][:128]
+    if _has(info.get("开发商", "")):
+        out["developer"] = info["开发商"][:128]
+    if _has(info.get("建筑类型", "")):
+        out["property_type"] = info["建筑类型"][:32]
+    # 在售套数（meta 描述里"在售二手房源N套"）
+    sc = re.search(r'在售二手房源\s*(\d+)\s*套', html)
+    if sc:
+        out["on_sale_count"] = int(sc.group(1))
+
+    return out
+
+
 def build_description(c: CommunityInfo, standard_name: str | None = None) -> str:
     """根据已知字段拼装一段用户友好的小区简介。"""
     parts: list[str] = []
@@ -150,7 +239,8 @@ def build_description(c: CommunityInfo, standard_name: str | None = None) -> str
         intro += f"（贝壳收录名：{standard_name}）"
     if c.sub_district or c.district:
         loc = " · ".join(filter(None, [c.district, c.sub_district]))
-        intro += f"，位于上海{loc}板块"
+        city_name = city_meta(c.city_id)[1] if getattr(c, "city_id", None) else "上海"
+        intro += f"，位于{city_name}{loc}板块"
     intro += "。"
     parts.append(intro)
 
@@ -171,6 +261,7 @@ async def upsert_community(
     fallback_name: str,
     city_id: int,
     sug_data: dict,
+    detail: dict | None = None,
 ) -> CommunityInfo:
     """根据 fallback_name (即数据库里 property.community_name) 做 upsert。
 
@@ -217,6 +308,20 @@ async def upsert_community(
         )
         db.add(c)
 
+    # 写入详情页富字段（仅覆盖抓到的，不清空已有）
+    detail = detail or {}
+    _DETAIL_FIELDS = (
+        "avg_price", "lat", "lng", "build_year_start", "total_units",
+        "total_buildings", "green_rate", "plot_ratio", "property_fee",
+        "property_company", "developer", "property_type", "on_sale_count",
+    )
+    for f in _DETAIL_FIELDS:
+        if detail.get(f) is not None:
+            setattr(c, f, detail[f])
+    if detail:
+        c.source = "beike-detail"
+        c.price_update_at = now
+
     # 描述里展示贝壳标准名（让用户感知到匹配关系）
     c.description = build_description(c, standard_name=standard_name)
     await db.commit()
@@ -247,12 +352,24 @@ async def crawl_one(
         return None
 
     logger.info(f"[beike] 命中: '{community_name}' → '{sug['name']}' (id={sug['id']})")
+    # 抓详情页富字段（均价/建成年代/户数/物业费/容积率等）
+    detail: dict = {}
+    try:
+        detail = await fetch_community_detail(client, city_id, sug["id"])
+        if detail:
+            logger.info(f"[beike] 详情页解析到 {len(detail)} 个字段: {list(detail.keys())}")
+        else:
+            logger.warning(f"[beike] 详情页未解析到富字段（id={sug['id']}），仅存基础信息")
+    except Exception as e:
+        logger.warning(f"[beike] 详情页抓取异常 id={sug['id']}: {e}")
+
     return await upsert_community(
         db,
         name=sug["name"],
         fallback_name=community_name,
         city_id=city_id,
         sug_data=sug,
+        detail=detail,
     )
 
 
@@ -284,7 +401,8 @@ async def backfill_all(
             .distinct()
         )
         if city:
-            cid = 310000 if city == "上海" else 330200
+            from crawler.cleaners.city import standardize_city
+            _, cid = standardize_city(city)
             q = q.where(Property.city_id == cid)
 
         rows = (await db.execute(q)).all()
@@ -369,8 +487,10 @@ from crawler.config import settings  # noqa: E402
 BEIKE_CITY_MAP = {
     "上海": "sh",
     "宁波": "nb",
+    "杭州": "hz",
     310000: "sh",
     330200: "nb",
+    330100: "hz",
 }
 
 DEFAULT_HEADERS = {
@@ -396,6 +516,39 @@ def _build_headers() -> dict:
     return headers
 
 
+# === 代理 + 验证墙检测（D 方案：靠住宅代理 IP 池绕过 IP 风控）===
+# 贝壳/链家撞验证时会 302 跳到 captcha 域名，或返回验证页关键词。
+_CAPTCHA_HOST_HINTS = ("captcha", "hip.ke.com", "antirobot", "verify")
+_CAPTCHA_TEXT_HINTS = ("人机验证", "安全验证", "请完成验证", "滑块", "请输入验证码")
+
+
+def _make_client(proxy: str | None) -> httpx.AsyncClient:
+    """创建 httpx client，可选走代理。proxy 为 None 时直连（无代理则退化为原行为）。"""
+    kwargs = dict(headers=_build_headers(), follow_redirects=True, timeout=25)
+    if proxy:
+        kwargs["proxy"] = proxy
+    return httpx.AsyncClient(**kwargs)
+
+
+def _is_captcha_response(resp) -> bool:
+    """判断响应是否被风控拦到验证页。"""
+    try:
+        final = str(resp.url).lower()
+        if any(h in final for h in _CAPTCHA_HOST_HINTS):
+            return True
+        # 验证页通常很短且含验证关键词
+        if resp.status_code in (202, 403) and len(resp.text) < 4000:
+            return True
+        head = resp.text[:3000]
+        return any(t in head for t in _CAPTCHA_TEXT_HINTS)
+    except Exception:
+        return False
+
+
+class CaptchaBlocked(Exception):
+    """命中验证墙，需更换代理 IP。"""
+
+
 def _safe_int(text: str) -> int | None:
     if not text:
         return None
@@ -413,10 +566,39 @@ def _safe_float(text: str) -> float | None:
 async def search_community(
     client: httpx.AsyncClient, city_en: str, name: str
 ) -> dict | None:
-    """在贝壳搜索小区，返回首条匹配的简要信息（avg_price / detail_url / 在售数）。"""
+    """在贝壳搜索小区，返回首条匹配的简要信息（avg_price / detail_url / 在售数）。
+
+    优先用 sug API（ajax.api.ke.com，经代理稳定可用）定位小区 id，再构造
+    /xiaoqu/{id}/ 详情页 URL；sug 拿不到时回退到搜索列表页（反爬较严）。
+    """
+    city_id = _city_id_from_en(city_en)
+    # 1) 优先 sug API（稳定）
+    if city_id:
+        try:
+            sug = await search_via_sug_api(client, city_id, name)
+            if not sug:
+                simplified = re.sub(r"\d+弄.*$", "", name).strip()
+                if simplified and simplified != name and len(simplified) >= 2:
+                    sug = await search_via_sug_api(client, city_id, simplified)
+            if sug and sug.get("id"):
+                return {
+                    "found_name": sug.get("name") or name,
+                    "avg_price": 0,
+                    "on_sale_count": 0,
+                    "detail_url": f"https://{city_en}.ke.com/xiaoqu/{sug['id']}/",
+                }
+        except Exception as e:
+            logger.warning(f"[beike] sug 定位异常 '{name}': {e}")
+
+    # 2) 回退：搜索列表页（反爬较严，可能撞验证墙）
     search_url = f"https://{city_en}.ke.com/xiaoqu/rs{quote(name)}/"
     try:
         resp = await client.get(search_url, timeout=20)
+
+        # 命中验证墙 → 抛出让上层换代理
+        if _is_captcha_response(resp):
+            raise CaptchaBlocked(search_url)
+
         if resp.status_code != 200:
             logger.warning(f"[beike] search 状态码 {resp.status_code}: {search_url}")
             return None
@@ -466,6 +648,8 @@ async def search_community(
                 "on_sale_count": on_sale_count or 0,
                 "detail_url": detail_url,
             }
+    except CaptchaBlocked:
+        raise
     except Exception as e:
         logger.warning(f"[beike] search 异常 '{name}': {e}")
     return None
@@ -480,6 +664,10 @@ async def fetch_detail_page(client: httpx.AsyncClient, url: str) -> dict:
 
     try:
         resp = await client.get(url, timeout=25)
+
+        if _is_captcha_response(resp):
+            raise CaptchaBlocked(url)
+
         if resp.status_code != 200:
             logger.warning(f"[beike] detail 状态码 {resp.status_code}: {url}")
             return info
@@ -566,6 +754,8 @@ async def fetch_detail_page(client: httpx.AsyncClient, url: str) -> dict:
                 info["recent_deal_count_30d"] = count
 
         return info
+    except CaptchaBlocked:
+        raise
     except Exception as e:
         logger.warning(f"[beike] detail 异常 {url}: {e}")
         return info
@@ -713,8 +903,29 @@ async def crawl_for_property(property_id: int) -> CommunityInfo | None:
             logger.warning(f"[beike] 房源 {property_id} 不存在或无小区名")
             return None
 
-        async with httpx.AsyncClient(headers=_build_headers(), follow_redirects=True) as client:
-            return await crawl_one(client, db, p.community_name, p.district or "", p.city_id or 310000)
+        from .anti_block import get_proxy_pool
+        from . import tunnel_proxy
+        pool = get_proxy_pool()
+        proxy = pool.get() if pool.has_proxies() else None
+
+        # 撞验证墙时换出口 IP 重试（隧道代理：入口不变，换出口）
+        max_attempts = 4 if tunnel_proxy.is_enabled() else 1
+        for attempt in range(max_attempts):
+            client = _make_client(proxy)
+            try:
+                return await crawl_one(client, db, p.community_name, p.district or "", p.city_id or 310000)
+            except CaptchaBlocked as e:
+                if tunnel_proxy.is_enabled() and attempt < max_attempts - 1:
+                    logger.warning(f"[beike] 撞验证墙(第{attempt+1}次)，换IP重试：{e}")
+                    await asyncio.to_thread(tunnel_proxy.trigger_ip_change, "beike captcha", force=True)
+                    await asyncio.sleep(4)
+                    continue
+                pool.mark_bad(proxy, reason="captcha")
+                logger.error(f"[beike] 单房源抓取撞验证墙：{e}（已换IP仍被封或无代理）")
+                return None
+            finally:
+                await client.aclose()
+        return None
     finally:
         await db.close()
 
@@ -734,7 +945,8 @@ async def backfill_all(city: str | None = None, limit: int = 50, force: bool = F
             .distinct()
         )
         if city:
-            cid = 310000 if city == "上海" else 330200
+            from crawler.cleaners.city import standardize_city
+            _, cid = standardize_city(city)
             q = q.where(Property.city_id == cid)
 
         rows = (await db.execute(q)).all()
@@ -750,7 +962,20 @@ async def backfill_all(city: str | None = None, limit: int = 50, force: bool = F
 
         cutoff = datetime.now() - timedelta(days=30)
 
-        async with httpx.AsyncClient(headers=_build_headers(), follow_redirects=True) as client:
+        # === 代理池接入（D 方案）===
+        from .anti_block import get_proxy_pool
+        pool = get_proxy_pool()
+        proxy = pool.get() if pool.has_proxies() else None
+        if pool.has_proxies():
+            logger.info(f"[beike] 启用代理池，当前代理：{proxy}")
+        else:
+            logger.warning("[beike] 未配置 PROXY_POOL，直连抓取（贝壳风控下大概率撞验证墙）")
+
+        client = _make_client(proxy)
+        # 连续撞墙计数：换了 N 个代理仍撞墙就早停，不空跑
+        captcha_streak = 0
+        MAX_CAPTCHA_STREAK = 3
+        try:
             for name, district, city_id in target_list:
                 # 命中缓存（30 天内已抓过）
                 if not force:
@@ -768,11 +993,45 @@ async def backfill_all(city: str | None = None, limit: int = 50, force: bool = F
                     c = await crawl_one(client, db, name, district, city_id)
                     if c:
                         updated += 1
+                    captcha_streak = 0  # 成功一次就清零
+                except CaptchaBlocked as e:
+                    captcha_streak += 1
+                    logger.warning(f"[beike] 撞验证墙({captcha_streak}/{MAX_CAPTCHA_STREAK}) {e}")
+                    from . import tunnel_proxy
+                    # 隧道代理：换出口 IP 后重建 client（入口不变）
+                    if tunnel_proxy.is_enabled():
+                        if captcha_streak >= MAX_CAPTCHA_STREAK:
+                            logger.error(f"[beike] 连续 {MAX_CAPTCHA_STREAK} 次撞墙（已换IP仍被封）→ 早停")
+                            break
+                        await asyncio.to_thread(tunnel_proxy.trigger_ip_change, "beike captcha")
+                        await asyncio.sleep(3)
+                        await client.aclose()
+                        client = _make_client(proxy)  # 入口不变，新出口已生效
+                        logger.info("[beike] 已换出口IP，重建 client 继续")
+                        continue
+                    if not pool.has_proxies():
+                        logger.error("[beike] 无代理可换，且已撞验证墙 → 终止贝壳抓取")
+                        break
+                    pool.mark_bad(proxy, reason="captcha")
+                    if captcha_streak >= MAX_CAPTCHA_STREAK:
+                        logger.error(f"[beike] 连续 {MAX_CAPTCHA_STREAK} 次撞墙，所有代理疑似被封 → 早停")
+                        break
+                    # 换下一个代理重建 client
+                    await client.aclose()
+                    proxy = pool.get()
+                    if not proxy:
+                        logger.error("[beike] 代理池已无可用 IP（全部冷却中）→ 早停")
+                        break
+                    logger.info(f"[beike] 切换代理：{proxy}")
+                    client = _make_client(proxy)
+                    continue
                 except Exception as e:
                     logger.error(f"[beike] crawl_one 异常 {name}: {e}")
 
                 # 速率限制：4-6s
                 await asyncio.sleep(5)
+        finally:
+            await client.aclose()
     finally:
         await db.close()
 

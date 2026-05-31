@@ -13,6 +13,7 @@ Usage:
     # City-specific
     python -m crawler.main --city 上海
     python -m crawler.main --city 宁波
+    python -m crawler.main --city 杭州
 
     # Combined
     python -m crawler.main --source taobao --city 上海
@@ -76,8 +77,8 @@ Examples:
     )
     parser.add_argument(
         "--city", "-c",
-        choices=["上海", "宁波"],
-        help="Target city (default: both)",
+        choices=["上海", "宁波", "杭州"],
+        help="Target city (default: all)",
     )
     parser.add_argument(
         "--max-pages", type=int, default=50,

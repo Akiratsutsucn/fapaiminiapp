@@ -8,6 +8,7 @@ from .base import AbstractParser
 from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
+from ..cleaners.city import city_name_by_id
 
 
 class GPaiDetailParser(AbstractParser):
@@ -41,7 +42,7 @@ class GPaiDetailParser(AbstractParser):
             source_url=source_url,
             auction_platform=Platform.GPAI.value,
             city_id=city_id,
-            province_city="上海" if city_id == 310000 else "宁波",
+            province_city=city_name_by_id(city_id) or "上海",
         )
 
         item.title = self._extract_title(soup, extra)
@@ -617,11 +618,6 @@ class GPaiDetailParser(AbstractParser):
                 if len(desc) > 50:
                     parts.append(desc)
 
-        extended = {
-            "loan_support": item.loan_support,
-            "has_attachments": item.has_attachments,
-        }
-        parts.append(f"【扩展信息】{extended}")
         item.description = "\n".join(parts)
 
     # ============================================================

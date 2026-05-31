@@ -552,265 +552,276 @@ const __VLS_146 = __VLS_145({
     value: "330200",
     label: "宁波",
 }, ...__VLS_functionalComponentArgsRest(__VLS_145));
+const __VLS_148 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+// @ts-ignore
+const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
+    value: "330100",
+    label: "杭州",
+}));
+const __VLS_150 = __VLS_149({
+    value: "330100",
+    label: "杭州",
+}, ...__VLS_functionalComponentArgsRest(__VLS_149));
 var __VLS_139;
 var __VLS_135;
 if (__VLS_ctx.editForm.role === 'agent') {
-    const __VLS_148 = {}.TFormItem;
+    const __VLS_152 = {}.TFormItem;
     /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
-    // @ts-ignore
-    const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
-        label: "负责地区",
-    }));
-    const __VLS_150 = __VLS_149({
-        label: "负责地区",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_149));
-    __VLS_151.slots.default;
-    const __VLS_152 = {}.TInput;
-    /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
     // @ts-ignore
     const __VLS_153 = __VLS_asFunctionalComponent(__VLS_152, new __VLS_152({
-        modelValue: (__VLS_ctx.editForm.region),
-        placeholder: "如：上海市长宁区",
+        label: "负责地区",
     }));
     const __VLS_154 = __VLS_153({
-        modelValue: (__VLS_ctx.editForm.region),
-        placeholder: "如：上海市长宁区",
+        label: "负责地区",
     }, ...__VLS_functionalComponentArgsRest(__VLS_153));
-    var __VLS_151;
-}
-if (__VLS_ctx.editForm.role === 'customer') {
-    const __VLS_156 = {}.TFormItem;
-    /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+    __VLS_155.slots.default;
+    const __VLS_156 = {}.TInput;
+    /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
     // @ts-ignore
     const __VLS_157 = __VLS_asFunctionalComponent(__VLS_156, new __VLS_156({
-        label: "邀请人ID",
+        modelValue: (__VLS_ctx.editForm.region),
+        placeholder: "如：上海市长宁区",
     }));
     const __VLS_158 = __VLS_157({
-        label: "邀请人ID",
+        modelValue: (__VLS_ctx.editForm.region),
+        placeholder: "如：上海市长宁区",
     }, ...__VLS_functionalComponentArgsRest(__VLS_157));
-    __VLS_159.slots.default;
-    const __VLS_160 = {}.TInputNumber;
-    /** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+    var __VLS_155;
+}
+if (__VLS_ctx.editForm.role === 'customer') {
+    const __VLS_160 = {}.TFormItem;
+    /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
     // @ts-ignore
     const __VLS_161 = __VLS_asFunctionalComponent(__VLS_160, new __VLS_160({
+        label: "邀请人ID",
+    }));
+    const __VLS_162 = __VLS_161({
+        label: "邀请人ID",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_161));
+    __VLS_163.slots.default;
+    const __VLS_164 = {}.TInputNumber;
+    /** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+    // @ts-ignore
+    const __VLS_165 = __VLS_asFunctionalComponent(__VLS_164, new __VLS_164({
         modelValue: (__VLS_ctx.editForm.inviter_id),
         placeholder: "邀请该客户的代理商 ID",
         min: (0),
     }));
-    const __VLS_162 = __VLS_161({
+    const __VLS_166 = __VLS_165({
         modelValue: (__VLS_ctx.editForm.inviter_id),
         placeholder: "邀请该客户的代理商 ID",
         min: (0),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_161));
-    var __VLS_159;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_165));
+    var __VLS_163;
 }
 var __VLS_95;
 var __VLS_87;
-const __VLS_164 = {}.TDialog;
+const __VLS_168 = {}.TDialog;
 /** @type {[typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, ]} */ ;
 // @ts-ignore
-const __VLS_165 = __VLS_asFunctionalComponent(__VLS_164, new __VLS_164({
+const __VLS_169 = __VLS_asFunctionalComponent(__VLS_168, new __VLS_168({
     ...{ 'onConfirm': {} },
     visible: (__VLS_ctx.createVisible),
     header: "新增用户",
     width: "500px",
 }));
-const __VLS_166 = __VLS_165({
+const __VLS_170 = __VLS_169({
     ...{ 'onConfirm': {} },
     visible: (__VLS_ctx.createVisible),
     header: "新增用户",
     width: "500px",
-}, ...__VLS_functionalComponentArgsRest(__VLS_165));
-let __VLS_168;
-let __VLS_169;
-let __VLS_170;
-const __VLS_171 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_169));
+let __VLS_172;
+let __VLS_173;
+let __VLS_174;
+const __VLS_175 = {
     onConfirm: (__VLS_ctx.onSaveCreate)
 };
-__VLS_167.slots.default;
-const __VLS_172 = {}.TForm;
+__VLS_171.slots.default;
+const __VLS_176 = {}.TForm;
 /** @type {[typeof __VLS_components.TForm, typeof __VLS_components.tForm, typeof __VLS_components.TForm, typeof __VLS_components.tForm, ]} */ ;
 // @ts-ignore
-const __VLS_173 = __VLS_asFunctionalComponent(__VLS_172, new __VLS_172({
-    data: (__VLS_ctx.createForm),
-    labelWidth: "90px",
-}));
-const __VLS_174 = __VLS_173({
-    data: (__VLS_ctx.createForm),
-    labelWidth: "90px",
-}, ...__VLS_functionalComponentArgsRest(__VLS_173));
-__VLS_175.slots.default;
-const __VLS_176 = {}.TFormItem;
-/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
-// @ts-ignore
 const __VLS_177 = __VLS_asFunctionalComponent(__VLS_176, new __VLS_176({
-    label: "昵称",
+    data: (__VLS_ctx.createForm),
+    labelWidth: "90px",
 }));
 const __VLS_178 = __VLS_177({
-    label: "昵称",
+    data: (__VLS_ctx.createForm),
+    labelWidth: "90px",
 }, ...__VLS_functionalComponentArgsRest(__VLS_177));
 __VLS_179.slots.default;
-const __VLS_180 = {}.TInput;
-/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
+const __VLS_180 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_181 = __VLS_asFunctionalComponent(__VLS_180, new __VLS_180({
-    modelValue: (__VLS_ctx.createForm.nickname),
+    label: "昵称",
 }));
 const __VLS_182 = __VLS_181({
-    modelValue: (__VLS_ctx.createForm.nickname),
+    label: "昵称",
 }, ...__VLS_functionalComponentArgsRest(__VLS_181));
-var __VLS_179;
-const __VLS_184 = {}.TFormItem;
-/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
-// @ts-ignore
-const __VLS_185 = __VLS_asFunctionalComponent(__VLS_184, new __VLS_184({
-    label: "手机号",
-}));
-const __VLS_186 = __VLS_185({
-    label: "手机号",
-}, ...__VLS_functionalComponentArgsRest(__VLS_185));
-__VLS_187.slots.default;
-const __VLS_188 = {}.TInput;
+__VLS_183.slots.default;
+const __VLS_184 = {}.TInput;
 /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
 // @ts-ignore
-const __VLS_189 = __VLS_asFunctionalComponent(__VLS_188, new __VLS_188({
-    modelValue: (__VLS_ctx.createForm.phone),
+const __VLS_185 = __VLS_asFunctionalComponent(__VLS_184, new __VLS_184({
+    modelValue: (__VLS_ctx.createForm.nickname),
 }));
-const __VLS_190 = __VLS_189({
-    modelValue: (__VLS_ctx.createForm.phone),
-}, ...__VLS_functionalComponentArgsRest(__VLS_189));
-var __VLS_187;
-const __VLS_192 = {}.TFormItem;
+const __VLS_186 = __VLS_185({
+    modelValue: (__VLS_ctx.createForm.nickname),
+}, ...__VLS_functionalComponentArgsRest(__VLS_185));
+var __VLS_183;
+const __VLS_188 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
+const __VLS_189 = __VLS_asFunctionalComponent(__VLS_188, new __VLS_188({
+    label: "手机号",
+}));
+const __VLS_190 = __VLS_189({
+    label: "手机号",
+}, ...__VLS_functionalComponentArgsRest(__VLS_189));
+__VLS_191.slots.default;
+const __VLS_192 = {}.TInput;
+/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
+// @ts-ignore
 const __VLS_193 = __VLS_asFunctionalComponent(__VLS_192, new __VLS_192({
-    label: "角色",
+    modelValue: (__VLS_ctx.createForm.phone),
 }));
 const __VLS_194 = __VLS_193({
-    label: "角色",
+    modelValue: (__VLS_ctx.createForm.phone),
 }, ...__VLS_functionalComponentArgsRest(__VLS_193));
-__VLS_195.slots.default;
-const __VLS_196 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+var __VLS_191;
+const __VLS_196 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_197 = __VLS_asFunctionalComponent(__VLS_196, new __VLS_196({
-    modelValue: (__VLS_ctx.createForm.role),
+    label: "角色",
 }));
 const __VLS_198 = __VLS_197({
-    modelValue: (__VLS_ctx.createForm.role),
+    label: "角色",
 }, ...__VLS_functionalComponentArgsRest(__VLS_197));
 __VLS_199.slots.default;
-const __VLS_200 = {}.TOption;
-/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+const __VLS_200 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
 // @ts-ignore
 const __VLS_201 = __VLS_asFunctionalComponent(__VLS_200, new __VLS_200({
-    value: "customer",
-    label: "客户",
+    modelValue: (__VLS_ctx.createForm.role),
 }));
 const __VLS_202 = __VLS_201({
-    value: "customer",
-    label: "客户",
+    modelValue: (__VLS_ctx.createForm.role),
 }, ...__VLS_functionalComponentArgsRest(__VLS_201));
+__VLS_203.slots.default;
 const __VLS_204 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_205 = __VLS_asFunctionalComponent(__VLS_204, new __VLS_204({
-    value: "agent",
-    label: "代理商",
+    value: "customer",
+    label: "客户",
 }));
 const __VLS_206 = __VLS_205({
-    value: "agent",
-    label: "代理商",
+    value: "customer",
+    label: "客户",
 }, ...__VLS_functionalComponentArgsRest(__VLS_205));
 const __VLS_208 = {}.TOption;
 /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_209 = __VLS_asFunctionalComponent(__VLS_208, new __VLS_208({
-    value: "admin",
-    label: "管理员",
+    value: "agent",
+    label: "代理商",
 }));
 const __VLS_210 = __VLS_209({
+    value: "agent",
+    label: "代理商",
+}, ...__VLS_functionalComponentArgsRest(__VLS_209));
+const __VLS_212 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+// @ts-ignore
+const __VLS_213 = __VLS_asFunctionalComponent(__VLS_212, new __VLS_212({
     value: "admin",
     label: "管理员",
-}, ...__VLS_functionalComponentArgsRest(__VLS_209));
+}));
+const __VLS_214 = __VLS_213({
+    value: "admin",
+    label: "管理员",
+}, ...__VLS_functionalComponentArgsRest(__VLS_213));
+var __VLS_203;
 var __VLS_199;
-var __VLS_195;
 if (__VLS_ctx.createForm.role === 'agent') {
-    const __VLS_212 = {}.TFormItem;
+    const __VLS_216 = {}.TFormItem;
     /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
-    // @ts-ignore
-    const __VLS_213 = __VLS_asFunctionalComponent(__VLS_212, new __VLS_212({
-        label: "负责地区",
-    }));
-    const __VLS_214 = __VLS_213({
-        label: "负责地区",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_213));
-    __VLS_215.slots.default;
-    const __VLS_216 = {}.TInput;
-    /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
     // @ts-ignore
     const __VLS_217 = __VLS_asFunctionalComponent(__VLS_216, new __VLS_216({
-        modelValue: (__VLS_ctx.createForm.region),
-        placeholder: "如：上海市长宁区",
+        label: "负责地区",
     }));
     const __VLS_218 = __VLS_217({
-        modelValue: (__VLS_ctx.createForm.region),
-        placeholder: "如：上海市长宁区",
+        label: "负责地区",
     }, ...__VLS_functionalComponentArgsRest(__VLS_217));
-    var __VLS_215;
-}
-if (__VLS_ctx.createForm.role === 'customer') {
-    const __VLS_220 = {}.TFormItem;
-    /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+    __VLS_219.slots.default;
+    const __VLS_220 = {}.TInput;
+    /** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
     // @ts-ignore
     const __VLS_221 = __VLS_asFunctionalComponent(__VLS_220, new __VLS_220({
-        label: "邀请人ID",
+        modelValue: (__VLS_ctx.createForm.region),
+        placeholder: "如：上海市长宁区",
     }));
     const __VLS_222 = __VLS_221({
-        label: "邀请人ID",
+        modelValue: (__VLS_ctx.createForm.region),
+        placeholder: "如：上海市长宁区",
     }, ...__VLS_functionalComponentArgsRest(__VLS_221));
-    __VLS_223.slots.default;
-    const __VLS_224 = {}.TInputNumber;
-    /** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+    var __VLS_219;
+}
+if (__VLS_ctx.createForm.role === 'customer') {
+    const __VLS_224 = {}.TFormItem;
+    /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
     // @ts-ignore
     const __VLS_225 = __VLS_asFunctionalComponent(__VLS_224, new __VLS_224({
+        label: "邀请人ID",
+    }));
+    const __VLS_226 = __VLS_225({
+        label: "邀请人ID",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_225));
+    __VLS_227.slots.default;
+    const __VLS_228 = {}.TInputNumber;
+    /** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+    // @ts-ignore
+    const __VLS_229 = __VLS_asFunctionalComponent(__VLS_228, new __VLS_228({
         modelValue: (__VLS_ctx.createForm.inviter_id),
         placeholder: "邀请该客户的代理商 ID",
         min: (0),
     }));
-    const __VLS_226 = __VLS_225({
+    const __VLS_230 = __VLS_229({
         modelValue: (__VLS_ctx.createForm.inviter_id),
         placeholder: "邀请该客户的代理商 ID",
         min: (0),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_225));
-    var __VLS_223;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_229));
+    var __VLS_227;
 }
-const __VLS_228 = {}.TFormItem;
+const __VLS_232 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
-const __VLS_229 = __VLS_asFunctionalComponent(__VLS_228, new __VLS_228({
-    label: "密码",
-}));
-const __VLS_230 = __VLS_229({
-    label: "密码",
-}, ...__VLS_functionalComponentArgsRest(__VLS_229));
-__VLS_231.slots.default;
-const __VLS_232 = {}.TInput;
-/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
-// @ts-ignore
 const __VLS_233 = __VLS_asFunctionalComponent(__VLS_232, new __VLS_232({
-    modelValue: (__VLS_ctx.createForm.password),
-    type: "password",
-    placeholder: "默认 123456",
+    label: "密码",
 }));
 const __VLS_234 = __VLS_233({
+    label: "密码",
+}, ...__VLS_functionalComponentArgsRest(__VLS_233));
+__VLS_235.slots.default;
+const __VLS_236 = {}.TInput;
+/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
+// @ts-ignore
+const __VLS_237 = __VLS_asFunctionalComponent(__VLS_236, new __VLS_236({
     modelValue: (__VLS_ctx.createForm.password),
     type: "password",
     placeholder: "默认 123456",
-}, ...__VLS_functionalComponentArgsRest(__VLS_233));
-var __VLS_231;
-var __VLS_175;
-var __VLS_167;
+}));
+const __VLS_238 = __VLS_237({
+    modelValue: (__VLS_ctx.createForm.password),
+    type: "password",
+    placeholder: "默认 123456",
+}, ...__VLS_functionalComponentArgsRest(__VLS_237));
+var __VLS_235;
+var __VLS_179;
+var __VLS_171;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;

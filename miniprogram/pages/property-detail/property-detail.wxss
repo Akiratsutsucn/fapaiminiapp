@@ -446,12 +446,11 @@
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: #C29A4B;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
+  background-color: #C29A4B;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDJsMi45IDYuMjZMMjIgOS4yN2wtNSA0Ljg3TDE4LjE4IDIyIDEyIDE4LjU2IDUuODIgMjIgNyAxNC4xNGwtNS00Ljg3IDcuMS0xLjAxeiIvPjwvc3ZnPg==");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28rpx 28rpx;
   margin-right: var(--spacing-xs);
 }
 .commentary-title {

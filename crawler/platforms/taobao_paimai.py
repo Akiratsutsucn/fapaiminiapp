@@ -47,9 +47,16 @@ def compute_mtop_sign(token: str, t: str, app_key: str, data: str) -> str:
 
 
 def _extract_token(cookie_str: str) -> str:
+    """从 cookie 提取 _m_h5_tk token。
+
+    扫码登录拿到的 cookie 通常不含 _m_h5_tk —— 该 token 是首次访问 MTOP
+    H5 接口（h5api.m.taobao.com）时由 Set-Cookie 下发的。此时返回空串，
+    由 collect_list_items 的首次请求触发 _refresh_token_from_response 自动获取。
+    """
     m = re.search(r"_m_h5_tk=([^_;]+)", cookie_str)
     if not m:
-        raise ValueError("_m_h5_tk cookie not found in TAOBAO_COOKIE")
+        logger.warning("[TaobaoPaiMai] cookie 暂无 _m_h5_tk，将在首次 MTOP 请求时自动获取")
+        return ""
     return m.group(1).split("_")[0]
 
 
@@ -142,6 +149,53 @@ def _parse_jsonp(body: str) -> dict:
     return json.loads(body)
 
 
+def _extract_suspense_init_data(html: str) -> dict | None:
+    """从新版详情页 HTML 提取 window.__ICE_SUSPENSE_LOADER__.set(..., {initData:{...}})
+    里的 initData 字典。用括号配平截取完整 JSON（贪婪正则不可靠）。
+
+    initData 即结构化房源数据（startPrice/consultPrice 单位为分，imageList、
+    divisions、associatedUnit 等），供 TaobaoPaiMaiDetailParser 解析。
+    """
+    marker = "__ICE_SUSPENSE_LOADER__.set("
+    idx = html.find(marker)
+    if idx < 0:
+        return None
+    start = html.find("{", idx)
+    if start < 0:
+        return None
+    depth = 0
+    instr = False
+    esc = False
+    end = -1
+    for i in range(start, len(html)):
+        ch = html[i]
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            instr = not instr
+            continue
+        if instr:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end < 0:
+        return None
+    try:
+        obj = json.loads(html[start:end])
+    except (json.JSONDecodeError, ValueError):
+        return None
+    return obj.get("initData") or None
+
+
 class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     """Crawler for the new PaiMai platform via MTOP API."""
 
@@ -212,13 +266,30 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._token = new_token
         # 同时更新 cookie 字符串中的 _m_h5_tk
         if self._http_client:
-            self._cookie_str = re.sub(
-                r"_m_h5_tk=[^;]+",
-                f"_m_h5_tk={new_token_full}",
-                self._cookie_str,
-            )
+            if "_m_h5_tk=" in self._cookie_str:
+                # 已存在 → 替换
+                self._cookie_str = re.sub(
+                    r"_m_h5_tk=[^;]+",
+                    f"_m_h5_tk={new_token_full}",
+                    self._cookie_str,
+                )
+            else:
+                # 不存在（扫码登录的 cookie 无 _m_h5_tk）→ 追加，否则服务器报 TOKEN_EMPTY
+                sep = "; " if self._cookie_str.strip() else ""
+                self._cookie_str = f"{self._cookie_str}{sep}_m_h5_tk={new_token_full}"
+            # _m_h5_tk_enc 也一并同步（部分接口校验）
+            enc_full = resp.cookies.get("_m_h5_tk_enc", "")
+            if enc_full:
+                if "_m_h5_tk_enc=" in self._cookie_str:
+                    self._cookie_str = re.sub(
+                        r"_m_h5_tk_enc=[^;]+",
+                        f"_m_h5_tk_enc={enc_full}",
+                        self._cookie_str,
+                    )
+                else:
+                    self._cookie_str = f"{self._cookie_str}; _m_h5_tk_enc={enc_full}"
             self._http_client.headers["Cookie"] = self._cookie_str
-        logger.info(f"[TaobaoPaiMai] Token refreshed: {old[:8]}... -> {new_token[:8]}...")
+        logger.info(f"[TaobaoPaiMai] Token refreshed: {old[:8] if old else '(empty)'}... -> {new_token[:8]}...")
         return True
 
     @retry_on_failure(max_retries=3, backoff_factor=2.0)
@@ -320,9 +391,16 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         if isinstance(benefits, list):
             for b in benefits:
                 if isinstance(b, str) and b in (
+                    # 上海
                     "黄浦", "徐汇", "长宁", "静安", "普陀", "虹口", "杨浦",
                     "浦东", "闵行", "宝山", "嘉定", "金山", "松江", "青浦",
                     "奉贤", "崇明", "上海",
+                    # 宁波
+                    "海曙", "江北", "北仑", "镇海", "鄞州", "奉化",
+                    "象山", "宁海", "余姚", "慈溪", "宁波",
+                    # 杭州
+                    "上城", "拱墅", "西湖", "滨江", "萧山", "余杭",
+                    "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德", "杭州",
                 ):
                     district = b
                     break
@@ -444,15 +522,25 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
         for attempt in range(2):
             try:
-                await page.goto(url, wait_until="networkidle", timeout=45000)
-            except Exception:
-                try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                except Exception as e:
-                    logger.warning(f"[TaobaoPaiMai] SSR goto failed: {e}")
-                    return None
+                # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            except Exception as e:
+                logger.warning(f"[TaobaoPaiMai] SSR goto failed (attempt {attempt}): {e}")
+                if attempt == 0:
+                    continue
+                return None
 
-            await asyncio.sleep(4 if attempt == 0 else 6)
+            await asyncio.sleep(3 if attempt == 0 else 5)
+
+            # initData 在 HTML 源码里（不依赖渲染），优先提取
+            try:
+                full_html = await page.content()
+                init_data = _extract_suspense_init_data(full_html)
+                if init_data and (init_data.get("title") or init_data.get("realTitle")):
+                    logger.debug(f"[TaobaoPaiMai] initData found for {item_id}")
+                    return {"data": init_data}
+            except Exception as e:
+                logger.debug(f"[TaobaoPaiMai] initData attempt {attempt} failed: {e}")
 
             # Evaluate DOM to check if real data rendered
             result = await page.evaluate("""() => {
@@ -511,9 +599,22 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     async def _parse_ssr_dom(self, page, item_id: str) -> dict | None:
         """Extract structured auction data from rendered SSR DOM.
 
-        Tries multiple sources: embedded JSON in <script>, window globals,
-        and parsing visible text nodes.
+        首选：从页面 HTML 的 window.__ICE_SUSPENSE_LOADER__.set('dzc-detail-ssr',
+        {initData:{...}}) 提取结构化数据（新版页面的真实数据源）。
+        回退：旧版的 script JSON / window 全局 / 可见文本。
         """
+        # === 首选：__ICE_SUSPENSE_LOADER__ initData ===
+        try:
+            full_html = await page.content()
+            init_data = _extract_suspense_init_data(full_html)
+            if init_data and (init_data.get("title") or init_data.get("realTitle")):
+                logger.debug(f"[TaobaoPaiMai] initData extracted for {item_id}")
+                # TaobaoPaiMaiDetailParser 解析时会 data = api_data.get('data', api_data)，
+                # initData 本身即扁平结构，包一层 data 以兼容。
+                return {"data": init_data}
+        except Exception as e:
+            logger.debug(f"[TaobaoPaiMai] initData extract failed for {item_id}: {e}")
+
         extracted = await page.evaluate("""() => {
             const r = {};
 
@@ -660,14 +761,16 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                         "奉贤", "崇明", "上海")
         nb_districts = ("海曙", "江北", "北仑", "镇海", "鄞州", "奉化",
                         "象山", "宁海", "余姚", "慈溪", "宁波")
+        hz_districts = ("上城", "拱墅", "西湖", "滨江", "萧山", "余杭",
+                        "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德", "杭州")
         for b in benefits:
-            if isinstance(b, str) and (b in sh_districts or b in nb_districts):
+            if isinstance(b, str) and (b in sh_districts or b in nb_districts or b in hz_districts):
                 district = b
                 break
         # City from benefits
         city_from_benefits = ""
         for b in benefits:
-            if isinstance(b, str) and b in ("上海", "上海市", "宁波", "宁波市"):
+            if isinstance(b, str) and b in ("上海", "上海市", "宁波", "宁波市", "杭州", "杭州市"):
                 city_from_benefits = b.rstrip("市")
                 break
 
@@ -704,11 +807,8 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     images.append(pic)
 
         # City division code for validation
-        city_div_code = ""
-        if city_from_benefits == "上海":
-            city_div_code = "310000"
-        elif city_from_benefits == "宁波":
-            city_div_code = "330200"
+        city_div_code = {"上海": "310000", "宁波": "330200", "杭州": "330100"}.get(
+            city_from_benefits, "")
 
         # Build location string from district + city
         location_str = ""

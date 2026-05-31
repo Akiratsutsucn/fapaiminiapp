@@ -33,11 +33,18 @@ def extract_district(title: str, city_id: int) -> str:
         "海曙区", "江北区", "鄞州区", "镇海区", "北仑区", "奉化区",
         "余姚市", "慈溪市", "宁海县", "象山县",
     ]
+    districts_hangzhou = [
+        "上城区", "拱墅区", "西湖区", "滨江区", "萧山区", "余杭区",
+        "临平区", "钱塘区", "富阳区", "临安区",
+        "桐庐县", "淳安县", "建德市",
+    ]
 
     if city_id == 310000:
         districts = districts_shanghai
     elif city_id == 330200:
         districts = districts_ningbo
+    elif city_id == 330100:
+        districts = districts_hangzhou
     else:
         districts = []
 

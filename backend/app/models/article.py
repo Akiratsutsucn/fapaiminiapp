@@ -16,5 +16,9 @@ class Article(Base):
     is_home_show = Column(Boolean, nullable=False, default=False)
     sort_order = Column(Integer, nullable=False, default=0)
     published_at = Column(Date, nullable=True)
+    # 来源：manual（手工录入）/ wechat_mp（公众号同步）
+    source = Column(String(32), nullable=False, default="manual")
+    # 公众号文章去重键（article_id / media_id）
+    source_id = Column(String(256), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)

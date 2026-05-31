@@ -97,6 +97,14 @@ interface PropertyDetail {
   beike_latest_deal_total_price: number;
   beike_latest_deal_time: string | null;
   community_info: CommunityInfoData | null;
+  deal_reference: DealReference | null;
+}
+
+interface DealReference {
+  unit_price: number;
+  total_price: number | null;
+  source_label: string;
+  updated_at: string | null;
 }
 
 interface CommunityInfoData {

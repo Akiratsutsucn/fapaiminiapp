@@ -27,6 +27,7 @@ import httpx
 from loguru import logger
 
 from .anti_crawl import random_ua
+from . import tunnel_proxy
 
 
 # === UA 池（增强版，覆盖 PC + 移动）===
@@ -226,7 +227,11 @@ async def http_get_with_retry(
             risk, reason = is_risk_response(str(resp.url), resp.status_code, resp.text)
             if risk:
                 logger.warning(f"[anti] 风控触发 {url[:80]}: {reason}")
-                if proxy:
+                # 隧道代理：换出口 IP 而不是冷却唯一的入口
+                if tunnel_proxy.is_enabled():
+                    await asyncio.to_thread(tunnel_proxy.trigger_ip_change, f"risk:{reason}")
+                    await asyncio.sleep(random.uniform(2, 4))  # 等新 IP 生效
+                elif proxy:
                     pool.mark_bad(proxy, reason)
                 # 第 3 次还风控 → 标记 host 冷却
                 if attempt >= max_retries - 1:
@@ -246,7 +251,9 @@ async def http_get_with_retry(
         except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as e:
             last_err = e
             logger.warning(f"[anti] 网络错误 attempt {attempt+1}/{max_retries}: {e}")
-            if proxy:
+            if tunnel_proxy.is_enabled():
+                await asyncio.to_thread(tunnel_proxy.trigger_ip_change, f"network:{e}")
+            elif proxy:
                 pool.mark_bad(proxy, f"network: {e}")
             await asyncio.sleep(2 ** attempt + random.uniform(0.5, 1.5))
         except Exception as e:

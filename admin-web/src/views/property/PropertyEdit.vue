@@ -6,13 +6,15 @@
       <t-form :data="form" label-width="110px">
         <t-row :gutter="24">
           <t-col :span="8"><t-form-item label="标题"><t-input v-model="form.title" /></t-form-item></t-col>
-          <t-col :span="4"><t-form-item label="城市"><t-select v-model="form.city_id"><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /></t-select></t-form-item></t-col>
+          <t-col :span="4"><t-form-item label="城市"><t-select v-model="form.city_id"><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /></t-select></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="区"><t-input v-model="form.district" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="板块"><t-input v-model="form.sub_district" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="环线"><t-input v-model="form.ring_road" /></t-form-item></t-col>
           <t-col :span="8"><t-form-item label="地址"><t-input v-model="form.address" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="小区名"><t-input v-model="form.community_name" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="省市"><t-input v-model="form.province_city" /></t-form-item></t-col>
+          <t-col :span="4"><t-form-item label="是否可以贷款"><t-select v-model="form.loan_support" :clearable="true"><t-option :value="true" label="是" /><t-option :value="false" label="否" /></t-select></t-form-item></t-col>
+          <t-col :span="4"><t-form-item label="是否有附件"><t-select v-model="form.has_attachments" :clearable="true"><t-option :value="true" label="是" /><t-option :value="false" label="否" /></t-select></t-form-item></t-col>
         </t-row>
       </t-form>
     </t-card>
@@ -81,7 +83,6 @@
           <t-col :span="3"><t-form-item label="案号"><t-input v-model="form.case_number" /></t-form-item></t-col>
           <t-col :span="3"><t-form-item label="围观人数"><t-input-number v-model="form.view_count" :min="0" /></t-form-item></t-col>
           <t-col :span="3"><t-form-item label="参拍人数"><t-input-number v-model="form.participant_count" :min="0" /></t-form-item></t-col>
-          <t-col :span="3"><t-form-item label="支持贷款"><t-select v-model="form.loan_support" :clearable="true"><t-option :value="true" label="是" /><t-option :value="false" label="否" /></t-select></t-form-item></t-col>
         </t-row>
       </t-form>
     </t-card>
@@ -250,6 +251,7 @@ const form = reactive({
   auction_start_time: '', auction_end_time: '',
   court_name: '', case_number: '',
   view_count: 0, participant_count: 0, loan_support: null as boolean | null,
+  has_attachments: null as boolean | null,
   description: '',
 })
 

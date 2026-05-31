@@ -31,6 +31,12 @@ PAIMAI_CONFIGS = [
         source_url="https://pages-fast.m.taobao.com/wow/z/app/pm/search-ssr/search",
         label="阿里拍卖-宁波-诉讼资产",
     ),
+    SourceConfig(
+        platform="阿里拍卖",
+        city="杭州",
+        source_url="https://pages-fast.m.taobao.com/wow/z/app/pm/search-ssr/search",
+        label="阿里拍卖-杭州-诉讼资产",
+    ),
 ]
 
 
@@ -47,6 +53,12 @@ JD_CONFIGS = [
         city="宁波",
         source_url="https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728&provinceId=15",
         label="京东-宁波-浙江省筛选",
+    ),
+    SourceConfig(
+        platform="京东拍卖",
+        city="杭州",
+        source_url="https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728&provinceId=15",
+        label="京东-杭州-浙江省筛选",
     ),
 ]
 
@@ -78,6 +90,12 @@ GPAI_CONFIGS = [
         source_url="https://s.gpai.net/sf/search.do?at=381&cityNum=3302",
         label="公拍网-宁波-类型B",
     ),
+    # 注：公拍网爬虫实际从 www.gpai.net/sf/ 主页全量抓 item2.do 链接，忽略
+    # source_url 里的 cityNum（s.gpai.net 已对服务器 IP 403）。城市归属由详情页
+    # 解析 + engine 按 province_city 智能分配（已含杭州分支），因此杭州无需单独
+    # 的 cityNum 配置——主页抓取已覆盖全国房源，杭州会被自动识别入库。
+    # 杭州 cityNum 为 3301（CITY_NUM_MAP 已登记）；若 PROXY_POOL 住宅代理恢复了
+    # s.gpai.net 的访问，可改回 s.gpai.net/sf/search.do?cityNum=3301 精确筛选。
 ]
 
 

@@ -25,6 +25,11 @@ Component({
       const showAsYi = wan >= 10000;
       const saving = (p.appraisal_price || 0) - (p.starting_price || 0);
       const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
+      // 折扣率 >=10折（rate>=1）表示起拍价不低于评估价，没有折扣空间：
+      // 不显示橙色折扣率，用「超人气」替代
+      const rate = p.court_discount_rate || 0;
+      const discount = rate > 0 && rate < 1 ? formatDiscount(rate) : '';
+      const hotTag = rate >= 1 ? '超人气' : '';
       this.setData({
         coverImage: p.cover_image || '/images/default-house.png',
         statusLabel: statusLabel(p.auction_status),
@@ -38,7 +43,8 @@ Component({
         area: p.area ? p.area.toFixed(2) : '',
         layout: p.layout || '',
         title: p.title || '',
-        discount: p.court_discount_rate ? formatDiscount(p.court_discount_rate) : '',
+        discount,
+        hotTag,
         savingWan,
         auctionTime: p.auction_start_time ? formatDate(p.auction_start_time, 'MM-DD HH:mm') : '',
       });
@@ -59,6 +65,7 @@ Component({
     layout: '',
     title: '',
     discount: '',
+    hotTag: '',
     savingWan: '',
     auctionTime: '',
   },

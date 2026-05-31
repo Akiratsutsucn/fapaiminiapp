@@ -44,13 +44,7 @@
       <!-- 区域筛选 -->
       <view class="filter-options" wx:if="{{activeFilterPanel === 'district'}}">
         <view class="option-item {{!selectedDistrict ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="">全部区域</view>
-        <view class="option-item {{selectedDistrict === '浦东新区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="浦东新区">浦东新区</view>
-        <view class="option-item {{selectedDistrict === '静安区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="静安区">静安区</view>
-        <view class="option-item {{selectedDistrict === '徐汇区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="徐汇区">徐汇区</view>
-        <view class="option-item {{selectedDistrict === '黄浦区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="黄浦区">黄浦区</view>
-        <view class="option-item {{selectedDistrict === '长宁区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="长宁区">长宁区</view>
-        <view class="option-item {{selectedDistrict === '虹口区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="虹口区">虹口区</view>
-        <view class="option-item {{selectedDistrict === '杨浦区' ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="杨浦区">杨浦区</view>
+        <view wx:for="{{districtOptions}}" wx:key="*this" class="option-item {{selectedDistrict === item ? 'selected' : ''}}" bindtap="onSelectDistrict" data-value="{{item}}">{{item}}</view>
       </view>
       <!-- 价格筛选 -->
       <view class="filter-options" wx:if="{{activeFilterPanel === 'price'}}">
