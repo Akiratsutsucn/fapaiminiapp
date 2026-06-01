@@ -19,6 +19,12 @@ page {
   --accent-gold: #C99846;
   --accent-gold-soft: rgba(201, 152, 70, 0.12);
 
+  /* 文字专用跳色（视觉同色，对比度达 WCAG AA。
+     亮橙 #FF6B35 作小字文本对白仅 2.84，不达标；
+     下列深一档仅用于「文字」，背景/大色块仍用上方亮色） */
+  --accent-orange-text: #C8410D;   /* 对白 4.98，过 AA(4.5) */
+  --accent-gold-text: #9C7223;     /* 对白 4.33，过 AA 大文本 */
+
   /* 功能色 */
   --success: #4a8c7a;
   --warning: #c4935a;
@@ -28,7 +34,7 @@ page {
   /* 中性色 */
   --text-primary: #1a1a1a;
   --text-secondary: #5a5a5a;
-  --text-hint: #8a8a8a;
+  --text-hint: #6e6e6e;        /* 由 #8a8a8a 调深：对白 5.10，过 AA(原 3.45 不达标) */
   --text-disabled: #bcbcbc;
   --border-color: #e0e0e0;
   --bg-page: #f5f6f8;
@@ -231,8 +237,8 @@ view, text, image, navigator, scroll-view, swiper, swiper-item {
   line-height: 1.4;
 }
 
-.meta-tag.gold { background: var(--accent-gold-soft); color: var(--accent-gold); }
-.meta-tag.live { background: var(--accent-orange-soft); color: var(--accent-orange); }
+.meta-tag.gold { background: var(--accent-gold-soft); color: var(--accent-gold-text); }
+.meta-tag.live { background: var(--accent-orange-soft); color: var(--accent-orange-text); }
 
 .img-chip {
   display: inline-flex;
