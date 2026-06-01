@@ -44,7 +44,7 @@
 
 .meta-item:first-child {
   background: var(--accent-orange-soft);
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   padding: 4rpx 14rpx;
   border-radius: var(--radius-pill);
   font-weight: 700;

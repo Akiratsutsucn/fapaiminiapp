@@ -78,7 +78,7 @@ page {
 
 .article-time::before {
   content: '○';
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   margin-right: 4rpx;
   font-size: 16rpx;
 }

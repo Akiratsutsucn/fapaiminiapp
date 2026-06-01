@@ -123,7 +123,7 @@
 }
 
 .price-value.primary { color: var(--blue-900); }
-.price-value.accent  { color: var(--accent-orange); }
+.price-value.accent  { color: var(--accent-orange-text); }
 
 .price-label {
   font-size: 20rpx;
@@ -146,13 +146,13 @@
 .time-countdown {
   font-size: 38rpx;
   font-weight: 800;
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   letter-spacing: -0.5rpx;
 }
 
 .time-label {
   font-size: 24rpx;
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   margin-left: 4rpx;
   font-weight: 600;
 }
@@ -324,7 +324,7 @@
   line-height: 1.1;
 }
 
-.cc-num.accent { color: var(--accent-orange); }
+.cc-num.accent { color: var(--accent-orange-text); }
 
 .cc-label {
   display: block;
@@ -402,7 +402,7 @@
   letter-spacing: -0.5rpx;
 }
 
-.cb-value.accent { color: var(--accent-orange); }
+.cb-value.accent { color: var(--accent-orange-text); }
 
 .cc-bargain-saving {
   margin-top: 16rpx;
@@ -414,18 +414,18 @@
 }
 
 .cc-bargain-saving .accent {
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   font-weight: 800;
   font-size: 26rpx;
 }
 
 .price-highlight {
-  color: var(--accent-orange) !important;
+  color: var(--accent-orange-text) !important;
   font-weight: 700;
 }
 
 .price-green {
-  color: var(--accent-orange) !important;
+  color: var(--accent-orange-text) !important;
   font-weight: 700;
 }
 

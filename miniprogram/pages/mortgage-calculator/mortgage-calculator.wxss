@@ -237,5 +237,5 @@
 }
 
 .ri-value.accent {
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
 }

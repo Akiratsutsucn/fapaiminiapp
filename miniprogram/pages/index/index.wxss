@@ -103,7 +103,7 @@
   line-height: 1.1;
 }
 
-.stat-num.accent { color: var(--accent-orange); }
+.stat-num.accent { color: var(--accent-orange-text); }
 
 .stat-label {
   display: block;

@@ -140,7 +140,7 @@
 
 .cs-card-sub {
   font-size: 32rpx;
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 1rpx;
@@ -198,7 +198,7 @@
 }
 
 .required {
-  color: var(--accent-orange);
+  color: var(--accent-orange-text);
   margin-left: 4rpx;
   font-weight: 800;
 }
