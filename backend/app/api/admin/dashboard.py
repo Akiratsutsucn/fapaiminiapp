@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
 from ...core.security import get_admin_user
+from ...core.auction_status import effective_status_sql
 from ...models.property import Property
 from ...models.user import User
 from ...models.demand import Demand
@@ -38,10 +39,10 @@ async def get_dashboard(
         ))
     )).scalar() or 0
     upcoming = (await db.execute(
-        with_city(select(func.count(Property.id)).where(Property.auction_status == "即将开拍"))
+        with_city(select(func.count(Property.id)).where(effective_status_sql() == "即将开拍"))
     )).scalar() or 0
     sold = (await db.execute(
-        with_city(select(func.count(Property.id)).where(Property.auction_status == "已成交"))
+        with_city(select(func.count(Property.id)).where(effective_status_sql() == "已成交"))
     )).scalar() or 0
 
     bargain_count = (await db.execute(
@@ -54,7 +55,7 @@ async def get_dashboard(
     )).scalar() or 0
     yesterday_sold = (await db.execute(
         with_city(select(func.count(Property.id)).where(
-            Property.auction_status.in_(["已成交", "已结束"]),
+            effective_status_sql().in_(["已成交", "已结束"]),
             func.date(Property.updated_at) == yesterday,
         ))
     )).scalar() or 0

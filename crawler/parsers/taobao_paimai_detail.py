@@ -18,6 +18,7 @@ from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
+from ..cleaners.status import normalize_status as _normalize_status
 
 
 # Category mapping
@@ -99,6 +100,12 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         self._extract_dates(data, item)
         self._extract_description(data, item)
         self._compute_derived_fields(item)
+
+        # 状态归一：bidStatus 是 API 抓取快照，可能滞后。按 start/end + 当前时间重算时序态，
+        # 保留结果态（已成交/已撤回）。与后端读取层 / 引擎自校正 / 其它平台同一口径。
+        item.auction_status = _normalize_status(
+            item.auction_status, item.auction_start_time, item.auction_end_time
+        )
 
         return item
 
@@ -581,7 +588,13 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         if item.description:
             parts.append(item.description)
 
-        item.description = "\n".join(parts)
+        # 公告正文（拍卖须知 + 标的物介绍），由 crawler._enrich_notice 注入。
+        # 含租赁/户口/占用/欠费等风险信息，供风险标签提炼。
+        notice_text = data.get("_notice_text")
+        if notice_text:
+            parts.append(notice_text)
+
+        item.description = "\n".join(parts)[:8000]
 
     # ============================================================
     # Computed fields

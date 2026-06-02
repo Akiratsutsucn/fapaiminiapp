@@ -7,11 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
 from ...core.database import get_session
+from ...core.auction_status import (
+    effective_status, effective_status_sql,
+    MOBILE_VISIBLE_STATUSES, MOBILE_FALLBACK_STATUSES, MOBILE_DETAIL_STATUSES,
+)
 from ...models.property import Property, PropertyImage
 from ...models.community import CommunityInfo
 from ...schemas import (
     PropertyListParams, PropertyListItem, PropertyDetail, PaginatedResponse,
-    MarketStatsOut, DealReferenceOut,
+    MarketStatsOut, DealReferenceOut, RiskTagOut,
 )
 
 # 市场参考单价合理区间（元/㎡）。京东系部分房源成交单价存在单位错乱
@@ -40,12 +44,28 @@ AMAP_CATEGORIES = {
 
 router = APIRouter()
 
-# Mobile-visible auction statuses
-MOBILE_VISIBLE_STATUSES = ("即将开拍", "进行中", "中止", "撤回", "已撤回")
+# 可参拍/兜底/详情可访问的状态集合统一来自 core.auction_status：
+# MOBILE_VISIBLE_STATUSES（即将开拍/进行中）、MOBILE_FALLBACK_STATUSES（已成交）、
+# MOBILE_DETAIL_STATUSES（前两者并集）。
+# 关键：所有状态判断都走 effective_status_sql()——按 auction_start_time/end_time +
+# 当前时间实时计算，不信任库里可能过期/抓错的 auction_status 文本，确保「进行中/即将开拍」
+# 房源不会因存储状态错误而被筛掉。
 
 
 def _mobile_filter():
-    return Property.auction_status.in_(MOBILE_VISIBLE_STATUSES)
+    """详情/地图等：允许访问可参拍 + 已成交兜底房源（按实时状态判断）。"""
+    return effective_status_sql().in_(MOBILE_DETAIL_STATUSES)
+
+
+async def _pick_listing_statuses(db, base_conditions) -> tuple:
+    """决定列表展示哪组状态：有即将开拍/进行中就用它们，
+    否则（该城市/筛选下没有可参拍房源）回退到已成交，避免首页空白。
+    注意：按实时计算状态统计，而非库存状态。"""
+    primary_q = select(func.count(Property.id)).where(
+        and_(*base_conditions, effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
+    )
+    primary_count = (await db.execute(primary_q)).scalar() or 0
+    return MOBILE_VISIBLE_STATUSES if primary_count > 0 else MOBILE_FALLBACK_STATUSES
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -64,7 +84,7 @@ async def list_properties(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    conditions = [_mobile_filter()]
+    conditions = []
 
     if city_id:
         conditions.append(Property.city_id == city_id)
@@ -78,10 +98,16 @@ async def list_properties(
         conditions.append(Property.title.contains(keyword))
     if property_type:
         conditions.append(Property.property_type == property_type)
-    if auction_status and auction_status in MOBILE_VISIBLE_STATUSES:
-        conditions.append(Property.auction_status == auction_status)
     if auction_round:
         conditions.append(Property.auction_round == auction_round)
+
+    # 状态过滤：用户显式选了状态则用之（限可参拍）；否则自动决定主状态或兜底已成交。
+    # 全部按 effective_status_sql() 实时计算，避免库存状态过期/抓错导致漏筛。
+    if auction_status and auction_status in MOBILE_VISIBLE_STATUSES:
+        conditions.append(effective_status_sql() == auction_status)
+    else:
+        listing_statuses = await _pick_listing_statuses(db, conditions)
+        conditions.append(effective_status_sql().in_(listing_statuses))
 
     # Count
     count_q = select(func.count(Property.id)).where(and_(*conditions))
@@ -102,7 +128,8 @@ async def list_properties(
 
     items = []
     for p in rows:
-        cover = next((img.image_url for img in (p.images or []) if img.is_cover), None)
+        cover = next((img.image_url for img in (p.images or []) if img.is_cover and not getattr(img, "hidden", 0)), None) \
+            or next((img.image_url for img in (p.images or []) if not getattr(img, "hidden", 0)), None)
         items.append(PropertyListItem(
             id=p.id,
             title=p.title,
@@ -115,7 +142,7 @@ async def list_properties(
             appraisal_price=p.appraisal_price,
             court_discount_rate=p.court_discount_rate,
             auction_round=p.auction_round,
-            auction_status=p.auction_status,
+            auction_status=effective_status(p.auction_status, p.auction_start_time, p.auction_end_time),
             auction_start_time=p.auction_start_time,
             auction_end_time=p.auction_end_time,
             cover_image=cover,
@@ -134,9 +161,13 @@ async def recommend_properties(
     city_id: int | None = Query(None),
     page_size: int = Query(6, le=20),
 ):
-    conditions = [_mobile_filter()]
+    conditions = []
     if city_id:
         conditions.append(Property.city_id == city_id)
+    # 有可参拍房源就推可参拍，否则兜底推已成交（避免首页推荐区空白）。
+    # 用实时计算状态筛选，避免推到库存状态过期/抓错的房源。
+    listing_statuses = await _pick_listing_statuses(db, conditions)
+    conditions.append(effective_status_sql().in_(listing_statuses))
 
     q = (
         select(Property)
@@ -150,13 +181,15 @@ async def recommend_properties(
 
     items = []
     for p in rows:
-        cover = next((img.image_url for img in (p.images or []) if img.is_cover), None)
+        cover = next((img.image_url for img in (p.images or []) if img.is_cover and not getattr(img, "hidden", 0)), None) \
+            or next((img.image_url for img in (p.images or []) if not getattr(img, "hidden", 0)), None)
         items.append(PropertyListItem(
             id=p.id, title=p.title, district=p.district, community_name=p.community_name,
             area=p.area, layout=p.layout, starting_price=p.starting_price,
             starting_unit_price=p.starting_unit_price, appraisal_price=p.appraisal_price,
             court_discount_rate=p.court_discount_rate, auction_round=p.auction_round,
-            auction_status=p.auction_status, auction_start_time=p.auction_start_time,
+            auction_status=effective_status(p.auction_status, p.auction_start_time, p.auction_end_time),
+            auction_start_time=p.auction_start_time,
             auction_end_time=p.auction_end_time, cover_image=cover,
             property_type=p.property_type,
         ))
@@ -186,7 +219,7 @@ async def map_markers(
         "lat": r.lat,
         "lng": r.lng,
         "starting_price": r.starting_price,
-        "auction_status": r.auction_status,
+        "auction_status": effective_status(r.auction_status, r.auction_start_time, r.auction_end_time),
         "property_type": r.property_type,
         "area": r.area,
     } for r in rows]
@@ -236,11 +269,12 @@ async def property_district_analysis(
     max_price_q = select(func.max(Property.starting_price)).where(and_(*conditions))
     max_price = (await db.execute(max_price_q)).scalar() or 0
 
-    # Status distribution
+    # Status distribution（按实时计算状态分组）
+    eff = effective_status_sql()
     status_q = (
-        select(Property.auction_status, func.count(Property.id))
+        select(eff, func.count(Property.id))
         .where(and_(*conditions))
-        .group_by(Property.auction_status)
+        .group_by(eff)
     )
     status_rows = (await db.execute(status_q)).all()
     status_dist = {row[0]: row[1] for row in status_rows}
@@ -359,6 +393,14 @@ async def get_property(property_id: int, db: AsyncSession = Depends(get_session)
 
     detail = PropertyDetail.model_validate(p)
 
+    # 拍卖状态按实时计算（与列表/筛选口径一致），避免详情页显示过期/抓错的库存状态
+    detail.auction_status = effective_status(p.auction_status, p.auction_start_time, p.auction_end_time)
+
+    # 过滤垃圾图(广告/二维码/logo)：前台只展示未隐藏的图片
+    if detail.images:
+        detail.images = [
+            img for img in detail.images if not getattr(img, "hidden", 0)
+        ]
     # Enrich with community info (Beike reference data)
     community = None
     if p.community_name:
@@ -380,7 +422,124 @@ async def get_property(property_id: int, db: AsyncSession = Depends(get_session)
     # 贝壳数据当前因风控基本抓不到，实际多走平台自带市场成交价。
     detail.deal_reference = _build_deal_reference(p, community)
 
+    # 风险/利好标签（红黄绿）
+    detail.risk_tags = _build_risk_tags(p)
+
     return detail
+
+
+# 风险/利好关键词词典：(关键词列表, level, label, detail)
+# level: danger 红(重大风险) / warning 黄(需注意) / safe 绿(利好)
+# 注意：这些是"明确表述风险"的强关键词，避免命中"租赁情况：无"这类利好表述。
+_RISK_RULES = [
+    (["买卖不破租赁", "现由他人租赁", "存在租赁", "已出租", "租赁合同", "长期租赁", "尚在租期"],
+     "danger", "租赁占用", "标的存在租赁，可能买卖不破租赁，需核实租约与腾退难度"),
+    (["户籍未迁", "户口未迁", "户籍未迁出", "存在户籍", "有户口登记", "落户于此"],
+     "danger", "户口未迁", "标的可能存在户口未迁出，影响后续落户"),
+    (["有人居住", "实际占用", "被他人占用", "现由他人占用", "占用人为", "租户占用"],
+     "danger", "人员占用", "标的现状有人居住或占用，腾退存在难度"),
+    (["系被执行人唯一", "唯一一套住房", "为唯一住房", "属唯一住房"],
+     "warning", "唯一住房", "可能为被执行人唯一住房，腾退周期可能较长"),
+    (["欠缴", "拖欠", "物业费未", "水电费未", "欠物业", "尚欠", "欠款需"],
+     "warning", "欠费提示", "标的可能存在物业/水电等欠费，过户前需核实结清"),
+    (["不支持贷款", "不能贷款", "需一次性付款", "无法按揭", "不接受贷款"],
+     "warning", "需全款", "标的可能不支持贷款，需一次性付款"),
+    (["补缴土地出让金", "税费由买受人", "税费均由买受人", "一切税费由", "所有税费由买受人"],
+     "warning", "税费自担", "成交相关税费可能由买受人承担，需预估成本"),
+]
+
+_SAFE_RULES = [
+    (["可办理贷款", "支持贷款", "可按揭", "支持按揭"],
+     "safe", "支持贷款", "标的支持贷款，资金压力较小"),
+]
+
+# 结构化"字段：值"模式 —— 公拍网/京东标的物介绍含"租赁情况 无/占用情况 空置/户口情况 无"。
+# 用正则判断字段后紧跟的值是利好还是风险，避免"租赁"二字一出现就误报。
+import re as _re
+
+# (字段正则, 利好值正则→safe标签, 风险值正则→danger标签)
+_STRUCT_RULES = [
+    {
+        "field": r"租赁(?:情况|状况)?[:：\s]{0,4}",
+        "safe": (r"^(无|没有|不存在|未发现|空)", "safe", "无租赁", "公告载明无租赁，腾退风险较低"),
+        "risk": (r"^(有|存在|.{0,6}年|至.{0,8}止|租期)", "danger", "租赁占用", "公告载明存在租赁，需核实买卖不破租赁风险"),
+    },
+    {
+        "field": r"(?:占用情况|拍品现状|标的现状)[:：\s]{0,4}",
+        "safe": (r"(空置|腾空|无人|有钥匙)", "safe", "已腾空", "公告载明现状空置/有钥匙，腾退压力小"),
+        "risk": (r"(被占用|他人居住|租户|占用人|有人居住)", "danger", "人员占用", "公告载明现状被占用，腾退存在难度"),
+    },
+    {
+        "field": r"户(?:口|籍)(?:情况)?[:：\s]{0,4}",
+        "safe": (r"^(无|没有|不存在|未查|查询无)", "safe", "无户口", "公告载明无户籍登记，落户无障碍"),
+        "risk": (r"^(有|存在|.{0,4}人|未迁)", "danger", "户口未迁", "公告载明存在户籍登记，影响后续落户"),
+    },
+]
+
+
+def _scan_struct(text: str) -> list[tuple]:
+    """扫描"字段：值"结构，返回 (level,label,detail) 列表。"""
+    out = []
+    for rule in _STRUCT_RULES:
+        for m in _re.finditer(rule["field"], text):
+            tail = text[m.end():m.end() + 30].strip()
+            srx, slv, slb, sdt = rule["safe"]
+            rrx, rlv, rlb, rdt = rule["risk"]
+            if _re.search(rrx, tail):
+                out.append((rlv, rlb, rdt))
+                break
+            elif _re.search(srx, tail):
+                out.append((slv, slb, sdt))
+                break
+    return out
+
+
+def _build_risk_tags(p: Property) -> list[RiskTagOut]:
+    """从公告文本 + 结构化字段提炼风险/利好标签（红黄绿）。
+
+    法拍最大的坑在于租赁占用、户口、欠费、是否能贷款等——把它们从冗长公告里
+    提炼成顶部标签，帮助用户快速判断。优先用"字段：值"结构精准判断（避免
+    "租赁情况：无"被误报为有租赁），再用强关键词兜底。命中即提示，需用户复核。
+    """
+    text = " ".join(filter(None, [p.title or "", p.description or ""]))
+    tags: list[RiskTagOut] = []
+    seen_labels = set()
+
+    # 0. 结构化"字段：值"判断（最准，优先）
+    for level, label, detail in _scan_struct(text):
+        if label not in seen_labels:
+            tags.append(RiskTagOut(level=level, label=label, detail=detail))
+            seen_labels.add(label)
+
+    # 1. 强关键词命中（风险）—— 仅对结构化未覆盖的项补充
+    for keywords, level, label, detail in _RISK_RULES:
+        if label in seen_labels:
+            continue
+        if any(kw in text for kw in keywords):
+            tags.append(RiskTagOut(level=level, label=label, detail=detail))
+            seen_labels.add(label)
+
+    # 2. 结构化字段：贷款支持
+    if p.loan_support is True and "支持贷款" not in seen_labels:
+        tags.append(RiskTagOut(level="safe", label="支持贷款", detail="该房源支持贷款，资金压力较小"))
+        seen_labels.add("支持贷款")
+    elif p.loan_support is False and "需全款" not in seen_labels:
+        tags.append(RiskTagOut(level="warning", label="需全款", detail="该房源不支持贷款，需一次性付款"))
+        seen_labels.add("需全款")
+
+    # 3. 关键词命中（利好）
+    for keywords, level, label, detail in _SAFE_RULES:
+        if label in seen_labels:
+            continue
+        if any(kw in text for kw in keywords):
+            tags.append(RiskTagOut(level=level, label=label, detail=detail))
+            seen_labels.add(label)
+
+    # 4. 附件提示（中性偏利好：有公告附件可供尽调）
+    if p.has_attachments and "含附件" not in seen_labels:
+        tags.append(RiskTagOut(level="safe", label="含附件", detail="附带评估报告/竞买公告等附件，可供尽调参考"))
+
+    return tags
 
 
 def _build_deal_reference(p: Property, community: CommunityInfo | None) -> DealReferenceOut | None:

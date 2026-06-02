@@ -8,6 +8,7 @@ import io
 
 from ...core.database import get_session
 from ...core.security import get_admin_user
+from ...core.auction_status import effective_status, effective_status_sql
 from ...models.property import Property
 from ...schemas import PaginatedResponse, AdminPropertyCreate, PropertyDetail
 
@@ -54,7 +55,8 @@ async def list_properties_admin(
     if property_type:
         conditions.append(Property.property_type == property_type)
     if auction_status:
-        conditions.append(Property.auction_status == auction_status)
+        # 按实时计算状态筛选，与小程序端口径一致
+        conditions.append(effective_status_sql() == auction_status)
     if auction_round:
         conditions.append(Property.auction_round == auction_round)
 
@@ -73,7 +75,8 @@ async def list_properties_admin(
 
     items = []
     for p in rows:
-        cover = next((img.image_url for img in (p.images or []) if img.is_cover), None)
+        cover = next((img.image_url for img in (p.images or []) if img.is_cover and not getattr(img, "hidden", 0)), None) \
+            or next((img.image_url for img in (p.images or []) if not getattr(img, "hidden", 0)), None)
         items.append({
             "id": p.id, "source_url": p.source_url, "auction_platform": p.auction_platform,
             "city_id": p.city_id, "title": p.title, "province_city": p.province_city,
@@ -96,7 +99,9 @@ async def list_properties_admin(
             "beike_latest_deal_unit_price": p.beike_latest_deal_unit_price,
             "beike_latest_deal_total_price": p.beike_latest_deal_total_price,
             "beike_latest_deal_time": str(p.beike_latest_deal_time) if p.beike_latest_deal_time else None,
-            "auction_round": p.auction_round, "auction_status": p.auction_status,
+            "auction_round": p.auction_round,
+            "auction_status": effective_status(p.auction_status, p.auction_start_time, p.auction_end_time),
+            "auction_status_stored": p.auction_status,
             "auction_start_time": str(p.auction_start_time) if p.auction_start_time else None,
             "auction_end_time": str(p.auction_end_time) if p.auction_end_time else None,
             "court_name": p.court_name, "case_number": p.case_number,
@@ -124,12 +129,17 @@ async def export_properties(
     if city_id:
         conditions.append(Property.city_id == city_id)
     if auction_status:
-        conditions.append(Property.auction_status == auction_status)
+        # 按实时计算状态筛选，与列表/小程序端口径一致
+        conditions.append(effective_status_sql() == auction_status)
 
     q = select(Property)
     if conditions:
         q = q.where(and_(*conditions))
     rows = (await db.execute(q)).scalars().all()
+
+    # 导出的「拍卖状态」用实时计算值，与列表/小程序端口径一致。
+    # 用轻量代理覆盖 auction_status，其余字段仍透传到 getattr。
+    rows = [_EffectiveStatusRow(p) for p in rows]
 
     # 全字段中文表头映射
     FIELDS = [
@@ -162,6 +172,21 @@ async def export_properties(
     if format == "xlsx":
         return _export_xlsx(rows, FIELDS)
     return _export_csv(rows, FIELDS)
+
+
+class _EffectiveStatusRow:
+    """导出用行代理：auction_status 返回实时计算值，其余字段透传到底层 Property。"""
+
+    __slots__ = ("_p", "auction_status")
+
+    def __init__(self, p):
+        self._p = p
+        self.auction_status = effective_status(
+            p.auction_status, p.auction_start_time, p.auction_end_time
+        )
+
+    def __getattr__(self, name):
+        return getattr(self._p, name)
 
 
 def _export_csv(rows, FIELDS):
@@ -342,11 +367,35 @@ async def update_property(
                     thumb_url=img_data.get("thumb_url"),
                     sort_order=img_data.get("sort_order", i),
                     is_cover=img_data.get("is_cover", i == 0),
+                    hidden=img_data.get("hidden", 0),
+                    hide_reason=img_data.get("hide_reason"),
                 ))
 
     await db.commit()
     await db.refresh(p)
     return PropertyDetail.model_validate(p)
+
+
+@router.post("/images/{image_id}/toggle-hidden")
+async def toggle_image_hidden(
+    image_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(get_admin_user),
+):
+    """切换单张图片的隐藏状态（管理员恢复误判图 / 手动隐藏垃圾图）。"""
+    from ...models.property import PropertyImage
+    img = (await db.execute(
+        select(PropertyImage).where(PropertyImage.id == image_id)
+    )).scalar_one_or_none()
+    if not img:
+        raise HTTPException(status_code=404, detail="图片不存在")
+    img.hidden = 0 if img.hidden else 1
+    if img.hidden and not img.hide_reason:
+        img.hide_reason = "manual"
+    if not img.hidden:
+        img.hide_reason = None
+    await db.commit()
+    return {"id": img.id, "hidden": img.hidden}
 
 
 @router.delete("/{property_id}")

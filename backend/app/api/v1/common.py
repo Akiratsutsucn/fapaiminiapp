@@ -2,10 +2,11 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
+from ...core.auction_status import effective_status_sql
 from ...models.banner import Banner
 from ...models.property import Property
 from ...models.system_setting import SystemSetting
@@ -27,7 +28,8 @@ async def list_banners(
 ):
     conditions = [Banner.is_active == True]
     if city_id:
-        conditions.append(Banner.city_id == city_id)
+        # 匹配该城市，或 city_id=0 的「全部城市」通用横幅
+        conditions.append(or_(Banner.city_id == city_id, Banner.city_id == 0))
     q = select(Banner).where(and_(*conditions)).order_by(Banner.sort_order.asc())
     rows = (await db.execute(q)).scalars().all()
     return [BannerOut.model_validate(r) for r in rows]
@@ -46,7 +48,7 @@ async def market_stats(
         return q.where(and_(*conditions)) if conditions else q
 
     upcoming = (await db.execute(
-        _apply(select(func.count(Property.id))).where(Property.auction_status == "即将开拍")
+        _apply(select(func.count(Property.id))).where(effective_status_sql() == "即将开拍")
     )).scalar() or 0
 
     bargain = (await db.execute(
@@ -62,7 +64,7 @@ async def market_stats(
 
     yesterday_sold = (await db.execute(
         _apply(select(func.count(Property.id))).where(
-            Property.auction_status.in_(["已成交", "已结束"]),
+            effective_status_sql().in_(["已成交", "已结束"]),
             func.date(Property.updated_at) == yesterday,
         )
     )).scalar() or 0

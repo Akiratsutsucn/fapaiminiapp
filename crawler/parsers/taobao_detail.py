@@ -15,6 +15,7 @@ from ..models.item import AuctionItem, Platform
 from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
 from ..cleaners.city import city_name_by_id
+from ..cleaners.status import normalize_status as _normalize_status
 
 
 # catId → 物业类型（与 url_registry 分类映射一致）
@@ -53,6 +54,12 @@ class TaobaoDetailParser(AbstractParser):
             self._parse_from_html(html, item, city_id)
 
         self._compute_derived_fields(item)
+
+        # 状态归一：与其它平台 / 后端读取层同一口径——按 start/end + 当前时间重算时序态，
+        # 保留结果态（已成交/已撤回等）。initData 路径已按时间推断，此处再统一确认一次。
+        item.auction_status = _normalize_status(
+            item.auction_status, item.auction_start_time, item.auction_end_time
+        )
         return item
 
     # ============================================================

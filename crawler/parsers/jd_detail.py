@@ -10,6 +10,7 @@ from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
+from ..cleaners.status import normalize_status as _normalize_status
 
 
 class JDDetailParser(AbstractParser):
@@ -45,6 +46,12 @@ class JDDetailParser(AbstractParser):
 
         # 关键字段补全：调 paimai 公开 API 拿 startTime/endTime（HTML 渲染拿不到）
         await self._fill_from_api(item, source_url)
+
+        # 状态归一：时间补全后，按 start/end + 当前时间重算时序态，保留结果态。
+        # 与后端读取层 / 引擎自校正同一口径，避免存入抓取时刻的过期状态文本。
+        item.auction_status = _normalize_status(
+            item.auction_status, item.auction_start_time, item.auction_end_time
+        )
 
         return item
 

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
 from ...core.security import get_current_user
+from ...core.auction_status import effective_status
 from ...models.user import User
 from ...models.favorite import UserFavorite
 from ...models.browse_history import BrowseHistory
@@ -142,3 +143,177 @@ async def list_history(
         select(func.count(BrowseHistory.id)).where(BrowseHistory.user_id == uid)
     )).scalar() or 0
     return {"items": [{"id": r.id, "type": r.history_type, "target_id": r.target_id, "created_at": str(r.created_at)} for r in rows], "total": total}
+
+
+@router.get("/recommendations", response_model=dict)
+async def list_recommendations(
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    page: int = 1,
+    page_size: int = 20,
+):
+    """我的「为你推荐」列表，返回房源摘要 + 推荐语。"""
+    from ...models.recommendation import PropertyRecommendation
+    from ...models.property import Property, PropertyImage
+
+    uid = int(user_data["sub"])
+    q = (
+        select(PropertyRecommendation)
+        .where(PropertyRecommendation.user_id == uid)
+        .order_by(PropertyRecommendation.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = (await db.execute(q)).scalars().all()
+    total = (await db.execute(
+        select(func.count(PropertyRecommendation.id)).where(PropertyRecommendation.user_id == uid)
+    )).scalar() or 0
+
+    items = []
+    for r in rows:
+        p = (await db.execute(select(Property).where(Property.id == r.property_id))).scalar_one_or_none()
+        if not p:
+            continue
+        cover = next((img.image_url for img in (p.images or []) if img.is_cover), None)
+        items.append({
+            "rec_id": r.id,
+            "reason": r.reason,
+            "status": r.status,
+            "created_at": str(r.created_at),
+            "property": {
+                "id": p.id, "title": p.title, "district": p.district,
+                "community_name": p.community_name, "area": p.area,
+                "starting_price": p.starting_price, "appraisal_price": p.appraisal_price,
+                "auction_status": effective_status(p.auction_status, p.auction_start_time, p.auction_end_time),
+                "auction_round": p.auction_round,
+                "cover_image": cover, "property_type": p.property_type,
+            },
+        })
+    return {"items": items, "total": total}
+
+
+@router.get("/recommendations/unread-count", response_model=dict)
+async def unread_recommendation_count(
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    from ...models.recommendation import PropertyRecommendation
+    uid = int(user_data["sub"])
+    cnt = (await db.execute(
+        select(func.count(PropertyRecommendation.id)).where(
+            PropertyRecommendation.user_id == uid,
+            PropertyRecommendation.status == "未读",
+        )
+    )).scalar() or 0
+    return {"unread": cnt}
+
+
+@router.post("/recommendations/{rec_id}/read")
+async def mark_recommendation_read(
+    rec_id: int,
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    from ...models.recommendation import PropertyRecommendation
+    uid = int(user_data["sub"])
+    rec = (await db.execute(
+        select(PropertyRecommendation).where(
+            PropertyRecommendation.id == rec_id,
+            PropertyRecommendation.user_id == uid,
+        )
+    )).scalar_one_or_none()
+    if not rec:
+        raise HTTPException(status_code=404, detail="推荐不存在")
+    rec.status = "已读"
+    await db.commit()
+    return {"message": "ok"}
+
+
+# ========== 业务员/代理商：我的客户需求 ==========
+
+def _demand_to_dict(d) -> dict:
+    return {
+        "id": d.id, "name": d.name, "phone": d.phone, "gender": d.gender,
+        "city": d.city, "purpose": d.purpose, "budget": d.budget,
+        "own_funds": d.own_funds, "target_district": d.target_district,
+        "remark": d.remark, "source": d.source, "status": d.status,
+        "assign_read": d.assign_read,
+        "created_at": str(d.created_at),
+    }
+
+
+@router.get("/my-demands", response_model=dict)
+async def my_assigned_demands(
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    page: int = 1,
+    page_size: int = 20,
+):
+    """业务员/代理商查看分配给自己的客户需求与留言。"""
+    from ...models.demand import Demand
+    uid = int(user_data["sub"])
+    base = select(Demand).where(Demand.assigned_user_id == uid)
+    total = (await db.execute(
+        select(func.count(Demand.id)).where(Demand.assigned_user_id == uid)
+    )).scalar() or 0
+    rows = (await db.execute(
+        base.order_by(Demand.created_at.desc())
+        .offset((page - 1) * page_size).limit(page_size)
+    )).scalars().all()
+    return {"items": [_demand_to_dict(d) for d in rows], "total": total}
+
+
+@router.get("/my-demands/unread-count", response_model=dict)
+async def my_assigned_demands_unread(
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    from ...models.demand import Demand
+    uid = int(user_data["sub"])
+    cnt = (await db.execute(
+        select(func.count(Demand.id)).where(
+            Demand.assigned_user_id == uid, Demand.assign_read == 0
+        )
+    )).scalar() or 0
+    return {"unread": cnt}
+
+
+@router.post("/my-demands/{demand_id}/read")
+async def mark_my_demand_read(
+    demand_id: int,
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    from ...models.demand import Demand
+    uid = int(user_data["sub"])
+    d = (await db.execute(
+        select(Demand).where(Demand.id == demand_id, Demand.assigned_user_id == uid)
+    )).scalar_one_or_none()
+    if not d:
+        raise HTTPException(status_code=404, detail="需求不存在")
+    d.assign_read = 1
+    await db.commit()
+    return {"message": "ok"}
+
+
+@router.post("/my-demands/{demand_id}/status")
+async def update_my_demand_status(
+    demand_id: int,
+    status: str,
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """对接人更新需求处理状态（已分配→已完成）。"""
+    from ...models.demand import Demand
+    if status not in ("已分配", "已完成"):
+        raise HTTPException(status_code=400, detail="状态不合法")
+    uid = int(user_data["sub"])
+    d = (await db.execute(
+        select(Demand).where(Demand.id == demand_id, Demand.assigned_user_id == uid)
+    )).scalar_one_or_none()
+    if not d:
+        raise HTTPException(status_code=404, detail="需求不存在")
+    d.status = status
+    d.assign_read = 1
+    await db.commit()
+    return {"message": "ok"}

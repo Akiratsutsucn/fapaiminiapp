@@ -375,16 +375,22 @@ class CrawlEngine:
                         # 智能城市分配：根据解析出的 province_city 自动判定 city_id
                         # 只保留上海/宁波/杭州，其他城市直接 skip
                         pc = (auction_item.province_city or "").strip()
+                        addr = (auction_item.address or "") + " " + (auction_item.title or "")
                         # 兼容 parser 偶尔解析异常的边界情况（如「江宁波市」「省宁波市」）
-                        if "宁波" in pc:
+                        if "宁波" in pc or "宁波" in addr:
                             auction_item.city_id = 330200
                             auction_item.province_city = "宁波"
-                        elif "杭州" in pc:
+                        elif "杭州" in pc or "杭州" in addr:
                             auction_item.city_id = 330100
                             auction_item.province_city = "杭州"
-                        elif "上海" in pc:
+                        elif "上海" in pc or "上海" in addr:
                             auction_item.city_id = 310000
                             auction_item.province_city = "上海"
+                        # province_city 仅到省级（如「浙江省」），用本次抓取的目标城市兜底：
+                        # 阿里列表用 keyword=城市名 搜出，city_id 即对应城市，地址未能细分时按其归属。
+                        elif pc in ("浙江省", "浙江") and city_id in (330200, 330100):
+                            auction_item.city_id = city_id
+                            auction_item.province_city = "宁波" if city_id == 330200 else "杭州"
                         else:
                             logger.debug(
                                 f"[{platform_name}] Skipping non-target city: "
@@ -425,11 +431,24 @@ class CrawlEngine:
                                 uploaded = local_storage.save_property_images(
                                     prop_id, item.source_url, processed
                                 )
-                                image_dicts = [
-                                    {"image_url": u["oss_url"], "thumb_url": u.get("thumb_url", ""),
-                                     "sort_order": i, "is_cover": i == 0}
-                                    for i, u in enumerate(uploaded) if u["oss_url"]
-                                ]
+                                image_dicts = []
+                                _cover_set = False
+                                for i, u in enumerate(uploaded):
+                                    if not u["oss_url"]:
+                                        continue
+                                    is_junk = bool(u.get("junk_reason"))
+                                    # 封面取第一张非垃圾图
+                                    is_cover = (not is_junk) and (not _cover_set)
+                                    if is_cover:
+                                        _cover_set = True
+                                    image_dicts.append({
+                                        "image_url": u["oss_url"],
+                                        "thumb_url": u.get("thumb_url", ""),
+                                        "sort_order": i,
+                                        "is_cover": is_cover,
+                                        "hidden": 1 if is_junk else 0,
+                                        "hide_reason": u.get("junk_reason"),
+                                    })
 
                                 logger.debug(
                                     f"Processed {len(auction_item.image_urls)} images for property #{prop_id}, "
@@ -610,42 +629,28 @@ class CrawlEngine:
             except Exception as e:
                 logger.warning(f"[{platform_name}] Beike community step failed: {e}")
 
-            # 状态自校正：根据 auction_start_time / end_time 修正过期房源的状态
+            # 状态自校正：按 auction_start_time / end_time + 当前时间全向重算 auction_status。
+            # 与后端读取层 core.auction_status.effective_status 同一口径：
+            #   - 结果态（已成交/已撤回/中止/流拍）保留，不被时间覆盖；
+            #   - 时序态（即将开拍/进行中/已结束）一律按时间窗重算，含「已结束→进行中」反向修正，
+            #     修复爬虫抓取时刻状态文本错误（如开拍中却抓成已结束）导致房源被前台筛掉的问题。
             try:
-                from datetime import datetime, timedelta
+                from app.core.auction_status import effective_status_sql, RESULT_STATES
                 from sqlalchemy import update as sql_update
                 from app.models.property import Property as PropertyModel
-                now = datetime.now()
-                cutoff_3d = now - timedelta(days=3)
-                # 进行中但 end_time 已过 → 已结束
-                r1 = await db.execute(
+
+                eff = effective_status_sql()
+                r = await db.execute(
                     sql_update(PropertyModel).where(
                         PropertyModel.auction_platform == platform_name,
-                        PropertyModel.auction_status == "进行中",
-                        PropertyModel.auction_end_time < now,
-                    ).values(auction_status="已结束")
+                        PropertyModel.auction_status.notin_(RESULT_STATES),
+                        PropertyModel.auction_status != eff,
+                    ).values(auction_status=eff)
                 )
-                # 即将开拍但 start_time 早于 3 天前 → 已结束
-                r2 = await db.execute(
-                    sql_update(PropertyModel).where(
-                        PropertyModel.auction_platform == platform_name,
-                        PropertyModel.auction_status == "即将开拍",
-                        PropertyModel.auction_start_time < cutoff_3d,
-                    ).values(auction_status="已结束")
-                )
-                # 即将开拍但 start_time 已到（<3天）→ 进行中
-                r3 = await db.execute(
-                    sql_update(PropertyModel).where(
-                        PropertyModel.auction_platform == platform_name,
-                        PropertyModel.auction_status == "即将开拍",
-                        PropertyModel.auction_start_time < now,
-                        PropertyModel.auction_start_time >= cutoff_3d,
-                    ).values(auction_status="进行中")
-                )
-                fixed = (r1.rowcount or 0) + (r2.rowcount or 0) + (r3.rowcount or 0)
+                fixed = r.rowcount or 0
                 if fixed:
                     await db.commit()
-                    logger.info(f"[{platform_name}] 状态自校正：进行中→已结束 {r1.rowcount or 0}, 即将开拍→已结束 {r2.rowcount or 0}, 即将开拍→进行中 {r3.rowcount or 0}")
+                    logger.info(f"[{platform_name}] 状态自校正：按时间重算修正 {fixed} 条")
             except Exception as e:
                 logger.warning(f"[{platform_name}] 状态自校正失败: {e}")
 

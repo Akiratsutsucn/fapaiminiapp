@@ -10,6 +10,7 @@ from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
+from ..cleaners.status import normalize_status as _normalize_status
 
 
 class GPaiDetailParser(AbstractParser):
@@ -58,6 +59,12 @@ class GPaiDetailParser(AbstractParser):
         self._extract_dates(soup, item)
         self._extract_description(soup, item)
         self._compute_derived_fields(item)
+
+        # 状态归一：抽完开拍/结束时间后，按时间窗 + 当前时间重算时序态，保留结果态。
+        # 与后端读取层 / 引擎自校正同一口径，避免存入抓取时刻的过期状态文本。
+        item.auction_status = _normalize_status(
+            item.auction_status, item.auction_start_time, item.auction_end_time
+        )
 
         return item
 
@@ -603,8 +610,11 @@ class GPaiDetailParser(AbstractParser):
     def _extract_description(self, soup: BeautifulSoup, item: AuctionItem) -> None:
         parts = []
 
-        # GPai: prefer .details-main (center content) over .details-wrap (full page with nav)
+        # GPai: .details-con 是「竞买公告/竞买须知/标的物介绍/特别提示」完整正文区块
+        # （含标的物现状、租赁占用、户口、税费承担等风险信息），优先抓取。
+        # 退而求其次再用 .details-main 等中心内容选择器。
         for sel in [
+            ".details-con",
             ".details-main", ".detail-desc", ".description",
             ".item-desc", "[class*='desc']", ".auction-detail",
             ".detail-content", ".main-content", ".detail-text", ".sf-content",
@@ -612,7 +622,7 @@ class GPaiDetailParser(AbstractParser):
         ]:
             el = soup.select_one(sel)
             if el:
-                desc = clean_text(el.get_text(strip=False))[:5000]
+                desc = clean_text(el.get_text(separator=" ", strip=True))[:8000]
                 if len(desc) > 50:
                     parts.append(desc)
                     break
@@ -620,7 +630,7 @@ class GPaiDetailParser(AbstractParser):
         if not parts:
             main = soup.select_one(".details-main, .detail-main, main, article")
             if main:
-                desc = clean_text(main.get_text(strip=False))[:5000]
+                desc = clean_text(main.get_text(separator=" ", strip=True))[:8000]
                 if len(desc) > 50:
                     parts.append(desc)
 
