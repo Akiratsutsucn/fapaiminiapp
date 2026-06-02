@@ -267,19 +267,35 @@ class GPaiDetailParser(AbstractParser):
         elif "商业" in text or "商铺" in text or "店铺" in text:
             item.property_type = "商业"
 
-        # Area
-        area_str = self._extract_by_label(text, r'建筑面积[：:]\s*([\d,.]+)\s*(?:㎡|平方米|m2)?')
+        # Area —— 公拍网正文常写「房屋建筑面积为338.53平方米」或「建筑面积：112.09平方米」，
+        # 分隔符可能是「为/：/:」甚至无分隔，且必须带单位（㎡/平方米/m2）才算数。
+        # 关键：强制要求单位，否则会误抓「评估价1768万」「宗地面积134991」等无关数字。
+        # 负向先行排除「地下建筑面积」（那是地下部分，不是套内/总建面）。
+        area_str = ""
+        m = re.search(
+            r'(?<!地下)建筑面积[为约是：:]?\s*(\d+(?:\.\d+)?)\s*(?:㎡|平方米|平米|m2|m²)',
+            text,
+        )
+        if m:
+            area_str = m.group(1)
         if not area_str:
             area_str = self._find_row_value(soup, "建筑面积")
+        # 任意「<数字> 平方米」兜底（同样强制单位），优先取合理住宅范围内的值
         if not area_str:
-            area_str = extra.get("area_text", "")
-            if area_str:
-                area_match = re.search(r'([\d.]+)', area_str)
-                area_str = area_match.group(1) if area_match else ""
+            for cand in re.findall(r'(\d+(?:\.\d+)?)\s*(?:㎡|平方米|平米|m2|m²)', text):
+                try:
+                    v = float(cand)
+                except ValueError:
+                    continue
+                if 5 <= v <= 5000:  # 合理单户建面区间，排除宗地/使用权等超大地块面积
+                    area_str = cand
+                    break
+        # 列表页带来的 area_text 兜底
         if not area_str:
-            area_match = re.search(r'面积[：:]\s*([\d,.]+)\s*(?:㎡|平方米|m2)?', text)
-            if area_match:
-                area_str = area_match.group(1)
+            area_text = extra.get("area_text", "")
+            if area_text:
+                am = re.search(r'(\d+(?:\.\d+)?)', area_text)
+                area_str = am.group(1) if am else ""
         item.area = parse_area_sqm(area_str) if area_str else 0.0
 
         # Layout
