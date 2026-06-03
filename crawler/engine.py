@@ -466,11 +466,32 @@ class CrawlEngine:
                         # Asset type filter: skip vehicles, equipment, goods (not real estate)
                         title = auction_item.title or ""
                         import re as _re_asset
+
+                        # (a) 车牌号：整个标题就是一个车牌（如「浙BV53K7」「沪B975D5」）→ 动产，跳过
+                        if _re_asset.match(
+                            r"^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼宁]"
+                            r"[A-Z][0-9A-Z]{4,6}$",
+                            title.strip()
+                        ):
+                            logger.info(
+                                f"[{platform_name}] Skipping license-plate: {title[:30]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
+
+                        # (b) 动产/物品：标题以「放置于/放置在/位于…内的」开头描述存放地点的动产，
+                        #     或以「财物/财产/设备/物资/动产」结尾 → 多为机器/库存/物品，非不动产。
+                        if _re_asset.match(r"^放置(于|在|的)", title) or \
+                           _re_asset.search(r"(财物|财产|物资|动产|的设备|等物品|一批)\s*$", title):
+                            logger.info(
+                                f"[{platform_name}] Skipping movable-asset: {title[:36]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
+
                         non_real_estate_kw = _re_asset.compile(
                             r"车牌|本田|奔驰|宝马|奥迪|大众|丰田|日产|路虎|保时捷|普通客车|轿车|商务车|货车|挖掘机|装载机|捷豹|荣威"
-                            r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车"
-                            r"|包装箱|集装箱|阻隔瓶|塑料桶|物资一批|设备一批|手机一批|电脑一批"
-                            r"|家具一套|红木家具|字画|书画|画一幅|花盆|笔筒|手表|名表|江诗丹顿|劳力士|包等物品|麻将包"
+                            r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车|牌汽车|号牌"
+                            r"|包装箱|集装箱|阻隔瓶|塑料桶|物资一批|设备一批|手机一批|电脑一批|塑料造粒机|生产设备|加工设备|办公设备"
+                            r"|家具一套|红木家具|字画|书画|画一幅|花盆|笔筒|手表|名表|江诗丹顿|劳力士|包等物品|麻将包|古玩|瓷器|玉器"
                             r"|专利权|商标权|著作权|股权|股票|出资额|证券代码|充电设备|变压器|机器设备|生产线|存货"
                         )
                         real_estate_kw = _re_asset.compile(
