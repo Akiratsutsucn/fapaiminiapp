@@ -61,6 +61,28 @@ PLATFORM_FACTORY = {
 
 CITY_ID_MAP = {"上海": 310000, "宁波": 330200, "杭州": 330100}
 
+# 三市合法辖区白名单（用于拦截「外省叫『上海花园/上海城/上海路』的楼盘」——
+# 这类标题含「上海」会骗过关键词判断，但解析出的 district 是外省地名，可据此精确拦截）。
+VALID_DISTRICTS = {
+    310000: {  # 上海 16 区
+        "浦东新区", "宝山区", "闵行区", "松江区", "普陀区", "杨浦区", "奉贤区",
+        "嘉定区", "青浦区", "黄浦区", "徐汇区", "虹口区", "静安区", "金山区",
+        "长宁区", "崇明区",
+    },
+    330200: {  # 宁波
+        "海曙区", "江北区", "北仑区", "镇海区", "鄞州区", "奉化区",
+        "余姚市", "慈溪市", "象山县", "宁海县",
+    },
+    330100: {  # 杭州
+        "余杭区", "上城区", "拱墅区", "富阳区", "临安区", "萧山区", "西湖区",
+        "桐庐县", "钱塘区", "建德市", "淳安县", "滨江区", "江干区", "临平区",
+        "下城区",
+    },
+}
+# 所有合法辖区合集（任一市命中即视为目标区域内）。额外并入市级名称（上海/宁波/杭州），
+# 兼容部分房源 district 只解析到市级、未细分到区的合法情况。
+_ALL_VALID_DISTRICTS = set().union(*VALID_DISTRICTS.values()) | {"上海", "宁波", "杭州"}
+
 
 class CrawlRunResult:
     """Summary of a crawl run."""
@@ -429,15 +451,30 @@ class CrawlEngine:
                             )
                             return "skipped_city", None
 
+                        # district 白名单校验：解析出的辖区必须属于沪甬杭三市，否则判定为
+                        # 「外省同名楼盘」（如昆明呈贡『上海·东盟』、青岛黄岛『上海东二路』、
+                        # 北海海城『上海路』等——标题含『上海』但实为外省），直接跳过。
+                        # 注：district 为空时不拦（部分房源未解析出区县，留给后续兜底）。
+                        _dist = (auction_item.district or "").strip()
+                        if _dist and _dist not in _ALL_VALID_DISTRICTS:
+                            logger.info(
+                                f"[{platform_name}] Skipping out-of-region (外省同名楼盘, "
+                                f"district={_dist}): {(auction_item.title or '')[:36]} — {item.source_url}"
+                            )
+                            return "skipped_city", None
+
                         # Asset type filter: skip vehicles, equipment, goods (not real estate)
                         title = auction_item.title or ""
                         import re as _re_asset
                         non_real_estate_kw = _re_asset.compile(
                             r"车牌|本田|奔驰|宝马|奥迪|大众|丰田|日产|路虎|保时捷|普通客车|轿车|商务车|货车|挖掘机|装载机|捷豹|荣威"
+                            r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车"
                             r"|包装箱|集装箱|阻隔瓶|塑料桶|物资一批|设备一批|手机一批|电脑一批"
+                            r"|家具一套|红木家具|字画|书画|画一幅|花盆|笔筒|手表|名表|江诗丹顿|劳力士|包等物品|麻将包"
+                            r"|专利权|商标权|著作权|股权|股票|出资额|证券代码|充电设备|变压器|机器设备|生产线|存货"
                         )
                         real_estate_kw = _re_asset.compile(
-                            r"室|号楼|栋|公寓|花园|小区|大厦|花苑|别墅|商铺|厂房|办公|住宅|住房|店铺|车位|楼盘|公馆|广场|宅基|宿舍|商业用房|工业用房|土地|地块"
+                            r"室|号楼|栋|公寓|花园|小区|大厦|花苑|别墅|商铺|厂房|办公|住宅|住房|店铺|车位|楼盘|公馆|广场|宅基|宿舍|商业用房|工业用房|土地|地块|房产|房地产|不动产|幢|层"
                         )
                         if non_real_estate_kw.search(title) and not real_estate_kw.search(title):
                             logger.info(
