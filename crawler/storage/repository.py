@@ -169,6 +169,8 @@ class PropertyImageRepository:
                 thumb_url=thumb,
                 sort_order=img.get("sort_order", i) if isinstance(img, dict) else i,
                 is_cover=img.get("is_cover", i == 0) if isinstance(img, dict) else (i == 0),
+                hidden=img.get("hidden", 0) if isinstance(img, dict) else 0,
+                hide_reason=img.get("hide_reason") if isinstance(img, dict) else None,
             ))
 
         await db.flush()

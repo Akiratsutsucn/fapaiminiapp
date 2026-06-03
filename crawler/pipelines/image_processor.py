@@ -22,16 +22,18 @@ MAX_WIDTH = 1080
 THUMB_WIDTH = 300
 WEBP_QUALITY = 80
 REQUEST_TIMEOUT = 30
-MAX_CONCURRENT_DOWNLOADS = 5
+MAX_CONCURRENT_DOWNLOADS = 3
 
 
 class ImageProcessor:
     """Download and process property images."""
 
-    def __init__(self, http_client=None, extra_headers=None, cookies_str=""):
+    def __init__(self, http_client=None, extra_headers=None, cookies_str="", proxy=None):
         self._client = http_client
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
         self._extra_headers = extra_headers or {}
+        # 图片下载代理（如住宅 socks5h://），用于规避 img.alicdn.com 对机房IP的 420 限流。
+        self._proxy = proxy
         self._cookies = {}
         if cookies_str:
             for pair in cookies_str.split(";"):
@@ -63,32 +65,45 @@ class ImageProcessor:
         url_lower = url.lower()
         return any(p in url_lower for p in skip_patterns)
 
-    async def _fetch_bytes(self, url: str, max_retries: int = 2) -> bytes | None:
-        """Download image bytes from URL with retry and exponential backoff."""
+    async def _fetch_bytes(self, url: str, max_retries: int = 4) -> bytes | None:
+        """Download image bytes from URL with retry and exponential backoff.
+
+        img.alicdn.com 对机房IP「突发限流」返回 HTTP 420，但会自行恢复，直连退避重试即可。
+        策略：直连为主，遇 420 加长退避后再直连重试；多次失败后若配了代理再兜底试一次代理。
+        （实测住宅 socks5 对 alicdn 不稳定，仅作最后兜底，不作首选。）
+        """
         import httpx
 
         last_error = None
         for attempt in range(max_retries + 1):
+            # 最后一次重试且前面都失败时，若有代理则兜底走代理
+            use_proxy = bool(self._proxy) and attempt == max_retries
             try:
                 async with self._semaphore:
-                    if self._client:
+                    if self._client and not use_proxy:
                         resp = await self._client.get(url)
                     else:
-                        async with httpx.AsyncClient(
+                        client_kwargs = dict(
                             timeout=REQUEST_TIMEOUT,
                             headers=self._extra_headers,
                             cookies=self._cookies if self._cookies else None,
-                        ) as c:
+                        )
+                        if use_proxy:
+                            client_kwargs["proxy"] = self._proxy
+                        async with httpx.AsyncClient(**client_kwargs) as c:
                             resp = await c.get(url)
-                    if resp.status_code == 200:
+                    if resp.status_code == 200 and resp.content:
                         return resp.content
                     last_error = f"HTTP {resp.status_code}"
             except Exception as e:
                 last_error = str(e)
 
             if attempt < max_retries:
-                delay = 1.5 * (attempt + 1)
-                logger.debug(f"Image download retry {attempt + 1}/{max_retries} after {delay}s: {url}")
+                # 420 限流退避更久（2s,4s,7s,11s...），普通错误用较短退避
+                is_420 = last_error == "HTTP 420"
+                delay = (2.0 + attempt * 2.5) if is_420 else (1.5 * (attempt + 1))
+                logger.debug(f"Image retry {attempt + 1}/{max_retries} after {delay:.0f}s "
+                             f"(err={last_error}): {url[:70]}")
                 await asyncio.sleep(delay)
 
         logger.warning(f"Image download failed after {max_retries + 1} attempts: {url} — {last_error}")
@@ -122,16 +137,17 @@ class ImageProcessor:
 
     async def download_and_process(
         self, url: str, generate_thumb: bool = True, platform: str = ""
-    ) -> tuple[bytes | None, bytes | None]:
-        """Download image, return (full_webp_bytes, thumb_webp_bytes).
+    ) -> tuple[bytes | None, bytes | None, str | None]:
+        """Download image, return (full_webp_bytes, thumb_webp_bytes, junk_reason).
 
-        Returns (None, None) on failure.
+        junk_reason: 非空表示该图为垃圾图(广告/二维码/logo)，应在前台隐藏。
+        Returns (None, None, None) on failure.
         """
         transformed_url = self.transform_image_url(url, platform)
 
         if self.is_likely_non_photo(transformed_url):
             logger.debug(f"Skipping non-photo image: {transformed_url}")
-            return None, None
+            return None, None, None
 
         raw = await self._fetch_bytes(transformed_url)
         if raw is None:
@@ -140,7 +156,17 @@ class ImageProcessor:
                 logger.debug(f"Retrying with original URL: {url}")
                 raw = await self._fetch_bytes(url)
         if raw is None:
-            return None, None
+            return None, None, None
+
+        # 垃圾图检测（广告/二维码/logo）—— 仍下载保存，但标记 junk_reason 供前台隐藏
+        junk_reason = None
+        try:
+            from .junk_image_filter import detect_junk
+            junk_reason = detect_junk(raw)
+            if junk_reason:
+                logger.debug(f"垃圾图标记[{junk_reason}]: {url[:80]}")
+        except Exception as e:
+            logger.debug(f"junk detect skip: {e}")
 
         loop = asyncio.get_running_loop()
         full = await loop.run_in_executor(None, self._resize_to_webp, raw, MAX_WIDTH, WEBP_QUALITY)
@@ -149,14 +175,14 @@ class ImageProcessor:
         if generate_thumb:
             thumb = await loop.run_in_executor(None, self._resize_to_webp, raw, THUMB_WIDTH, 75)
 
-        return full, thumb
+        return full, thumb, junk_reason
 
     async def process_batch(
         self, urls: list[str], generate_thumbs: bool = True, platform: str = ""
     ) -> list[dict]:
         """Process a batch of image URLs concurrently.
 
-        Returns list of {url, full_bytes, thumb_bytes, error}.
+        Returns list of {url, full_bytes, thumb_bytes, junk_reason, error}.
         """
         tasks = [self.download_and_process(url, generate_thumbs, platform) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -164,8 +190,10 @@ class ImageProcessor:
         output = []
         for url, result in zip(urls, results):
             if isinstance(result, Exception):
-                output.append({"url": url, "full_bytes": None, "thumb_bytes": None, "error": str(result)})
+                output.append({"url": url, "full_bytes": None, "thumb_bytes": None,
+                               "junk_reason": None, "error": str(result)})
             else:
-                full, thumb = result
-                output.append({"url": url, "full_bytes": full, "thumb_bytes": thumb, "error": None})
+                full, thumb, junk_reason = result
+                output.append({"url": url, "full_bytes": full, "thumb_bytes": thumb,
+                               "junk_reason": junk_reason, "error": None})
         return output

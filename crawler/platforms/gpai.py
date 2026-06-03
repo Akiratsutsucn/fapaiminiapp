@@ -9,6 +9,7 @@ import asyncio
 import re
 from urllib.parse import urlparse, parse_qs
 
+import httpx
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from loguru import logger
 
@@ -24,6 +25,11 @@ _ITEM_ID_RE = re.compile(r"Web_Item_ID=(\d+)")
 # 当前已知最大 ID（每次爬取后会更新）
 DEFAULT_START_SCAN_ID = 52772
 SCAN_RANGE = 200  # 从 max_id+1 起扫这么多个新 ID
+
+# 城市 → 公拍网 cityNum（s.gpai.net 城市精确搜索参数）
+CITY_NUM_MAP = {"上海": "31", "宁波": "3302", "杭州": "3301"}
+# 资产类型 at 参数：376/381 覆盖住宅+商业等不动产类型
+GPAI_ASSET_TYPES = ["376", "381"]
 
 
 class GPaiCrawler(AbstractBrokerCrawler):
@@ -101,11 +107,59 @@ class GPaiCrawler(AbstractBrokerCrawler):
             )
         return detected
 
+    async def _fetch_city_search_ids(self, city: str) -> list[ListItem]:
+        """用住宅代理 + cookie 握手，从 s.gpai.net 城市精确搜索抓房源 ID。
+
+        s.gpai.net 封服务器 IP（403），需住宅代理。流程：先访问 www.gpai.net/sf/
+        种 cookie，再带 cookie 请求 s.gpai.net/sf/search.do?at=&cityNum=。
+        仅抓列表（流量小），详情页仍走服务器直连。GPAI_PROXY 未配置则跳过。
+        """
+        proxy = (settings.GPAI_PROXY or "").strip()
+        city_num = CITY_NUM_MAP.get(city)
+        if not proxy or not city_num:
+            return []
+
+        ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        items: list[ListItem] = []
+        seen: set[str] = set()
+        try:
+            async with httpx.AsyncClient(
+                proxy=proxy, timeout=40, follow_redirects=True,
+                headers={"User-Agent": ua},
+            ) as client:
+                # 1. 访问主站种 cookie
+                await client.get("https://www.gpai.net/sf/")
+                # 2. 每个资产类型分别搜索
+                for at in GPAI_ASSET_TYPES:
+                    url = f"https://s.gpai.net/sf/search.do?at={at}&cityNum={city_num}"
+                    try:
+                        resp = await client.get(url, headers={"Referer": "https://www.gpai.net/sf/"})
+                    except Exception as e:
+                        logger.warning(f"[GPai] 城市搜索请求失败 city={city} at={at}: {e}")
+                        continue
+                    if resp.status_code != 200:
+                        logger.warning(f"[GPai] 城市搜索 HTTP {resp.status_code} city={city} at={at}")
+                        continue
+                    for m in _ITEM_ID_RE.finditer(resp.text):
+                        sid = m.group(1)
+                        if sid not in seen:
+                            seen.add(sid)
+                            items.append(ListItem(
+                                source_url=f"{self.BASE_URL}/sf/item2.do?Web_Item_ID={sid}",
+                                title="",
+                            ))
+                    await asyncio.sleep(1.5)
+            logger.info(f"[GPai] 住宅代理城市搜索 city={city}: 发现 {len(items)} 个房源")
+        except Exception as e:
+            logger.warning(f"[GPai] 城市搜索整体失败 city={city}: {e}")
+        return items
+
     @retry_on_failure(max_retries=2, backoff_factor=2.0)
     async def collect_list_items(
         self, source_url: str, city: str, max_pages: int = 50
     ) -> list[ListItem]:
-        """收集 item2.do 链接：主页 + ID 扫描。
+        """收集 item2.do 链接：城市精确搜索（住宅代理）+ 主页 + ID 扫描。
 
         source_url 现在仅作为 city 标识（参数兼容老配置）。
         实际抓取从 www.gpai.net/sf/ 主页 + ID 扫描，详情解析在 fetch_detail 中。
@@ -116,6 +170,18 @@ class GPaiCrawler(AbstractBrokerCrawler):
 
         # 0. 注入 cookie（如已配置）
         await self._inject_cookies(page)
+
+        # 0.5 城市精确搜索（住宅代理）—— 优先，确保抓到目标城市（尤其杭州/宁波）
+        try:
+            city_items = await self._fetch_city_search_ids(city)
+            for it in city_items:
+                m = _ITEM_ID_RE.search(it.source_url)
+                sid = m.group(1) if m else None
+                if sid and sid not in seen_ids:
+                    seen_ids.add(sid)
+                    items.append(it)
+        except Exception as e:
+            logger.warning(f"[GPai] 城市搜索阶段异常: {e}")
 
         # 1. 抓主页所有 item2.do 链接
         try:
@@ -156,45 +222,48 @@ class GPaiCrawler(AbstractBrokerCrawler):
         except Exception as e:
             logger.warning(f"[GPai] 抓主页失败: {e}")
 
-        # 2. 从最大 ID 开始递增扫描发现新房源
-        try:
-            from ..storage.db import get_session
-            from sqlalchemy import select
-            # 用 raw SQL 查 max(Web_Item_ID) 避开 ORM 路径问题
-            from sqlalchemy import text
-            db = await get_session()
+        # 2. ID 递增扫描（仅兜底）：城市精确搜索已能拿到目标城市真实房源，
+        #    盲扫大量连续 ID 会触发 www.gpai.net 风控（403冷却）。仅当城市搜索+主页
+        #    几乎没拿到房源时，才小范围扫描兜底。
+        proxy_configured = bool((settings.GPAI_PROXY or "").strip())
+        do_scan = (len(items) < 5) or (not proxy_configured)
+        scan_range = SCAN_RANGE if not proxy_configured else 30
+        if do_scan:
             try:
-                result = await db.execute(text(
-                    "SELECT source_url FROM properties WHERE auction_platform='公拍网' "
-                    "AND source_url LIKE '%Web_Item_ID=%' ORDER BY id DESC LIMIT 100"
-                ))
-                rows = [r[0] for r in result.fetchall()]
+                from ..storage.db import get_session
+                from sqlalchemy import text
+                db = await get_session()
+                try:
+                    result = await db.execute(text(
+                        "SELECT source_url FROM properties WHERE auction_platform='公拍网' "
+                        "AND source_url LIKE '%Web_Item_ID=%' ORDER BY id DESC LIMIT 100"
+                    ))
+                    rows = [r[0] for r in result.fetchall()]
+                    max_id = DEFAULT_START_SCAN_ID
+                    for url in rows:
+                        m = _ITEM_ID_RE.search(url or "")
+                        if m:
+                            max_id = max(max_id, int(m.group(1)))
+                finally:
+                    await db.close()
+            except Exception as e:
+                logger.warning(f"[GPai] 查询 max_id 失败，使用默认值 {DEFAULT_START_SCAN_ID}: {e}")
                 max_id = DEFAULT_START_SCAN_ID
-                for url in rows:
-                    m = _ITEM_ID_RE.search(url or "")
-                    if m:
-                        max_id = max(max_id, int(m.group(1)))
-            finally:
-                await db.close()
-        except Exception as e:
-            logger.warning(f"[GPai] 查询 max_id 失败，使用默认值 {DEFAULT_START_SCAN_ID}: {e}")
-            max_id = DEFAULT_START_SCAN_ID
 
-        logger.info(f"[GPai] 从 ID {max_id+1} 起扫描 {SCAN_RANGE} 个 ID 发现新房源")
-        scan_start = max_id + 1
-        scan_end = scan_start + SCAN_RANGE
+            logger.info(f"[GPai] 兜底扫描：从 ID {max_id+1} 起扫 {scan_range} 个 ID")
+            for new_id in range(max_id + 1, max_id + 1 + scan_range):
+                sid = str(new_id)
+                if sid in seen_ids:
+                    continue
+                seen_ids.add(sid)
+                items.append(ListItem(
+                    source_url=f"{self.BASE_URL}/sf/item2.do?Web_Item_ID={sid}",
+                    title="",  # 详情页解析时再填
+                ))
+        else:
+            logger.info(f"[GPai] 城市搜索已获 {len(items)} 个房源，跳过 ID 扫描（避免风控）")
 
-        for new_id in range(scan_start, scan_end):
-            sid = str(new_id)
-            if sid in seen_ids:
-                continue
-            seen_ids.add(sid)
-            items.append(ListItem(
-                source_url=f"{self.BASE_URL}/sf/item2.do?Web_Item_ID={sid}",
-                title="",  # 详情页解析时再填
-            ))
-
-        logger.info(f"[GPai] 共收集 {len(items)} 个待爬房源（首页 + ID 扫描）")
+        logger.info(f"[GPai] 共收集 {len(items)} 个待爬房源")
         return items
 
     @retry_on_failure(max_retries=4, backoff_factor=2.0)

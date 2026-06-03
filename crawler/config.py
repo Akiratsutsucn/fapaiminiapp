@@ -28,6 +28,12 @@ class CrawlerSettings(BaseSettings):
 
     # ===== proxy =====
     PROXY_URL: str | None = None
+    # 公拍网列表专用住宅代理（s.gpai.net 封服务器IP，城市精确搜索需住宅IP）
+    # 格式：socks5h://user:pass@host:port  —— 仅用于抓 s.gpai.net 列表，详情页走直连
+    GPAI_PROXY: str | None = None
+    # 阿里图片下载专用代理（img.alicdn.com 对服务器IP突发限流 HTTP 420，走住宅代理规避）
+    # 留空则复用 GPAI_PROXY；都为空则直连。格式同上 socks5h://user:pass@host:port
+    IMAGE_PROXY: str | None = None
 
     # ===== rate limiting =====
     MIN_DELAY_SEC: float = 1.0

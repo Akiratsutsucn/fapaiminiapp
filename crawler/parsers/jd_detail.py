@@ -104,6 +104,38 @@ class JDDetailParser(AbstractParser):
                 except (ValueError, TypeError):
                     pass
 
+        # 补评估价 / 市场价（HTML 常缺，API 的 assessmentPrice / marketPrice 更可靠）。
+        # 变卖类标的多无评估价(assessmentPrice=0)，但 judicatureBasicInfoResult.marketPrice 有值，
+        # 作为评估价兜底——前端"评估价"展示用，帮助用户判断折扣空间。
+        jbi = d.get("judicatureBasicInfoResult") or {}
+        if not item.appraisal_price:
+            ap = d.get("assessmentPrice")
+            try:
+                if ap and float(ap) > 0:
+                    item.appraisal_price = int(float(ap))
+            except (ValueError, TypeError):
+                pass
+        if not item.appraisal_price:
+            mp = jbi.get("marketPrice")
+            try:
+                if mp and float(mp) > 0:
+                    item.appraisal_price = int(float(mp))
+            except (ValueError, TypeError):
+                pass
+        if not item.market_deal_price:
+            mp = jbi.get("marketPrice")
+            try:
+                if mp and float(mp) > 0:
+                    item.market_deal_price = int(float(mp))
+            except (ValueError, TypeError):
+                pass
+        # loan_support：API 的 loan 字段(0/1)
+        if item.loan_support is None and "loan" in jbi:
+            try:
+                item.loan_support = bool(int(jbi.get("loan") or 0))
+            except (ValueError, TypeError):
+                pass
+
         # 补经纬度（如果 extendInfoMap 含）— 减少后续 geocoding 调用
         if not item.lat or not item.lng:
             ext = d.get("extendInfoMap")

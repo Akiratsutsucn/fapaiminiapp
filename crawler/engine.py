@@ -36,6 +36,22 @@ from .pipelines.image_processor import ImageProcessor
 from .pipelines.local_storage import LocalStorage
 from .pipelines.data_enricher import DataEnricher
 
+import re as _re_engine
+
+# 标题/地址开头若是「外省省名/外省直辖市/外省地市」，即使后面带「上海/杭州/宁波」字样
+# （如「河南永城上海公馆」「四川上海广场」），也属于外省房源，应跳过。
+# 注意：不含「上海/浙江」本身，避免误杀目标城市。
+_re_other_province = _re_engine.compile(
+    r"^\s*(河北|河南|山东|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
+    r"福建|安徽|江西|辽宁|吉林|黑龙江|云南|贵州|甘肃|内蒙古?|新疆|宁夏|青海|海南|"
+    r"西藏|淄博市?|唐山|周口|西安市)"
+)
+
+# 股权/出资额/证券类「非不动产」拍卖（被执行人持有……股权/出资额/证券代码……）
+_re_equity_auction = _re_engine.compile(
+    r"(股权|出资额|证券代码|证劵代码|股的|偿债|重整案件|注册资本|持股|股份)"
+)
+
 
 PLATFORM_FACTORY = {
     "阿里拍卖": (TaobaoPaiMaiCrawler, TaobaoPaiMaiDetailParser),
@@ -191,11 +207,15 @@ class CrawlEngine:
         # Image processing pipeline
         extra_headers = {}
         cookies_str = ""
+        image_proxy = None
         if platform_name == "阿里拍卖":
             extra_headers = {"Referer": "https://pages-fast.m.taobao.com/"}
             cookies_str = settings.TAOBAO_COOKIE
+            # 阿里图片(img.alicdn.com)对机房IP突发限流420，走住宅代理下载更稳。
+            # 优先用专用 IMAGE_PROXY，未配则复用 GPAI_PROXY。
+            image_proxy = settings.IMAGE_PROXY or settings.GPAI_PROXY
         image_processor = ImageProcessor(
-            extra_headers=extra_headers, cookies_str=cookies_str
+            extra_headers=extra_headers, cookies_str=cookies_str, proxy=image_proxy
         )
         local_storage = LocalStorage(
             base_path=settings.IMAGE_STORAGE_PATH,
@@ -376,6 +396,17 @@ class CrawlEngine:
                         # 只保留上海/宁波/杭州，其他城市直接 skip
                         pc = (auction_item.province_city or "").strip()
                         addr = (auction_item.address or "") + " " + (auction_item.title or "")
+                        addr_head = ((auction_item.address or auction_item.title or "")).strip()[:8]
+                        # 先排除「外省楼盘名带沪杭甬字样」的误判：
+                        # 如「河南永城上海公馆」「内蒙古丰镇浦江上海城」「四川上海广场」——
+                        # 标题/地址以外省省名或外省地市开头时，即使含「上海」二字也不是目标城市。
+                        _other_province = _re_other_province.match(addr_head)
+                        if _other_province:
+                            logger.info(
+                                f"[{platform_name}] Skipping out-of-region (外省楼盘名含沪杭甬): "
+                                f"{addr_head} — {item.source_url}"
+                            )
+                            return "skipped_city", None
                         # 兼容 parser 偶尔解析异常的边界情况（如「江宁波市」「省宁波市」）
                         if "宁波" in pc or "宁波" in addr:
                             auction_item.city_id = 330200
@@ -411,6 +442,13 @@ class CrawlEngine:
                         if non_real_estate_kw.search(title) and not real_estate_kw.search(title):
                             logger.info(
                                 f"[{platform_name}] Skipping non-real-estate: {title[:40]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
+
+                        # 股权/出资额/证券类拍卖（非不动产）：标题含股权关键词且不含房产关键词时跳过
+                        if _re_equity_auction.search(title) and not real_estate_kw.search(title):
+                            logger.info(
+                                f"[{platform_name}] Skipping equity/stock auction: {title[:40]} — {item.source_url}"
                             )
                             return "skipped_non_real_estate", None
 

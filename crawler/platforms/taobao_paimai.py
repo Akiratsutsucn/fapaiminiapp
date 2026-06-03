@@ -24,10 +24,14 @@ from .base import AbstractBrokerCrawler, ListItem
 from ..browser import browser_manager
 from ..config import settings
 from ..utils.retry import retry_on_failure
+from ..cleaners.text import clean_text
 
 
 MTOP_BASE = "https://h5api.m.taobao.com/h5/mtop.taobao.datafront.invoke.auctionwalle/1.0/"
 DETAIL_API = "https://h5api.m.taobao.com/h5/mtop.taobao.govauctionmtopdetailservice.queryhttpsitemdetail/3.0/"
+# 公告正文 API：拍卖须知(itemId即可)、标的物介绍(需projectId)
+NOTICE_API = "https://h5api.m.taobao.com/h5/mtop.com.taobao.auction.notice.content.get/1.0/"
+PROJECT_API = "https://h5api.m.taobao.com/h5/mtop.com.taobao.auction.project.content.get/1.0/"
 APP_KEY = "12574478"
 
 DETAIL_URL_TEMPLATE = (
@@ -60,18 +64,19 @@ def _extract_token(cookie_str: str) -> str:
     return m.group(1).split("_")[0]
 
 
-def _build_scene_config(scene_key: str, zc_biz_types: list[str], sid: str) -> dict:
-    inner = json.dumps(
-        {
-            "disableNav": "YES",
-            "x-ssr": "true",
-            "zcBizTypes": zc_biz_types,
-            "keywordSourceInfo": {},
-            "appendMap": {"sid": sid, "enableQueryCorrect": True},
-        },
-        separators=(",", ":"),
-        ensure_ascii=False,
-    )
+def _build_scene_config(scene_key: str, zc_biz_types: list[str], sid: str, keyword: str = "") -> dict:
+    inner_obj = {
+        "disableNav": "YES",
+        "x-ssr": "true",
+        "zcBizTypes": zc_biz_types,
+        "keywordSourceInfo": {},
+        "appendMap": {"sid": sid, "enableQueryCorrect": True},
+    }
+    # 城市筛选：auctionwalle 搜索仅 keyword 生效（appendMap 的省市/divisionId 均无效），
+    # 故宁波/杭州用城市名作为关键词筛选；上海默认列表即上海，无需 keyword。
+    if keyword:
+        inner_obj["keyword"] = keyword
+    inner = json.dumps(inner_obj, separators=(",", ":"), ensure_ascii=False)
 
     context = {
         "userInfo": "{}",
@@ -301,7 +306,11 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         items: list[ListItem] = []
 
         sid = str(int(time.time() * 1000))
-        data_payload = _build_scene_config("searchlist-items", ["6"], sid)
+        # 城市筛选：auctionwalle 搜索仅 keyword 生效（appendMap 省市参数无效）。
+        # 实测默认列表（keyword 空）只返回约 212 条「诉讼资产」精选，远少于实际在拍量；
+        # 用城市名作 keyword 可拉到 500+ 条全量（上海/杭州/宁波同理），故所有城市都带 keyword。
+        city_keyword = city or ""
+        data_payload = _build_scene_config("searchlist-items", ["6"], sid, keyword=city_keyword)
 
         page = 1
         while page <= max_pages:
@@ -476,16 +485,88 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         ssr_data = await self._extract_from_ssr(item_id)
         if ssr_data and ssr_data.get("_source") != "skeleton":
             logger.info(f"[TaobaoPaiMai] SSR success for {item_id}")
+            await self._enrich_notice(item_id, ssr_data)
             return ssr_data
 
         # Strategy 2: Build from cached list API row
         row = self._row_cache.get(item_id)
         if row:
             logger.info(f"[TaobaoPaiMai] Using list API data for {item_id}")
-            return self._build_detail_from_row(row)
+            detail = self._build_detail_from_row(row)
+            await self._enrich_notice(item_id, detail)
+            return detail
 
         logger.warning(f"[TaobaoPaiMai] No data for {item_id}")
         return None
+
+    # ------------------------------------------------------------------
+    # Notice / project content enrichment (公告正文)
+    # ------------------------------------------------------------------
+
+    async def _call_mtop_content(self, base: str, api_name: str, payload: dict) -> str:
+        """带 token 握手调用 MTOP content API，返回 data.content 文本（失败返回空串）。"""
+        try:
+            client = await self._get_http()
+        except Exception:
+            return ""
+        body = ""
+        for _ in range(3):
+            token = self._token or ""
+            data = json.dumps(payload, separators=(",", ":"))
+            t = str(int(time.time() * 1000))
+            sign = compute_mtop_sign(token, t, APP_KEY, data)
+            params = {
+                "jsv": "2.7.4", "appKey": APP_KEY, "t": t, "sign": sign,
+                "api": api_name, "v": "1.0", "type": "json",
+                "dataType": "json", "data": data,
+            }
+            url = f"{base}?{urlencode(params, quote_via=quote)}"
+            try:
+                resp = await client.get(url)
+            except Exception as e:
+                logger.debug(f"[TaobaoPaiMai] content API error: {e}")
+                return ""
+            self._refresh_token_from_response(resp)
+            body = resp.text
+            if "FAIL_SYS_TOKEN" in body or "令牌为空" in body:
+                continue  # 拿到新 token 重试
+            break
+        try:
+            j = json.loads(body)
+            content = (j.get("data") or {}).get("content", "")
+            if content and content not in ("没有拍卖须知", "没有标的物介绍"):
+                return clean_text(content)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        return ""
+
+    async def _enrich_notice(self, item_id: str, detail: dict) -> None:
+        """抓拍卖须知 + 标的物介绍正文，注入 detail['data']['_notice_text']，
+        供 parser 合并进 description（含租赁/户口/占用/欠费等风险信息）。"""
+        try:
+            data = detail.get("data", detail)
+            project_id = str(data.get("projectId") or "")
+            parts = []
+            # 1. 拍卖须知（itemId 即可）
+            notice = await self._call_mtop_content(
+                NOTICE_API, "mtop.com.taobao.auction.notice.content.get",
+                {"itemId": str(item_id)},
+            )
+            if notice:
+                parts.append("【拍卖须知】" + notice)
+            # 2. 标的物介绍（需 projectId）
+            if project_id:
+                proj = await self._call_mtop_content(
+                    PROJECT_API, "mtop.com.taobao.auction.project.content.get",
+                    {"projectId": project_id},
+                )
+                if proj:
+                    parts.append("【标的物介绍】" + proj)
+            if parts:
+                data["_notice_text"] = "\n".join(parts)
+                logger.info(f"[TaobaoPaiMai] notice enriched {item_id}: {sum(len(x) for x in parts)}字")
+        except Exception as e:
+            logger.debug(f"[TaobaoPaiMai] enrich notice failed for {item_id}: {e}")
 
     # ------------------------------------------------------------------
     # SSR page extraction

@@ -84,6 +84,7 @@ class LocalStorage:
                 "source_url": img.get("url", ""),
                 "oss_url": img_url,
                 "thumb_url": thumb_url,
+                "junk_reason": img.get("junk_reason"),
                 "error": error,
             })
 

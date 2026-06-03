@@ -90,12 +90,14 @@ GPAI_CONFIGS = [
         source_url="https://s.gpai.net/sf/search.do?at=381&cityNum=3302",
         label="公拍网-宁波-类型B",
     ),
-    # 注：公拍网爬虫实际从 www.gpai.net/sf/ 主页全量抓 item2.do 链接，忽略
-    # source_url 里的 cityNum（s.gpai.net 已对服务器 IP 403）。城市归属由详情页
-    # 解析 + engine 按 province_city 智能分配（已含杭州分支），因此杭州无需单独
-    # 的 cityNum 配置——主页抓取已覆盖全国房源，杭州会被自动识别入库。
-    # 杭州 cityNum 为 3301（CITY_NUM_MAP 已登记）；若 PROXY_POOL 住宅代理恢复了
-    # s.gpai.net 的访问，可改回 s.gpai.net/sf/search.do?cityNum=3301 精确筛选。
+    SourceConfig(
+        platform="公拍网",
+        city="杭州",
+        source_url="https://s.gpai.net/sf/search.do?at=376&cityNum=3301",
+        label="公拍网-杭州-住宅代理城市搜索",
+    ),
+    # 注：公拍网现通过住宅代理(GPAI_PROXY)调 s.gpai.net 城市精确搜索(cityNum)，
+    # 见 gpai.py _fetch_city_search_ids；城市归属仍由详情页 province_city 二次校验。
 ]
 
 
