@@ -478,10 +478,11 @@ class CrawlEngine:
                             )
                             return "skipped_non_real_estate", None
 
-                        # (b) 动产/物品：标题以「放置于/放置在/位于…内的」开头描述存放地点的动产，
-                        #     或以「财物/财产/设备/物资/动产」结尾 → 多为机器/库存/物品，非不动产。
-                        if _re_asset.match(r"^放置(于|在|的)", title) or \
-                           _re_asset.search(r"(财物|财产|物资|动产|的设备|等物品|一批)\s*$", title):
+                        # (b) 动产/物品：标题以「放置于/放置在/存放于…」开头描述存放地点的动产，
+                        #     或以「财物/财产/物资/等物品/一批」结尾 → 多为机器/库存/物品，非不动产。
+                        #     注意：「动产」结尾必须排除「不动产」（真房产），用负向后顾断言。
+                        if _re_asset.match(r"^(放置|存放)(于|在|的)", title) or \
+                           _re_asset.search(r"(财物|财产|物资|等物品|一批|(?<!不)动产)\s*$", title):
                             logger.info(
                                 f"[{platform_name}] Skipping movable-asset: {title[:36]} — {item.source_url}"
                             )
@@ -490,7 +491,8 @@ class CrawlEngine:
                         non_real_estate_kw = _re_asset.compile(
                             r"车牌|本田|奔驰|宝马|奥迪|大众|丰田|日产|路虎|保时捷|普通客车|轿车|商务车|货车|挖掘机|装载机|捷豹|荣威"
                             r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车|牌汽车|号牌"
-                            r"|包装箱|集装箱|阻隔瓶|塑料桶|物资一批|设备一批|手机一批|电脑一批|塑料造粒机|生产设备|加工设备|办公设备"
+                            r"|包装箱|集装箱|阻隔瓶|塑料桶|物资一批|设备一批|手机一批|电脑一批|电脑\d+台|塑料造粒机|生产设备|加工设备|办公设备"
+                            r"|成型机|研磨机|钻床|加工中心|起重机|压缩机|车床|铣床|冲床|注塑机|空压机|发电机组|数控|电源柜"
                             r"|家具一套|红木家具|字画|书画|画一幅|花盆|笔筒|手表|名表|江诗丹顿|劳力士|包等物品|麻将包|古玩|瓷器|玉器"
                             r"|专利权|商标权|著作权|股权|股票|出资额|证券代码|充电设备|变压器|机器设备|生产线|存货"
                         )
@@ -508,6 +510,25 @@ class CrawlEngine:
                             logger.info(
                                 f"[{platform_name}] Skipping equity/stock auction: {title[:40]} — {item.source_url}"
                             )
+                            return "skipped_non_real_estate", None
+
+                        # 正向兜底门槛：真实房源标题几乎都带具体地址要素（室/弄/幢/路X号/小区/
+                        # 花园/店铺/乡镇/街道等）或房产词。若「面积≤0」且标题完全不含任何地址/
+                        # 房产要素，则几乎一定是纯物品/设备/车辆类动产（如「加工中心一台(VF-855)」
+                        # 「电脑2台」「摇臂钻床」），无需穷举设备名即可拦截。
+                        _addr_feature = _re_asset.compile(
+                            r"室|号楼|幢|栋|弄|座|路\d+|街道|[一-鿿]镇|[一-鿿]乡|[一-鿿]村|小区|花园|花苑|"
+                            r"公寓|别墅|商铺|店铺|厂房|车位|车库|储藏室|土地|地块|房产|房地产|不动产|宗地|"
+                            r"楼盘|商业用房|工业用房|名苑|嘉园|新村|公馆|广场|家园|号房|地下室|商住|住宅|"
+                            r"公租房|安置房|经济适用房|银座|大厦|商厦|写字楼|号、"
+                        )
+                        _area_val = auction_item.area or 0
+                        if _area_val <= 0 and not _addr_feature.search(title):
+                            logger.info(
+                                f"[{platform_name}] Skipping non-real-estate (无面积+无地址要素，疑似动产): "
+                                f"{title[:40]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
                             return "skipped_non_real_estate", None
 
                         # Save property to DB first (to get property_id)
