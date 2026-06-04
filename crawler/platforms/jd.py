@@ -75,8 +75,10 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         过滤：按返回数据的 city/province 字段保留目标城市，不依赖 JD cityId 编码。
         """
         url = source_url or self.BASE_SEARCH_URL
-        # 每个城市用独立的新页面，避免共享页面上的响应监听器累积、状态跨城市泄漏
-        page = await browser_manager.new_page()
+        # 每个城市用全新的隔离 context（独立 cookie/storage），避免上一城市抓取累积的
+        # 风控状态污染本次接口请求（实测上海抓完后，宁波/杭州的省级接口会被静默拒绝返回0）。
+        ctx = await browser_manager.new_isolated_context()
+        page = await ctx.new_page()
         logger.info(f"[JD] Starting search: city={city}")
 
         target_id = JD_CITY_MAP.get(city) or JD_CITY_MAP.get(city + "市")
@@ -147,7 +149,8 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
             self._row_cache[pid] = row
 
         try:
-            await page.close()  # 关闭本城市专用页面，释放监听器
+            await page.close()  # 关闭本城市专用页面
+            await ctx.close()    # 关闭隔离 context，释放 cookie/监听器
         except Exception:
             pass
 

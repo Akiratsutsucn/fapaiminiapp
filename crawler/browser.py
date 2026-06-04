@@ -144,6 +144,27 @@ class PlaywrightBrowserManager:
         page.set_default_timeout(settings.PLAYWRIGHT_TIMEOUT_MS)
         return page
 
+    async def new_isolated_context(self) -> "BrowserContext":
+        """创建全新的隔离 context（独立 cookie/storage），含 stealth 脚本。
+
+        用于京东等会随抓取量累积风控状态的站点：每个城市用独立 context，
+        避免上一城市抓取产生的 cookie/risk token 污染后续城市的接口请求。
+        调用方负责 close()。
+        """
+        if not self._browser:
+            raise RuntimeError("Browser not started. Call start() first.")
+        ctx = await self._browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            user_agent=random_ua(),
+            locale="zh-CN",
+            timezone_id="Asia/Shanghai",
+            geolocation={"latitude": 31.2304, "longitude": 121.4737},
+            permissions=["geolocation"],
+        )
+        for script in STEALTH_SCRIPTS:
+            await ctx.add_init_script(script)
+        return ctx
+
     @property
     def context(self) -> BrowserContext:
         if not self._context:
