@@ -27,17 +27,17 @@
   <!-- 数据小卡 -->
   <view class="login-stats">
     <view class="ls-cell">
-      <text class="ls-num">1.1<text class="ls-unit">K+</text></text>
+      <text class="ls-num">{{summary.onAuctionText}}</text>
       <text class="ls-label">在拍房源</text>
     </view>
     <view class="ls-divider"></view>
     <view class="ls-cell">
-      <text class="ls-num">128</text>
+      <text class="ls-num">{{summary.bargain}}</text>
       <text class="ls-label">捡漏推荐</text>
     </view>
     <view class="ls-divider"></view>
     <view class="ls-cell">
-      <text class="ls-num accent">7折</text>
+      <text class="ls-num accent">{{summary.discountText}}</text>
       <text class="ls-label">平均折扣</text>
     </view>
   </view>

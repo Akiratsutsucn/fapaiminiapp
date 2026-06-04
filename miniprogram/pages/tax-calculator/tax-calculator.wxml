@@ -1,0 +1,65 @@
+<view class="page">
+  <view class="card">
+    <view class="form-group">
+      <text class="label">成交价（万元）</text>
+      <input class="input" type="digit" placeholder="请输入成交价" value="{{dealPrice}}" bindinput="onDealPriceInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">建筑面积（㎡，影响契税档位）</text>
+      <input class="input" type="digit" placeholder="选填，如 89" value="{{area}}" bindinput="onAreaInput" />
+    </view>
+
+    <view class="form-group">
+      <text class="label">购房资格</text>
+      <view class="opt-group">
+        <view class="opt-chip {{isFirstHome ? 'active' : ''}}" bindtap="onToggleFirstHome" data-value="true">首套</view>
+        <view class="opt-chip {{!isFirstHome ? 'active' : ''}}" bindtap="onToggleFirstHome" data-value="false">二套及以上</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="label">房产是否满2年</text>
+      <view class="opt-group">
+        <view class="opt-chip {{overTwoYears ? 'active' : ''}}" bindtap="onToggleYears" data-value="true">满2年</view>
+        <view class="opt-chip {{!overTwoYears ? 'active' : ''}}" bindtap="onToggleYears" data-value="false">不满2年</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="label">是否卖方满五唯一（免个税）</text>
+      <view class="opt-group">
+        <view class="opt-chip {{isUnique ? 'active' : ''}}" bindtap="onToggleUnique" data-value="true">满五唯一</view>
+        <view class="opt-chip {{!isUnique ? 'active' : ''}}" bindtap="onToggleUnique" data-value="false">非唯一</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="label">代办服务费率（%）</text>
+      <input class="input" type="digit" placeholder="如 1" value="{{agentRatePct}}" bindinput="onAgentRateInput" />
+    </view>
+
+    <view class="btn-row">
+      <button class="btn-primary" bindtap="onCalculate">计算上岸成本</button>
+    </view>
+  </view>
+
+  <view class="card result-card gild-top" wx:if="{{calculated}}">
+    <view class="result-highlight">
+      <text class="result-label">预计上岸总价</text>
+      <text class="result-number">{{result.landingPrice}}</text>
+      <text class="result-unit">万元</text>
+      <text class="result-sub">税费合计约 {{result.totalTax}} 万元，占成交价 {{result.taxRatePct}}%</text>
+    </view>
+
+    <view class="fee-list">
+      <view class="fee-row"><text class="fee-k">契税</text><text class="fee-v">{{result.deedTax}} 万</text></view>
+      <view class="fee-row"><text class="fee-k">增值税及附加</text><text class="fee-v">{{result.vat}} 万</text></view>
+      <view class="fee-row"><text class="fee-k">个人所得税</text><text class="fee-v">{{result.personalTax}} 万</text></view>
+      <view class="fee-row"><text class="fee-k">代办服务费</text><text class="fee-v">{{result.agentFee}} 万</text></view>
+      <view class="fee-row"><text class="fee-k">其他（印花/登记等）</text><text class="fee-v">{{result.otherTax}} 万</text></view>
+      <view class="fee-row total"><text class="fee-k">税费合计</text><text class="fee-v accent">{{result.totalTax}} 万</text></view>
+    </view>
+
+    <view class="disclaimer">以上为沪甬杭常见口径估算，未含贷款利息、原业主欠费及特殊税费。最终金额以税务及不动产登记部门核定为准。</view>
+  </view>
+</view>

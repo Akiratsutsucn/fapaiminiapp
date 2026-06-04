@@ -1,5 +1,5 @@
-// 代理商服务
-import { request } from '../utils/request';
+// 代理商服务（分包内，仅 agent 分包使用）
+import { request } from '../../../utils/request';
 
 export interface InviteUser {
   id: number;

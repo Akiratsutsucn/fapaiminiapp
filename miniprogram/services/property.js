@@ -4,6 +4,7 @@ exports.getProperties = getProperties;
 exports.getPropertyDetail = getPropertyDetail;
 exports.getRecommendedProperties = getRecommendedProperties;
 exports.getMarketStats = getMarketStats;
+exports.getHomeSummary = getHomeSummary;
 exports.getBanners = getBanners;
 exports.getCities = getCities;
 exports.getMapMarkers = getMapMarkers;
@@ -31,6 +32,9 @@ async function getMarketStats(cityId) {
     if (cityId)
         url += `?city_id=${cityId}`;
     return (0, request_1.request)({ url });
+}
+async function getHomeSummary() {
+    return (0, request_1.request)({ url: '/home-summary' });
 }
 async function getBanners(cityId) {
     let url = '/banners';

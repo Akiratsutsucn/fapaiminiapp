@@ -10,15 +10,20 @@
   </view>
 
   <view class="article-body">
-    <text class="article-summary">{{article.summary || '暂无摘要'}}</text>
-    <view class="article-link" wx:if="{{article.mp_url}}" bindtap="onOpenMp">
+    <!-- 优先展示公众号原文全文（已复制到小程序，无需跳转） -->
+    <rich-text wx:if="{{contentNodes}}" class="article-content" nodes="{{contentNodes}}" />
+    <text wx:elif="{{article.summary}}" class="article-summary">{{article.summary}}</text>
+    <text wx:else class="article-summary">暂无内容</text>
+
+    <!-- 仅当没有全文时才提供查看原文入口 -->
+    <view class="article-link" wx:if="{{!contentNodes && article.mp_url}}" bindtap="onOpenMp">
       <text>查看公众号原文</text>
       <view class="link-arrow"></view>
     </view>
   </view>
 
   <view class="mp-footer">
-    <view class="mp-avatar"></view>
+    <image class="mp-avatar" src="/images/logo.png" mode="aspectFit" />
     <view class="mp-info">
       <text class="mp-name">拍来盟科技</text>
       <text class="mp-desc">专业法拍房信息服务平台</text>

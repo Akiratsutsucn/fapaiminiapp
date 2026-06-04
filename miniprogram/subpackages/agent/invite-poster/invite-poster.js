@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const agent_1 = require("../../../services/agent");
+const agent_1 = require("../services/agent");
 const app = getApp();
 Page({
     data: {

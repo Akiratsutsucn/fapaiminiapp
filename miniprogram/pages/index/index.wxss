@@ -26,9 +26,18 @@
   top: -80rpx;
   width: 360rpx;
   height: 360rpx;
-  background: radial-gradient(circle, rgba(255, 107, 53, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(201, 152, 70, 0.22) 0%, rgba(255, 107, 53, 0.10) 45%, transparent 72%);
   border-radius: 50%;
   pointer-events: none;
+}
+
+.hero-gild {
+  width: 96rpx;
+  height: 3rpx;
+  margin: 4rpx 0 16rpx;
+  border-radius: 2rpx;
+  background: linear-gradient(90deg, var(--accent-gold) 0%, #E8C078 55%, transparent 100%);
+  box-shadow: 0 1rpx 6rpx rgba(201, 152, 70, 0.5);
 }
 
 .hero-tagline {
@@ -75,6 +84,8 @@
   box-shadow: var(--shadow-card);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-cell {
@@ -115,7 +126,6 @@
 /* ===== 快捷入口 ===== */
 .quick-entry {
   margin: 0 24rpx 16rpx;
-  background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 16rpx 0;
   display: flex;

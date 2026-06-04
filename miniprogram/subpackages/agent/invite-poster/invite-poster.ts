@@ -1,4 +1,4 @@
-import { getPoster } from '../../../services/agent';
+import { getPoster } from '../services/agent';
 
 const app = getApp<IAppOption>();
 

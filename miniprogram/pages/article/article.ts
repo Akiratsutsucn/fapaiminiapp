@@ -4,6 +4,7 @@ import { addBrowseHistory } from '../../utils/storage';
 Page({
   data: {
     article: {} as ArticleItem,
+    contentNodes: '' as string,
     liked: false,
     likeCount: 0,
   },
@@ -20,10 +21,23 @@ Page({
   async loadArticle(id: number) {
     try {
       const article = await getArticleDetail(id);
-      this.setData({ article });
+      this.setData({
+        article,
+        contentNodes: this.normalizeContent((article as any).content || ''),
+      });
     } catch (e) {
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
+  },
+
+  // 让公众号正文 HTML 适配小程序 rich-text：限制图片宽度、去掉残留脚本。
+  normalizeContent(html: string): string {
+    if (!html) return '';
+    let s = html;
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+    // 图片自适应宽度
+    s = s.replace(/<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:12px auto;"');
+    return s;
   },
 
   loadLikeState(id: number) {

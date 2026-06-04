@@ -45,6 +45,16 @@ export async function getMarketStats(cityId?: number): Promise<MarketStats> {
   return request<MarketStats>({ url });
 }
 
+export interface HomeSummary {
+  on_auction: number;
+  bargain: number;
+  avg_discount: number;
+}
+
+export async function getHomeSummary(): Promise<HomeSummary> {
+  return request<HomeSummary>({ url: '/home-summary' });
+}
+
 export async function getBanners(cityId?: number): Promise<BannerItem[]> {
   let url = '/banners';
   if (cityId) url += `?city_id=${cityId}`;

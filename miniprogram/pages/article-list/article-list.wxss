@@ -1,0 +1,92 @@
+.article-list-page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.al-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.al-item {
+  display: flex;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.al-item:active { transform: scale(0.99); }
+
+.al-cover {
+  width: 220rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+  background: var(--blue-100);
+}
+
+.al-info {
+  flex: 1;
+  padding: 18rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.al-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--blue-900);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.al-summary {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 8rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+.al-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10rpx;
+}
+
+.al-source {
+  font-size: 20rpx;
+  color: var(--accent-orange-text);
+  font-weight: 600;
+}
+
+.al-date {
+  font-size: 20rpx;
+  color: var(--text-hint);
+}
+
+.empty-state {
+  padding: 120rpx 0;
+  text-align: center;
+  color: var(--text-hint);
+  font-size: 26rpx;
+}
+
+.load-more, .list-end {
+  text-align: center;
+  padding: 32rpx 0;
+  font-size: 24rpx;
+  color: var(--text-hint);
+}

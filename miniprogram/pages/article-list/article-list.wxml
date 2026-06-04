@@ -1,0 +1,29 @@
+<view class="article-list-page">
+  <block wx:if="{{loading && list.length === 0}}">
+    <view class="empty-state"><text>加载中…</text></view>
+  </block>
+  <block wx:elif="{{list.length === 0}}">
+    <view class="empty-state"><text>暂无文章</text></view>
+  </block>
+  <block wx:else>
+    <view class="al-list">
+      <view class="al-item" wx:for="{{list}}" wx:key="id" bindtap="onTapArticle" data-id="{{item.id}}">
+        <image class="al-cover" src="{{item.cover_image || '/images/default-house.png'}}" mode="aspectFill" />
+        <view class="al-info">
+          <text class="al-title">{{item.title}}</text>
+          <text class="al-summary" wx:if="{{item.summary}}">{{item.summary}}</text>
+          <view class="al-meta">
+            <text class="al-source">拍来盟科技</text>
+            <text class="al-date" wx:if="{{item.published_at}}">{{item.published_at}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="load-more" wx:if="{{hasMore}}" bindtap="onLoadMore">
+      <text>{{loading ? '加载中...' : '加载更多'}}</text>
+    </view>
+    <view class="list-end" wx:else>
+      <text>没有更多了</text>
+    </view>
+  </block>
+</view>

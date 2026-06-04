@@ -160,8 +160,10 @@
 
 .price-sub {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
   flex: 1;
+  gap: 8rpx;
 }
 
 .sub-label {
@@ -170,10 +172,9 @@
 }
 
 .sub-value {
-  font-size: 22rpx;
-  font-weight: 500;
+  font-size: 24rpx;
+  font-weight: 600;
   color: var(--text-secondary);
-  text-decoration: line-through;
 }
 
 .card-time {

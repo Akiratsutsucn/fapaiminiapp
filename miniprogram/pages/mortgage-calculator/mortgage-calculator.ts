@@ -17,6 +17,16 @@ Page({
     result: {} as any,
   },
 
+  onLoad(options: any) {
+    if (options && options.total) {
+      const t = parseFloat(options.total);
+      if (!isNaN(t) && t > 0) {
+        this.setData({ totalPrice: String(t), downPayment: this.calcDownPayment(String(t), this.data.downPaymentRatio) });
+        this.onCalculate();
+      }
+    }
+  },
+
   onTotalPriceInput(e: any) {
     const v = e.detail.value;
     this.setData({ totalPrice: v, downPayment: this.calcDownPayment(v, this.data.downPaymentRatio) });

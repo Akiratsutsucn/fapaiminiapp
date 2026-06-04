@@ -98,6 +98,13 @@ interface PropertyDetail {
   beike_latest_deal_time: string | null;
   community_info: CommunityInfoData | null;
   deal_reference: DealReference | null;
+  risk_tags?: RiskTag[];
+}
+
+interface RiskTag {
+  level: 'danger' | 'warning' | 'safe';
+  label: string;
+  detail: string;
 }
 
 interface DealReference {

@@ -1,9 +1,36 @@
 import { login } from '../../services/auth';
+import { getHomeSummary } from '../../services/property';
 
 Page({
   data: {
     loading: false,
     agreed: false,
+    summary: {
+      onAuctionText: '--',
+      bargain: '--' as any,
+      discountText: '--',
+    },
+  },
+
+  onLoad() {
+    this.loadSummary();
+  },
+
+  async loadSummary() {
+    try {
+      const s = await getHomeSummary();
+      const onAuction = s.on_auction || 0;
+      const onAuctionText = onAuction >= 1000 ? (onAuction / 1000).toFixed(1) + 'K+' : String(onAuction);
+      this.setData({
+        summary: {
+          onAuctionText,
+          bargain: s.bargain || 0,
+          discountText: s.avg_discount ? s.avg_discount + '折' : '--',
+        },
+      });
+    } catch (e) {
+      // 拉取失败时保留占位符，不阻塞登录
+    }
   },
 
   async onLogin() {

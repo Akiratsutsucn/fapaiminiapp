@@ -5,6 +5,7 @@ const storage_1 = require("../../utils/storage");
 Page({
     data: {
         article: {},
+        contentNodes: '',
         liked: false,
         likeCount: 0,
     },
@@ -19,11 +20,22 @@ Page({
     async loadArticle(id) {
         try {
             const article = await (0, article_1.getArticleDetail)(id);
-            this.setData({ article });
+            this.setData({
+                article,
+                contentNodes: this.normalizeContent((article && article.content) || ''),
+            });
         }
         catch (e) {
             wx.showToast({ title: '加载失败', icon: 'none' });
         }
+    },
+    normalizeContent(html) {
+        if (!html)
+            return '';
+        let s = html;
+        s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+        s = s.replace(/<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:12px auto;"');
+        return s;
     },
     loadLikeState(id) {
         const stored = wx.getStorageSync(`article_like_${id}`);

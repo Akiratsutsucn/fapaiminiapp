@@ -1,7 +1,6 @@
 // 封装 wx.request，支持 JWT 自动续期
-// 临时方案：备案虽完成，但运营商 SNI 白名单还在同步（24-72h）
-// 同步完成后改回 https://xcxapi.fapaizhelianmeng.cn/api/v1
-const BASE_URL = 'http://122.51.156.252/api/v1';
+// 域名已备案通过 + HTTPS 证书有效，使用 https 域名（小程序要求 https）
+const BASE_URL = 'https://xcxapi.fapaizhelianmeng.cn/api/v1';
 
 interface RequestOptions {
   url: string;

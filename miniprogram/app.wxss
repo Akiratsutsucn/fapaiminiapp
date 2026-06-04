@@ -306,3 +306,56 @@ view, text, image, navigator, scroll-view, swiper, swiper-item {
   color: var(--blue-700);
   margin-left: 4rpx;
 }
+
+/* ===== 精致质感工具类（金色点睛 + 玻璃，轻量点缀，不改布局） ===== */
+
+/* 烫金细线：用作高档分隔线，中间亮两端淡 */
+.gild-line {
+  height: 2rpx;
+  border: none;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(201, 152, 70, 0.0) 0%,
+    var(--accent-gold) 50%,
+    rgba(201, 152, 70, 0.0) 100%);
+  opacity: 0.85;
+}
+
+/* 金色栏目竖标：放在 section 标题前，像杂志栏目记号 */
+.gild-bar {
+  display: inline-block;
+  width: 6rpx;
+  height: 30rpx;
+  border-radius: 3rpx;
+  background: linear-gradient(180deg, #E8C078 0%, var(--accent-gold) 100%);
+  vertical-align: middle;
+  margin-right: 14rpx;
+  box-shadow: 0 1rpx 4rpx rgba(201, 152, 70, 0.4);
+}
+
+/* 金边卡顶饰：卡片顶部一条细金线（配合 position: relative 容器） */
+.gild-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18rpx;
+  right: 18rpx;
+  height: 2rpx;
+  background: linear-gradient(90deg,
+    transparent, var(--accent-gold) 30%, var(--accent-gold) 70%, transparent);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* 精致描边：1rpx 浅色描边，让卡片边缘更利落 */
+.refined-border {
+  border: 1rpx solid rgba(58, 90, 140, 0.08);
+}
+
+/* 玻璃卡：半透明 + 模糊 + 柔光描边 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(30rpx) saturate(140%);
+  -webkit-backdrop-filter: blur(30rpx) saturate(140%);
+  border: 1rpx solid rgba(255, 255, 255, 0.6);
+}

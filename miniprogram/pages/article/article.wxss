@@ -67,6 +67,14 @@
   text-indent: 2em;
 }
 
+.article-content {
+  display: block;
+  font-size: 30rpx;
+  color: var(--text-primary);
+  line-height: 1.85;
+  word-break: break-word;
+}
+
 .article-link {
   display: flex;
   align-items: center;
@@ -119,8 +127,10 @@
   width: 80rpx;
   height: 80rpx;
   border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.95);
   border: 1rpx solid rgba(255, 255, 255, 0.2);
+  padding: 6rpx;
+  box-sizing: border-box;
   flex-shrink: 0;
   position: relative;
   z-index: 1;

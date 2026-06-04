@@ -1,10 +1,35 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const auth_1 = require("../../services/auth");
+const property_1 = require("../../services/property");
 Page({
     data: {
         loading: false,
         agreed: false,
+        summary: {
+            onAuctionText: '--',
+            bargain: '--',
+            discountText: '--',
+        },
+    },
+    onLoad() {
+        this.loadSummary();
+    },
+    async loadSummary() {
+        try {
+            const s = await (0, property_1.getHomeSummary)();
+            const onAuction = s.on_auction || 0;
+            const onAuctionText = onAuction >= 1000 ? (onAuction / 1000).toFixed(1) + 'K+' : String(onAuction);
+            this.setData({
+                summary: {
+                    onAuctionText,
+                    bargain: s.bargain || 0,
+                    discountText: s.avg_discount ? s.avg_discount + '折' : '--',
+                },
+            });
+        }
+        catch (e) {
+        }
     },
     async onLogin() {
         if (!this.data.agreed) {

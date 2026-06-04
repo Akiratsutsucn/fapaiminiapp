@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.request = request;
-const BASE_URL = 'http://122.51.156.252/api/v1';
+// 域名已备案通过 + HTTPS 证书有效，使用 https 域名（小程序要求 https）
+const BASE_URL = 'https://xcxapi.fapaizhelianmeng.cn/api/v1';
 let isRefreshing = false;
 let refreshSubscribers = [];
 function subscribeTokenRefresh(cb) {

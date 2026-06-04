@@ -7,8 +7,10 @@
     "pages/property-list/property-list",
     "pages/property-detail/property-detail",
     "pages/article/article",
+    "pages/article-list/article-list",
     "pages/customer-service/customer-service",
     "pages/mortgage-calculator/mortgage-calculator",
+    "pages/tax-calculator/tax-calculator",
     "pages/map-property/map-property",
     "pages/mine/mine"
   ],
@@ -20,7 +22,9 @@
         "favorites/favorites",
         "article-favs/article-favs",
         "history/history",
-        "demand-form/demand-form"
+        "demand-form/demand-form",
+        "recommendations/recommendations",
+        "customer-demands/customer-demands"
       ]
     },
     {
