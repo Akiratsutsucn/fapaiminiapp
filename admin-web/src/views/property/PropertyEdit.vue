@@ -145,9 +145,15 @@
     <!-- 房源图片 -->
     <t-card v-if="isEdit" title="房源图片" style="margin-top:16px">
       <div class="file-gallery">
-        <div class="file-item" v-for="(img, idx) in images" :key="idx">
+        <div class="file-item" :class="{ 'is-hidden': img.hidden }" v-for="(img, idx) in images" :key="idx">
           <img :src="img.image_url" class="gallery-img" />
-          <t-button size="small" theme="danger" variant="text" @click="removeImage(idx)">删除</t-button>
+          <div class="junk-badge" v-if="img.hidden">{{ junkLabel(img.hide_reason) }}·已隐藏</div>
+          <div class="img-ops">
+            <t-button size="small" :theme="img.hidden ? 'success' : 'warning'" variant="text" @click="toggleHidden(img)">
+              {{ img.hidden ? '恢复显示' : '隐藏' }}
+            </t-button>
+            <t-button size="small" theme="danger" variant="text" @click="removeImage(idx)">删除</t-button>
+          </div>
         </div>
         <div class="upload-trigger" @click="triggerUpload('image')">
           <div class="upload-icon">+</div>
@@ -155,7 +161,7 @@
         </div>
       </div>
       <input ref="imageInput" type="file" accept="image/*" style="display:none" @change="onFileChange($event, 'image')" />
-      <div class="upload-tip">支持 JPG/PNG/WebP/GIF，第一张为封面</div>
+      <div class="upload-tip">支持 JPG/PNG/WebP/GIF，第一张为封面。灰色为系统识别的广告/二维码图（前台不展示），可点"恢复显示"找回误判。</div>
     </t-card>
 
     <!-- 附件文档 -->
@@ -184,7 +190,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { getProperty, createProperty, updateProperty, getPropertyCommunity, refreshPropertyCommunity } from '@/api/properties'
+import { getProperty, createProperty, updateProperty, getPropertyCommunity, refreshPropertyCommunity, toggleImageHidden } from '@/api/properties'
 import { uploadImage } from '@/api/upload'
 
 const router = useRouter()
@@ -307,6 +313,28 @@ function removeImage(idx: number) {
   MessagePlugin.success('图片已删除')
 }
 
+const junkLabels: Record<string, string> = {
+  qrcode: '二维码', banner: '广告条幅', logo: 'logo广告', solid: '纯色图', manual: '手动隐藏',
+}
+function junkLabel(reason: string) {
+  return junkLabels[reason] || '广告'
+}
+
+async function toggleHidden(img: any) {
+  if (!img.id) {
+    MessagePlugin.warning('该图片尚未保存，无法切换')
+    return
+  }
+  try {
+    const res = await toggleImageHidden(img.id)
+    img.hidden = res.hidden
+    if (!res.hidden) img.hide_reason = null
+    MessagePlugin.success(res.hidden ? '已隐藏（前台不展示）' : '已恢复显示')
+  } catch {
+    MessagePlugin.error('操作失败')
+  }
+}
+
 function removeAttachment(idx: number) {
   attachments.value.splice(idx, 1)
   localStorage.setItem(`prop_att_${route.params.id}`, JSON.stringify(attachments.value))
@@ -340,7 +368,11 @@ async function onSubmit() {
 .page-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
 .form-actions { margin-top: 24px; display: flex; gap: 16px; justify-content: center; padding-bottom: 40px; }
 .file-gallery { display: flex; flex-wrap: wrap; gap: 12px; }
-.file-item { width: 160px; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
+.file-item { width: 160px; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; position: relative; }
+.file-item.is-hidden { opacity: 0.55; border-color: #FF6B35; }
+.file-item.is-hidden .gallery-img { filter: grayscale(0.7); }
+.junk-badge { position: absolute; top: 6px; left: 6px; background: rgba(255,107,53,0.92); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.img-ops { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
 .gallery-img { width: 160px; height: 120px; object-fit: cover; display: block; }
 .upload-trigger { width: 160px; height: 120px; border: 2px dashed #d0d0d0; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #999; transition: border-color .3s; }
 .upload-trigger:hover { border-color: var(--td-brand-color); color: var(--td-brand-color); }

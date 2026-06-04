@@ -19,6 +19,14 @@
     </view>
   </view>
 
+  <!-- 风险/利好标签（红黄绿） -->
+  <view class="risk-tags" wx:if="{{property.risk_tags && property.risk_tags.length > 0}}">
+    <view class="risk-tag risk-{{item.level}}" wx:for="{{property.risk_tags}}" wx:key="label" bindtap="onRiskTap" data-index="{{index}}">
+      <text class="risk-dot"></text>
+      <text class="risk-label">{{item.label}}</text>
+    </view>
+  </view>
+
   <!-- 价格网格 -->
   <view class="price-grid">
     <view class="price-item">
@@ -186,11 +194,17 @@
     </view>
 
     <!-- 旧路径兜底（无 community_info 时显示房源自身字段 + 成交参考兜底） -->
-    <view wx:elif="{{property.community_name}}" class="community-info">
+    <view wx:elif="{{property.community_name || communityFallback}}" class="community-info">
       <view class="section-title">小区信息</view>
-      <view class="info-row"><text class="info-k">小区名称</text><text class="info-v">{{property.community_name}}</text></view>
+      <view class="info-row" wx:if="{{property.community_name}}"><text class="info-k">小区名称</text><text class="info-v">{{property.community_name}}</text></view>
+      <view class="info-row" wx:if="{{regionInfo}}"><text class="info-k">区域位置</text><text class="info-v">{{regionInfo}}</text></view>
+      <view class="info-row" wx:if="{{property.property_type}}"><text class="info-k">物业类型</text><text class="info-v">{{property.property_type}}</text></view>
+      <view class="info-row" wx:if="{{property.area}}"><text class="info-k">建筑面积</text><text class="info-v">{{property.area}}㎡</text></view>
       <view class="info-row" wx:if="{{property.address}}"><text class="info-k">详细地址</text><text class="info-v">{{property.address}}</text></view>
       <view class="info-row" wx:if="{{property.build_year}}"><text class="info-k">建筑年代</text><text class="info-v">{{property.build_year}}年</text></view>
+
+      <!-- 小区/板块说明（兜底文案，避免空白） -->
+      <view wx:if="{{communityFallback}}" class="cc-desc">{{communityFallback}}</view>
 
       <!-- 价差分析兜底（贝壳无小区详情时，用平台市场成交价） -->
       <view class="cc-bargain" wx:if="{{dealRefUnitPriceWan && startingUnitPriceWan}}">
@@ -211,7 +225,6 @@
         </view>
         <view wx:if="{{dealRefBargainDelta}}" class="cc-bargain-saving">按面积估算捡漏空间约 <text class="accent">{{dealRefBargainDelta}} 万</text></view>
       </view>
-      <view wx:else class="info-row"><text class="info-k">小区详情</text><text class="info-v">数据筹备中，稍后查看</text></view>
     </view>
 
     <!-- 板块介绍（静态词典） -->
@@ -220,7 +233,7 @@
       <view class="block-intro-text">{{blockIntro}}</view>
     </view>
 
-    <view wx:if="{{!property.community_name && !blockIntro}}" class="empty-state"><text>暂无小区参考数据</text></view>
+    <view wx:if="{{!property.community_name && !communityFallback && !blockIntro}}" class="empty-state"><text>暂无小区参考数据</text></view>
   </view>
 
   <view class="tab-content" wx:if="{{activeTab === 'around'}}">
@@ -323,7 +336,7 @@
   <!-- 底部浮标栏 -->
   <float-action-bar
     primary-text="联系客服"
-    show-calc="{{true}}"
+    show-calc="{{false}}"
     bind:share="onShare"
     bind:calc="onCalc"
     bind:contact="onContact"

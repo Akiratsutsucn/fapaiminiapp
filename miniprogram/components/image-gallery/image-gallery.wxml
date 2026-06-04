@@ -1,8 +1,12 @@
 <view class="gallery">
-  <swiper class="swiper" indicator-dots="{{images.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff" autoplay="{{autoplay}}" interval="4000" duration="400" circular>
+  <swiper wx:if="{{images.length > 0}}" class="swiper" indicator-dots="{{images.length > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff" autoplay="{{autoplay}}" interval="4000" duration="400" circular>
     <swiper-item wx:for="{{images}}" wx:key="id">
       <image class="swiper-image" src="{{item.image_url}}" mode="aspectFill" lazy-load binderror="onImageError" data-index="{{index}}" />
     </swiper-item>
   </swiper>
+  <view wx:else class="gallery-empty">
+    <image class="gallery-empty-img" src="/images/default-house.png" mode="aspectFit" />
+    <text class="gallery-empty-text">暂无房源照片</text>
+  </view>
   <view class="gallery-counter" wx:if="{{images.length > 1}}">{{current + 1}}/{{images.length}}</view>
 </view>

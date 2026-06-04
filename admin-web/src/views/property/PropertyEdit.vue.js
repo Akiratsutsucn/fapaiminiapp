@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
-import { getProperty, createProperty, updateProperty, getPropertyCommunity, refreshPropertyCommunity } from '@/api/properties';
+import { getProperty, createProperty, updateProperty, getPropertyCommunity, refreshPropertyCommunity, toggleImageHidden } from '@/api/properties';
 import { uploadImage } from '@/api/upload';
 const router = useRouter();
 const route = useRoute();
@@ -129,6 +129,28 @@ function removeImage(idx) {
     updateProperty(route.params.id, { images: images.value.map((img, i) => ({ ...img, sort_order: i, is_cover: i === 0 })) });
     MessagePlugin.success('图片已删除');
 }
+const junkLabels = {
+    qrcode: '二维码', banner: '广告条幅', logo: 'logo广告', solid: '纯色图', manual: '手动隐藏',
+};
+function junkLabel(reason) {
+    return junkLabels[reason] || '广告';
+}
+async function toggleHidden(img) {
+    if (!img.id) {
+        MessagePlugin.warning('该图片尚未保存，无法切换');
+        return;
+    }
+    try {
+        const res = await toggleImageHidden(img.id);
+        img.hidden = res.hidden;
+        if (!res.hidden)
+            img.hide_reason = null;
+        MessagePlugin.success(res.hidden ? '已隐藏（前台不展示）' : '已恢复显示');
+    }
+    catch {
+        MessagePlugin.error('操作失败');
+    }
+}
 function removeAttachment(idx) {
     attachments.value.splice(idx, 1);
     localStorage.setItem(`prop_att_${route.params.id}`, JSON.stringify(attachments.value));
@@ -164,6 +186,10 @@ debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
 let __VLS_components;
 let __VLS_directives;
+/** @type {__VLS_StyleScopedClasses['file-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['file-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['is-hidden']} */ ;
+/** @type {__VLS_StyleScopedClasses['gallery-img']} */ ;
 /** @type {__VLS_StyleScopedClasses['upload-trigger']} */ ;
 /** @type {__VLS_StyleScopedClasses['ci-num']} */ ;
 // CSS variable injection 
@@ -2538,11 +2564,21 @@ if (__VLS_ctx.isEdit) {
     for (const [img, idx] of __VLS_getVForSourceType((__VLS_ctx.images))) {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "file-item" },
+            ...{ class: ({ 'is-hidden': img.hidden }) },
             key: (idx),
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.img)({
             src: (img.image_url),
             ...{ class: "gallery-img" },
+        });
+        if (img.hidden) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "junk-badge" },
+            });
+            (__VLS_ctx.junkLabel(img.hide_reason));
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "img-ops" },
         });
         const __VLS_776 = {}.TButton;
         /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
@@ -2550,13 +2586,13 @@ if (__VLS_ctx.isEdit) {
         const __VLS_777 = __VLS_asFunctionalComponent(__VLS_776, new __VLS_776({
             ...{ 'onClick': {} },
             size: "small",
-            theme: "danger",
+            theme: (img.hidden ? 'success' : 'warning'),
             variant: "text",
         }));
         const __VLS_778 = __VLS_777({
             ...{ 'onClick': {} },
             size: "small",
-            theme: "danger",
+            theme: (img.hidden ? 'success' : 'warning'),
             variant: "text",
         }, ...__VLS_functionalComponentArgsRest(__VLS_777));
         let __VLS_780;
@@ -2566,11 +2602,39 @@ if (__VLS_ctx.isEdit) {
             onClick: (...[$event]) => {
                 if (!(__VLS_ctx.isEdit))
                     return;
-                __VLS_ctx.removeImage(idx);
+                __VLS_ctx.toggleHidden(img);
             }
         };
         __VLS_779.slots.default;
+        (img.hidden ? '恢复显示' : '隐藏');
         var __VLS_779;
+        const __VLS_784 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_785 = __VLS_asFunctionalComponent(__VLS_784, new __VLS_784({
+            ...{ 'onClick': {} },
+            size: "small",
+            theme: "danger",
+            variant: "text",
+        }));
+        const __VLS_786 = __VLS_785({
+            ...{ 'onClick': {} },
+            size: "small",
+            theme: "danger",
+            variant: "text",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_785));
+        let __VLS_788;
+        let __VLS_789;
+        let __VLS_790;
+        const __VLS_791 = {
+            onClick: (...[$event]) => {
+                if (!(__VLS_ctx.isEdit))
+                    return;
+                __VLS_ctx.removeImage(idx);
+            }
+        };
+        __VLS_787.slots.default;
+        var __VLS_787;
     }
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ onClick: (...[$event]) => {
@@ -2602,18 +2666,18 @@ if (__VLS_ctx.isEdit) {
     var __VLS_775;
 }
 if (__VLS_ctx.isEdit) {
-    const __VLS_784 = {}.TCard;
+    const __VLS_792 = {}.TCard;
     /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
     // @ts-ignore
-    const __VLS_785 = __VLS_asFunctionalComponent(__VLS_784, new __VLS_784({
+    const __VLS_793 = __VLS_asFunctionalComponent(__VLS_792, new __VLS_792({
         title: "附件文档",
         ...{ style: {} },
     }));
-    const __VLS_786 = __VLS_785({
+    const __VLS_794 = __VLS_793({
         title: "附件文档",
         ...{ style: {} },
-    }, ...__VLS_functionalComponentArgsRest(__VLS_785));
-    __VLS_787.slots.default;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_793));
+    __VLS_795.slots.default;
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "attachment-list" },
     });
@@ -2622,82 +2686,82 @@ if (__VLS_ctx.isEdit) {
             ...{ class: "attachment-item" },
             key: (idx),
         });
-        const __VLS_788 = {}.TLink;
+        const __VLS_796 = {}.TLink;
         /** @type {[typeof __VLS_components.TLink, typeof __VLS_components.tLink, typeof __VLS_components.TLink, typeof __VLS_components.tLink, ]} */ ;
         // @ts-ignore
-        const __VLS_789 = __VLS_asFunctionalComponent(__VLS_788, new __VLS_788({
+        const __VLS_797 = __VLS_asFunctionalComponent(__VLS_796, new __VLS_796({
             href: (att.url),
             target: "_blank",
         }));
-        const __VLS_790 = __VLS_789({
+        const __VLS_798 = __VLS_797({
             href: (att.url),
             target: "_blank",
-        }, ...__VLS_functionalComponentArgsRest(__VLS_789));
-        __VLS_791.slots.default;
+        }, ...__VLS_functionalComponentArgsRest(__VLS_797));
+        __VLS_799.slots.default;
         (att.filename);
-        var __VLS_791;
+        var __VLS_799;
         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
             ...{ class: "att-size" },
         });
         (__VLS_ctx.formatSize(att.size));
-        const __VLS_792 = {}.TButton;
+        const __VLS_800 = {}.TButton;
         /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
         // @ts-ignore
-        const __VLS_793 = __VLS_asFunctionalComponent(__VLS_792, new __VLS_792({
+        const __VLS_801 = __VLS_asFunctionalComponent(__VLS_800, new __VLS_800({
             ...{ 'onClick': {} },
             size: "small",
             theme: "danger",
             variant: "text",
         }));
-        const __VLS_794 = __VLS_793({
+        const __VLS_802 = __VLS_801({
             ...{ 'onClick': {} },
             size: "small",
             theme: "danger",
             variant: "text",
-        }, ...__VLS_functionalComponentArgsRest(__VLS_793));
-        let __VLS_796;
-        let __VLS_797;
-        let __VLS_798;
-        const __VLS_799 = {
+        }, ...__VLS_functionalComponentArgsRest(__VLS_801));
+        let __VLS_804;
+        let __VLS_805;
+        let __VLS_806;
+        const __VLS_807 = {
             onClick: (...[$event]) => {
                 if (!(__VLS_ctx.isEdit))
                     return;
                 __VLS_ctx.removeAttachment(idx);
             }
         };
-        __VLS_795.slots.default;
-        var __VLS_795;
+        __VLS_803.slots.default;
+        var __VLS_803;
     }
     if (!__VLS_ctx.attachments.length) {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "empty-att" },
         });
     }
-    const __VLS_800 = {}.TButton;
+    const __VLS_808 = {}.TButton;
     /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
     // @ts-ignore
-    const __VLS_801 = __VLS_asFunctionalComponent(__VLS_800, new __VLS_800({
+    const __VLS_809 = __VLS_asFunctionalComponent(__VLS_808, new __VLS_808({
         ...{ 'onClick': {} },
         variant: "outline",
         ...{ style: {} },
     }));
-    const __VLS_802 = __VLS_801({
+    const __VLS_810 = __VLS_809({
         ...{ 'onClick': {} },
         variant: "outline",
         ...{ style: {} },
-    }, ...__VLS_functionalComponentArgsRest(__VLS_801));
-    let __VLS_804;
-    let __VLS_805;
-    let __VLS_806;
-    const __VLS_807 = {
+    }, ...__VLS_functionalComponentArgsRest(__VLS_809));
+    let __VLS_812;
+    let __VLS_813;
+    let __VLS_814;
+    const __VLS_815 = {
         onClick: (...[$event]) => {
             if (!(__VLS_ctx.isEdit))
                 return;
             __VLS_ctx.triggerUpload('doc');
         }
     };
-    __VLS_803.slots.default;
-    var __VLS_803;
+    __VLS_811.slots.default;
+    var __VLS_811;
     __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
         ...{ onChange: (...[$event]) => {
                 if (!(__VLS_ctx.isEdit))
@@ -2713,57 +2777,57 @@ if (__VLS_ctx.isEdit) {
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "upload-tip" },
     });
-    var __VLS_787;
+    var __VLS_795;
 }
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "form-actions" },
 });
-const __VLS_808 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_809 = __VLS_asFunctionalComponent(__VLS_808, new __VLS_808({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "large",
-    loading: (__VLS_ctx.submitting),
-}));
-const __VLS_810 = __VLS_809({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "large",
-    loading: (__VLS_ctx.submitting),
-}, ...__VLS_functionalComponentArgsRest(__VLS_809));
-let __VLS_812;
-let __VLS_813;
-let __VLS_814;
-const __VLS_815 = {
-    onClick: (__VLS_ctx.onSubmit)
-};
-__VLS_811.slots.default;
-var __VLS_811;
 const __VLS_816 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
 const __VLS_817 = __VLS_asFunctionalComponent(__VLS_816, new __VLS_816({
     ...{ 'onClick': {} },
-    variant: "outline",
+    theme: "primary",
     size: "large",
+    loading: (__VLS_ctx.submitting),
 }));
 const __VLS_818 = __VLS_817({
     ...{ 'onClick': {} },
-    variant: "outline",
+    theme: "primary",
     size: "large",
+    loading: (__VLS_ctx.submitting),
 }, ...__VLS_functionalComponentArgsRest(__VLS_817));
 let __VLS_820;
 let __VLS_821;
 let __VLS_822;
 const __VLS_823 = {
+    onClick: (__VLS_ctx.onSubmit)
+};
+__VLS_819.slots.default;
+var __VLS_819;
+const __VLS_824 = {}.TButton;
+/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+// @ts-ignore
+const __VLS_825 = __VLS_asFunctionalComponent(__VLS_824, new __VLS_824({
+    ...{ 'onClick': {} },
+    variant: "outline",
+    size: "large",
+}));
+const __VLS_826 = __VLS_825({
+    ...{ 'onClick': {} },
+    variant: "outline",
+    size: "large",
+}, ...__VLS_functionalComponentArgsRest(__VLS_825));
+let __VLS_828;
+let __VLS_829;
+let __VLS_830;
+const __VLS_831 = {
     onClick: (...[$event]) => {
         __VLS_ctx.router.back();
     }
 };
-__VLS_819.slots.default;
-var __VLS_819;
+__VLS_827.slots.default;
+var __VLS_827;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['ci-title-row']} */ ;
@@ -2820,6 +2884,8 @@ var __VLS_819;
 /** @type {__VLS_StyleScopedClasses['file-gallery']} */ ;
 /** @type {__VLS_StyleScopedClasses['file-item']} */ ;
 /** @type {__VLS_StyleScopedClasses['gallery-img']} */ ;
+/** @type {__VLS_StyleScopedClasses['junk-badge']} */ ;
+/** @type {__VLS_StyleScopedClasses['img-ops']} */ ;
 /** @type {__VLS_StyleScopedClasses['upload-trigger']} */ ;
 /** @type {__VLS_StyleScopedClasses['upload-icon']} */ ;
 /** @type {__VLS_StyleScopedClasses['upload-tip']} */ ;
@@ -2848,6 +2914,8 @@ const __VLS_self = (await import('vue')).defineComponent({
             triggerUpload: triggerUpload,
             onFileChange: onFileChange,
             removeImage: removeImage,
+            junkLabel: junkLabel,
+            toggleHidden: toggleHidden,
             removeAttachment: removeAttachment,
             formatSize: formatSize,
             onSubmit: onSubmit,

@@ -61,6 +61,8 @@ class PropertyImageOut(BaseModel):
     thumb_url: Optional[str] = None
     sort_order: int = 0
     is_cover: bool = False
+    hidden: int = 0
+    hide_reason: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -106,6 +108,13 @@ class DealReferenceOut(BaseModel):
     total_price: Optional[int] = None  # 按本房源面积估算的总价（元）
     source_label: str = ""           # 贝壳近30天 / 贝壳均价 / 市场参考 / 平台成交价
     updated_at: Optional[datetime] = None
+
+
+class RiskTagOut(BaseModel):
+    """房源风险/利好标签。level: danger(红)/warning(黄)/safe(绿)。"""
+    level: str = "warning"   # danger 红 / warning 黄 / safe 绿
+    label: str = ""          # 简短标签，如「租赁占用」
+    detail: str = ""         # 一句话说明
 
 
 class PropertyListItem(BaseModel):
@@ -187,6 +196,7 @@ class PropertyDetail(BaseModel):
     images: list[PropertyImageOut] = []
     community_info: Optional[CommunityInfoOut] = None
     deal_reference: Optional[DealReferenceOut] = None
+    risk_tags: list[RiskTagOut] = []
 
     model_config = {"from_attributes": True}
 
@@ -305,6 +315,7 @@ class RecommendRequest(BaseModel):
     user_id: int
     property_id: int
     message: Optional[str] = None
+    demand_id: Optional[int] = None
 
 
 # ========== Market Stats ==========

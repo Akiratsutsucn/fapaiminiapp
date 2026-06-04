@@ -9,6 +9,7 @@ const app = getApp<IAppOption>();
 Page({
   data: {
     property: {} as PropertyDetail,
+    images: [] as any[],
     activeTab: 'basic',
     isFavorited: false,
     favoriteId: 0,
@@ -49,6 +50,7 @@ Page({
     dealRefSourceLabel: '',    // 来源标签：贝壳近30天/贝壳均价/市场参考/平台成交价
     dealRefDiscountText: '',   // 起拍价相对参考价的折扣
     dealRefBargainDelta: '',   // 按面积估算捡漏空间（万）
+    communityFallback: '',     // 无贝壳小区详情时的兜底说明文案
   },
 
   onLoad(options: any) {
@@ -112,6 +114,8 @@ Page({
       const commentary = this.buildCommentary(property);
       // 板块介绍
       const blockIntro = this.buildBlockIntro(property);
+      // 小区详情兜底文案（贝壳无数据时，避免「小区详情」整块空白）
+      const communityFallback = this.buildCommunityFallback(property);
       // 地图标记
       const mapMarkers = (property.lat && property.lng) ? [{
         id: 1,
@@ -180,8 +184,13 @@ Page({
         }
       }
 
+      // 房源照片：后端已过滤隐藏的广告/二维码图，这里取 image_url 列表喂给轮播组件。
+      // （此前漏设 images 导致详情页相册恒为空，只剩蓝色占位底色。）
+      const images = (property.images || []).filter((img: any) => img && img.image_url);
+
       this.setData({
         property,
+        images,
         statusLabel: statusLabel(property.auction_status),
         statusTagClass: statusTagClass(property.auction_status),
         startingPriceWan: formatPriceWan(property.starting_price),
@@ -209,6 +218,7 @@ Page({
         dealRefSourceLabel,
         dealRefDiscountText,
         dealRefBargainDelta,
+        communityFallback,
       });
       this.checkFavoriteStatus(id);
     } catch (e) {
@@ -254,16 +264,17 @@ Page({
       }
     }
 
-    // 板块优劣（基于 district 和 sub_district 的提示）
+    // 板块优劣（基于 district 和 sub_district 的提示）。环线概念仅上海适用。
     if (p.district || p.sub_district) {
       const loc = p.sub_district || p.district;
-      if (p.ring_road === '内环内' || p.ring_road === '内环') {
+      const isSH = p.city_id === 310000 || (p.province_city || '').indexOf('上海') >= 0;
+      if (isSH && (p.ring_road === '内环内' || p.ring_road === '内环')) {
         out.locationInsight = `${loc} 位于上海内环内核心区域，区位优势明显，配套成熟，保值性较强。`;
-      } else if (p.ring_road === '中环内') {
+      } else if (isSH && p.ring_road === '中环内') {
         out.locationInsight = `${loc} 位于上海中环以内，交通便利，生活配套较为完善。`;
-      } else if (p.ring_road === '外环内') {
+      } else if (isSH && p.ring_road === '外环内') {
         out.locationInsight = `${loc} 位于上海外环以内，发展潜力较好，价格相对中环更具性价比。`;
-      } else if (p.ring_road === '外环外') {
+      } else if (isSH && p.ring_road === '外环外') {
         out.locationInsight = `${loc} 位于上海外环以外，价格门槛较低，适合刚需或投资关注。`;
       }
     }
@@ -286,9 +297,89 @@ Page({
     return dict[p.sub_district] || '';
   },
 
+  /**
+   * 小区详情兜底文案：贝壳抓不到小区数据时，用房源自身信息 + 区县常识生成
+   * 一段有价值的说明，确保「小区详情」标签页不留空白。
+   */
+  buildCommunityFallback(p: any): string {
+    // 区县级板块说明（覆盖沪甬杭主要城区），按 district 命中
+    const DISTRICT_INTRO: Record<string, string> = {
+      // 上海
+      '黄浦区': '黄浦区为上海中心城区核心，外滩、人民广场、新天地坐落于此，地铁线网密集，商业与人文配套顶级，房产保值性强。',
+      '徐汇区': '徐汇区为上海传统优质生活区，徐家汇商圈、滨江开发带动板块价值，教育医疗资源集中，二手房流通性好。',
+      '静安区': '静安区位居市中心，南京西路商圈与大宁板块并重，轨交便利，租售两旺。',
+      '长宁区': '长宁区中山公园、虹桥地区商务与居住兼备，临近虹桥枢纽，配套成熟。',
+      '普陀区': '普陀区苏州河沿线开发活跃，长寿路、真如板块商业升级，性价比相对突出。',
+      '虹口区': '虹口区北外滩开发提速，临近陆家嘴隔江相望，轨交便利，发展潜力较好。',
+      '杨浦区': '杨浦区高校云集，五角场商圈成熟，滨江与创智天地带动产业与人口导入。',
+      '浦东新区': '浦东新区为上海面积最大城区，陆家嘴金融城、张江科学城、前滩等板块价值梯度明显，配套差异较大，需结合具体板块判断。',
+      '闵行区': '闵行区莘庄、七宝、前滩外溢承接区位优良，刚需与改善需求集中，轨交覆盖较广。',
+      '宝山区': '宝山区大场、顾村板块刚需活跃，地铁 7/1/15 号线沿线配套逐步完善，价格门槛较低。',
+      '嘉定区': '嘉定区汽车产业聚集，嘉定新城、南翔板块宜居，11 号线直达市区，性价比突出。',
+      '松江区': '松江区大学城、松江新城与 G60 科创走廊带动发展，9 号线沿线居住成熟。',
+      '青浦区': '青浦区为长三角一体化示范区核心，赵巷、徐泾承接虹桥外溢，西郊生态宜居。',
+      '奉贤区': '奉贤区南桥新城为中心，临港南桥科技城带动产业，价格门槛低，适合刚需与投资关注。',
+      '金山区': '金山区位于上海西南，石化与滨海旅游为特色，房价处于全市低位。',
+      '崇明区': '崇明区为生态岛，开发强度低，自住属性为主。',
+      // 杭州
+      '上城区': '上城区为杭州主城核心，武林、湖滨、钱江新城商圈林立，配套与教育资源优质。',
+      '拱墅区': '拱墅区运河沿线人文浓厚，武林商圈北延，地铁便利，居住氛围成熟。',
+      '西湖区': '西湖区坐拥西湖景区与文教区，学区与环境俱佳，房产保值性强。',
+      '滨江区': '滨江区为杭州高新产业核心，互联网企业聚集，人口年轻，居住需求旺盛。',
+      '萧山区': '萧山区临近萧山机场与亚运板块，城市化推进快，配套日趋完善。',
+      '余杭区': '余杭区未来科技城带动产业与人口快速导入，新兴改善板块活跃。',
+      '临平区': '临平区为杭州东北门户，地铁延伸带动居住，价格相对亲民。',
+      '钱塘区': '钱塘区高教园区与产业新城并进，发展潜力较好，门槛较低。',
+      '富阳区': '富阳区山水人文兼具，承接主城外溢，宜居属性突出。',
+      // 宁波
+      '海曙区': '海曙区为宁波老城核心，天一商圈成熟，人文与商业配套齐全。',
+      '江北区': '江北区老外滩与文教区并存，滨江居住环境优良。',
+      '鄞州区': '鄞州区为宁波行政与商务中心，南部商务区与东部新城配套领先。',
+      '镇海区': '镇海区临港产业为基础，居住板块稳步发展。',
+      '北仑区': '北仑区港口经济发达，产业人口集中，刚需活跃。',
+      '奉化区': '奉化区融入宁波主城步伐加快，价格门槛较低。',
+    };
+
+    const parts: string[] = [];
+    const intro = (p.district && DISTRICT_INTRO[p.district]) || '';
+    if (intro) parts.push(intro);
+
+    // 房源自身要点
+    const facts: string[] = [];
+    if (p.property_type) facts.push(`物业类型为${p.property_type}`);
+    if (p.area) facts.push(`建筑面积约 ${p.area}㎡`);
+    if (p.build_year) facts.push(`建于 ${p.build_year} 年`);
+    if (facts.length) {
+      parts.push(`本标的位于${p.district || ''}${p.sub_district || ''}，${facts.join('，')}。`);
+    }
+
+    if (!intro && !facts.length) {
+      // 实在没有区县命中也没字段，给一句通用说明，确保不空白
+      if (p.community_name) {
+        return `${p.community_name} 的详细小区数据正在补充中。可参考下方价差分析与法院公告了解标的情况，建议结合实地看房与尽调综合判断。`;
+      }
+      return '';
+    }
+    parts.push('小区级详细数据（均价/容积率/物业等）正在持续补充，建议结合实地看房与法院公告综合判断。');
+    return parts.join('');
+  },
+
   /** 切换公告全文展开 */
   onToggleNotice() {
     this.setData({ noticeExpanded: !this.data.noticeExpanded });
+  },
+
+  /** 点击风险标签，弹出说明 */
+  onRiskTap(e: any) {
+    const idx = e.currentTarget.dataset.index;
+    const tag = (this.data.property as any)?.risk_tags?.[idx];
+    if (!tag) return;
+    wx.showModal({
+      title: tag.label,
+      content: tag.detail || '该提示由公告信息自动提炼，建议结合原始公告核实。',
+      confirmText: '我知道了',
+      showCancel: false,
+    });
   },
 
   async checkFavoriteStatus(propertyId: number) {
@@ -404,7 +495,20 @@ Page({
   },
 
   onCalc() {
-    wx.navigateTo({ url: '/pages/mortgage-calculator/mortgage-calculator' });
+    const p: any = this.data.property || {};
+    const price = p.starting_price || 0;
+    const area = p.area || 0;
+    wx.showActionSheet({
+      itemList: ['房贷月供计算', '法拍税费 / 上岸成本'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          const wan = price ? (price / 10000).toFixed(0) : '';
+          wx.navigateTo({ url: `/pages/mortgage-calculator/mortgage-calculator?total=${wan}` });
+        } else if (res.tapIndex === 1) {
+          wx.navigateTo({ url: `/pages/tax-calculator/tax-calculator?price=${price}&area=${area}` });
+        }
+      },
+    });
   },
 
   onTabSwitch(e: any) {

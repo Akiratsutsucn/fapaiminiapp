@@ -15,6 +15,28 @@
   height: 100%;
 }
 
+.gallery-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-100);
+}
+
+.gallery-empty-img {
+  width: 200rpx;
+  height: 200rpx;
+  opacity: 0.5;
+}
+
+.gallery-empty-text {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--blue-600);
+}
+
 .gallery-counter {
   position: absolute;
   bottom: 50rpx;

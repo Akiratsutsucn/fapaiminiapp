@@ -118,6 +118,9 @@ class PropertyImage(Base):
     thumb_url = Column(String(512), nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
     is_cover = Column(Boolean, nullable=False, default=False)
+    # 垃圾图(广告/二维码/logo)自动隐藏：0显示 / 1隐藏。前台不展示，后台可恢复。
+    hidden = Column(Integer, nullable=False, default=0, server_default="0")
+    hide_reason = Column(String(32), nullable=True)  # qrcode/banner/logo/solid
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     property = relationship("Property", back_populates="images")

@@ -61,6 +61,10 @@ export function deleteProperty(id: number) {
   return http.delete(`/properties/${id}`).then(r => r.data)
 }
 
+export function toggleImageHidden(imageId: number) {
+  return http.post(`/properties/images/${imageId}/toggle-hidden`).then(r => r.data)
+}
+
 export function exportProperties(params: Record<string, any> = {}): Promise<AxiosResponse<Blob>> {
   return http.get('/properties/export', { params, responseType: 'blob' })
 }

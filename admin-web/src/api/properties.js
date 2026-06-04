@@ -14,6 +14,9 @@ export function updateProperty(id, data) {
 export function deleteProperty(id) {
     return http.delete(`/properties/${id}`).then(r => r.data);
 }
+export function toggleImageHidden(imageId) {
+    return http.post(`/properties/images/${imageId}/toggle-hidden`).then(r => r.data);
+}
 export function exportProperties(params = {}) {
     return http.get('/properties/export', { params, responseType: 'blob' });
 }
