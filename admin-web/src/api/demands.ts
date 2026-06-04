@@ -29,3 +29,15 @@ export function updateDemand(id: number, data: DemandUpdate) {
 export function deleteDemand(id: number) {
   return http.delete(`/demands/${id}`).then(r => r.data)
 }
+
+export function recommendProperty(data: { user_id: number; property_id: number; message?: string; demand_id?: number }) {
+  return http.post('/demands/recommend', data).then(r => r.data)
+}
+
+export function listAssignableUsers() {
+  return http.get('/demands/assignable-users').then(r => r.data)
+}
+
+export function listRecommendations(user_id: number) {
+  return http.get('/demands/recommend/list', { params: { user_id } }).then(r => r.data)
+}

@@ -4,7 +4,11 @@
     <view class="header-bg"></view>
     <view class="header-content">
       <view class="avatar-wrap">
-        <image class="avatar" src="{{userInfo.avatar_url || ''}}" mode="aspectFill" />
+        <button wx:if="{{isLoggedIn}}" class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+          <image class="avatar" src="{{userInfo.avatar_url || defaultAvatar}}" mode="aspectFill" />
+          <view class="avatar-edit-badge"></view>
+        </button>
+        <image wx:else class="avatar" src="{{defaultAvatar}}" mode="aspectFill" />
       </view>
       <view class="user-info" wx:if="{{isLoggedIn}}">
         <view class="user-name-row">
@@ -72,6 +76,11 @@
 
   <!-- 服务宫格 -->
   <view class="service-grid">
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/recommendations/recommendations">
+      <view class="service-icon rec-icon"></view>
+      <view class="rec-dot" wx:if="{{recUnread > 0}}">{{recUnread}}</view>
+      <text class="service-name">为你推荐</text>
+    </view>
     <view class="service-item" bindtap="onNav" data-url="/subpackages/user/favorites/favorites">
       <view class="service-icon fav-icon"></view>
       <text class="service-name">房源收藏</text>
@@ -88,9 +97,22 @@
       <view class="service-icon history-icon"></view>
       <text class="service-name">浏览记录</text>
     </view>
+    <view class="service-item" bindtap="onNav" data-url="/pages/tax-calculator/tax-calculator">
+      <view class="service-icon tax-icon"></view>
+      <text class="service-name">税费测算</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/pages/mortgage-calculator/mortgage-calculator">
+      <view class="service-icon loan-icon"></view>
+      <text class="service-name">房贷计算</text>
+    </view>
     <view class="service-item" bindtap="onNav" data-url="/pages/customer-service/customer-service">
       <view class="service-icon cs-icon"></view>
       <text class="service-name">联系客服</text>
+    </view>
+    <view class="service-item" bindtap="onNav" data-url="/subpackages/user/customer-demands/customer-demands" wx:if="{{userInfo.role === 'agent' || userInfo.role === 'salesperson'}}">
+      <view class="service-icon clients-icon"></view>
+      <view class="rec-dot" wx:if="{{demandUnread > 0}}">{{demandUnread}}</view>
+      <text class="service-name">客户需求</text>
     </view>
     <view class="service-item" bindtap="onNav" data-url="/subpackages/agent/invite-list/invite-list" wx:if="{{userInfo.role === 'agent'}}">
       <view class="service-icon invite-icon"></view>

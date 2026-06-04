@@ -1,0 +1,18 @@
+<view class="rec-page">
+  <view class="rec-list" wx:if="{{list.length > 0}}">
+    <view class="rec-block" wx:for="{{list}}" wx:key="rec_id" bindtap="onTapItem" data-id="{{item.property.id}}" data-rec="{{item.rec_id}}">
+      <view class="rec-reason gild-top" wx:if="{{item.reason}}">
+        <view class="rec-reason-head">
+          <text class="rec-badge">专属推荐</text>
+          <text class="rec-unread" wx:if="{{item.status === '未读'}}">未读</text>
+        </view>
+        <text class="rec-reason-text">{{item.reason}}</text>
+      </view>
+      <house-card property="{{item.property}}" />
+    </view>
+  </view>
+  <view class="empty-state" wx:else>
+    <text>暂无专属推荐</text>
+    <text class="empty-sub">提交选房需求后，顾问会为你定向推荐合适房源</text>
+  </view>
+</view>

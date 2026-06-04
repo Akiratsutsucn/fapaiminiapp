@@ -1,6 +1,10 @@
-import { getUserProfile, getUserStats, updateUserProfile } from '../../services/user';
+import { getUserProfile, getUserStats, updateUserProfile, getRecommendationUnread, getMyDemandsUnread } from '../../services/user';
 
 const app = getApp<IAppOption>();
+
+const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RjZThmMiIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9Ijc4IiByPSIzOCIgZmlsbD0iIzlmYjZjZiIvPjxwYXRoIGQ9Ik00MCAxODRjMC0zNiAyOC01OCA2MC01OHM2MCAyMiA2MCA1OHoiIGZpbGw9IiM5ZmI2Y2YiLz48L3N2Zz4=';
+
+const AVATAR_UPLOAD_URL = 'https://xcxapi.fapaizhelianmeng.cn/api/v1/user/avatar';
 
 Page({
   data: {
@@ -11,6 +15,9 @@ Page({
     editNickname: '',
     editPhone: '',
     saving: false,
+    recUnread: 0,
+    demandUnread: 0,
+    defaultAvatar: DEFAULT_AVATAR,
   },
 
   onShow() {
@@ -26,6 +33,36 @@ Page({
     }
   },
 
+  // 微信头像选择：拿到临时图片后上传到后端，写回 avatar_url
+  onChooseAvatar(e: any) {
+    const avatarUrl = e.detail && e.detail.avatarUrl;
+    if (!avatarUrl) return;
+    // 先本地预览
+    this.setData({ 'userInfo.avatar_url': avatarUrl } as any);
+    wx.showLoading({ title: '上传中...', mask: true });
+    wx.uploadFile({
+      url: AVATAR_UPLOAD_URL,
+      filePath: avatarUrl,
+      name: 'file',
+      header: { Authorization: `Bearer ${app.globalData.token || wx.getStorageSync('access_token') || ''}` },
+      success: (res) => {
+        try {
+          const data = JSON.parse(res.data);
+          if (data && data.avatar_url) {
+            this.setData({ 'userInfo.avatar_url': data.avatar_url } as any);
+            wx.showToast({ title: '头像已更新', icon: 'success' });
+          } else {
+            wx.showToast({ title: '上传失败', icon: 'none' });
+          }
+        } catch (_) {
+          wx.showToast({ title: '上传失败', icon: 'none' });
+        }
+      },
+      fail: () => wx.showToast({ title: '上传失败', icon: 'none' }),
+      complete: () => wx.hideLoading(),
+    });
+  },
+
   async loadUserData() {
     try {
       const [userInfo, stats] = await Promise.all([
@@ -34,6 +71,11 @@ Page({
       ]);
       if (userInfo) this.setData({ userInfo });
       if (stats) this.setData({ stats });
+      getRecommendationUnread().then((r: any) => this.setData({ recUnread: (r && r.unread) || 0 })).catch(() => {});
+      const role = (userInfo && (userInfo as any).role) || '';
+      if (role === 'agent' || role === 'salesperson') {
+        getMyDemandsUnread().then((r: any) => this.setData({ demandUnread: (r && r.unread) || 0 })).catch(() => {});
+      }
     } catch (e) {
       console.error('加载用户数据失败:', e);
     }

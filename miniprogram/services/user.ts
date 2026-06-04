@@ -39,3 +39,35 @@ export async function getBrowseHistory(page: number = 1, pageSize: number = 20) 
     url: `/user/browse-history?page=${page}&page_size=${pageSize}`,
   });
 }
+
+export async function getRecommendations(page: number = 1, pageSize: number = 20) {
+  return request<{ items: any[]; total: number }>({
+    url: `/user/recommendations?page=${page}&page_size=${pageSize}`,
+  });
+}
+
+export async function getRecommendationUnread() {
+  return request<{ unread: number }>({ url: '/user/recommendations/unread-count' });
+}
+
+export async function markRecommendationRead(recId: number) {
+  return request({ url: `/user/recommendations/${recId}/read`, method: 'POST' });
+}
+
+export async function getMyDemands(page: number = 1, pageSize: number = 50) {
+  return request<{ items: any[]; total: number }>({
+    url: `/user/my-demands?page=${page}&page_size=${pageSize}`,
+  });
+}
+
+export async function getMyDemandsUnread() {
+  return request<{ unread: number }>({ url: '/user/my-demands/unread-count' });
+}
+
+export async function markMyDemandRead(demandId: number) {
+  return request({ url: `/user/my-demands/${demandId}/read`, method: 'POST' });
+}
+
+export async function updateMyDemandStatus(demandId: number, status: string) {
+  return request({ url: `/user/my-demands/${demandId}/status?status=${encodeURIComponent(status)}`, method: 'POST' });
+}

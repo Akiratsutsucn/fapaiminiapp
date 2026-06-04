@@ -1,0 +1,29 @@
+<view class="cd-page">
+  <view class="cd-list" wx:if="{{list.length > 0}}">
+    <view class="cd-card {{item.assign_read ? '' : 'unread'}}" wx:for="{{list}}" wx:key="id">
+      <view class="cd-head">
+        <view class="cd-name">{{item.name || '客户'}}</view>
+        <view class="cd-source {{item.source === 'message' ? 'msg' : ''}}">{{item.source === 'message' ? '客服留言' : '选房需求'}}</view>
+        <view class="cd-status status-{{item.statusClass}}">{{item.status}}</view>
+      </view>
+      <view class="cd-row" wx:if="{{item.phone}}">
+        <text class="cd-k">电话</text>
+        <text class="cd-v cd-phone" bindtap="onCall" data-phone="{{item.phone}}">{{item.phone}}</text>
+      </view>
+      <view class="cd-row" wx:if="{{item.city}}"><text class="cd-k">城市</text><text class="cd-v">{{item.city}}</text></view>
+      <view class="cd-row" wx:if="{{item.purpose}}"><text class="cd-k">用途</text><text class="cd-v">{{item.purpose}}</text></view>
+      <view class="cd-row" wx:if="{{item.budget}}"><text class="cd-k">预算</text><text class="cd-v">{{item.budget}}</text></view>
+      <view class="cd-row" wx:if="{{item.target_district}}"><text class="cd-k">意向区域</text><text class="cd-v">{{item.target_district}}</text></view>
+      <view class="cd-row" wx:if="{{item.remark}}"><text class="cd-k">留言备注</text><text class="cd-v">{{item.remark}}</text></view>
+      <view class="cd-time">{{item.created_at}}</view>
+      <view class="cd-ops">
+        <view class="cd-btn outline" wx:if="{{item.phone}}" bindtap="onCall" data-phone="{{item.phone}}">拨打电话</view>
+        <view class="cd-btn primary" wx:if="{{item.status !== '已完成'}}" bindtap="onComplete" data-id="{{item.id}}">标记已完成</view>
+      </view>
+    </view>
+  </view>
+  <view class="empty-state" wx:else>
+    <text>暂无分配给你的客户需求</text>
+    <text class="empty-sub">管理员分配客户需求或留言后，会在这里显示</text>
+  </view>
+</view>

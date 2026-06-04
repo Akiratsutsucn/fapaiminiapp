@@ -1,0 +1,137 @@
+.cd-page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 16rpx 24rpx 40rpx;
+}
+
+.cd-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  position: relative;
+}
+
+.cd-card.unread::before {
+  content: '';
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  width: 16rpx;
+  height: 16rpx;
+  background: var(--accent-orange);
+  border-radius: 50%;
+}
+
+.cd-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.cd-name {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: var(--blue-900);
+}
+
+.cd-source {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: var(--blue-700);
+  background: var(--blue-50);
+  padding: 4rpx 14rpx;
+  border-radius: var(--radius-sm);
+}
+
+.cd-source.msg {
+  color: var(--accent-gold-text);
+  background: rgba(196, 147, 90, 0.14);
+}
+
+.cd-status {
+  margin-left: auto;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  border-radius: var(--radius-pill);
+}
+
+.status-pending { color: var(--accent-orange-text); background: rgba(255,107,53,0.12); }
+.status-assigned { color: var(--blue-700); background: var(--blue-50); }
+.status-done { color: var(--success); background: rgba(74,140,122,0.12); }
+
+.cd-row {
+  display: flex;
+  padding: 8rpx 0;
+  font-size: 26rpx;
+}
+
+.cd-k {
+  color: var(--text-hint);
+  width: 140rpx;
+  flex-shrink: 0;
+}
+
+.cd-v {
+  color: var(--blue-900);
+  flex: 1;
+}
+
+.cd-phone {
+  color: var(--accent-orange-text);
+  font-weight: 600;
+}
+
+.cd-time {
+  font-size: 22rpx;
+  color: var(--text-disabled);
+  margin-top: 12rpx;
+}
+
+.cd-ops {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.cd-btn {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  border-radius: var(--radius-pill);
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.cd-btn.outline {
+  border: 2rpx solid var(--blue-700);
+  color: var(--blue-700);
+}
+
+.cd-btn.primary {
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
+  color: #fff;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 160rpx 48rpx;
+  color: var(--text-hint);
+}
+
+.empty-state text { font-size: 28rpx; }
+
+.empty-sub {
+  font-size: 24rpx !important;
+  color: var(--text-disabled);
+  margin-top: 16rpx;
+  text-align: center;
+  line-height: 1.6;
+}
+

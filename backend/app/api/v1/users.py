@@ -1,8 +1,13 @@
 """User routes for C-end."""
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...core.config import settings
 from ...core.database import get_session
 from ...core.security import get_current_user
 from ...core.auction_status import effective_status
@@ -12,6 +17,41 @@ from ...models.browse_history import BrowseHistory
 from ...schemas import UserInfo, UserProfileUpdate, UserStats
 
 router = APIRouter()
+
+_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_AVATAR_MAX = 5 * 1024 * 1024  # 5MB
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    user_data: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """C 端用户上传头像（微信 chooseAvatar 选好的图片），存储并写回 user.avatar_url。"""
+    if file.content_type not in _AVATAR_TYPES:
+        raise HTTPException(status_code=400, detail="头像仅支持 jpg/png/webp/gif")
+    content = await file.read()
+    if len(content) > _AVATAR_MAX:
+        raise HTTPException(status_code=400, detail="头像大小不能超过 5MB")
+
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "png")
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = "png"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    rel_dir = Path("avatars")
+    storage_dir = Path(settings.IMAGE_STORAGE_PATH) / rel_dir
+    os.makedirs(storage_dir, exist_ok=True)
+    (storage_dir / filename).write_bytes(content)
+
+    url = f"{settings.IMAGE_BASE_URL}/{rel_dir.as_posix()}/{filename}" if settings.IMAGE_BASE_URL else str(storage_dir / filename)
+
+    user = (await db.execute(select(User).where(User.id == int(user_data["sub"])))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    user.avatar_url = url
+    await db.commit()
+    return {"avatar_url": url}
 
 
 @router.get("/profile", response_model=UserInfo)

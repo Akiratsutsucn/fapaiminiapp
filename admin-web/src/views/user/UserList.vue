@@ -6,6 +6,7 @@
         <t-input v-model="filters.keyword" placeholder="搜索昵称" clearable style="width:200px" @change="onSearch" />
         <t-select v-model="filters.role" placeholder="角色筛选" clearable style="width:150px" @change="onSearch">
           <t-option value="customer" label="客户" />
+          <t-option value="salesperson" label="业务员" />
           <t-option value="agent" label="代理商" />
           <t-option value="admin" label="管理员" />
         </t-select>
@@ -14,12 +15,10 @@
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #role="{ row }">
-          <t-tag :theme="row.role === 'admin' ? 'primary' : row.role === 'agent' ? 'warning' : 'default'">
-            {{ row.role === 'admin' ? '管理员' : row.role === 'agent' ? '代理商' : '客户' }}
-          </t-tag>
+          <t-tag :theme="roleTheme(row.role)">{{ roleLabel(row.role) }}</t-tag>
         </template>
         <template #region="{ row }">
-          <span v-if="row.role === 'agent'">{{ row.region || '--' }}</span>
+          <span v-if="row.role === 'agent' || row.role === 'salesperson'">{{ row.region || '--' }}</span>
           <span v-else style="color:#999">--</span>
         </template>
         <template #inviter_id="{ row }">
@@ -44,6 +43,7 @@
         <t-form-item label="角色">
           <t-select v-model="editForm.role">
             <t-option value="customer" label="客户" />
+            <t-option value="salesperson" label="业务员" />
             <t-option value="agent" label="代理商" />
             <t-option value="admin" label="管理员" />
           </t-select>
@@ -55,7 +55,7 @@
             <t-option value="330100" label="杭州" />
           </t-select>
         </t-form-item>
-        <t-form-item label="负责地区" v-if="editForm.role === 'agent'">
+        <t-form-item label="负责地区" v-if="editForm.role === 'agent' || editForm.role === 'salesperson'">
           <t-input v-model="editForm.region" placeholder="如：上海市长宁区" />
         </t-form-item>
         <t-form-item label="邀请人ID" v-if="editForm.role === 'customer'">
@@ -71,11 +71,12 @@
         <t-form-item label="角色">
           <t-select v-model="createForm.role">
             <t-option value="customer" label="客户" />
+            <t-option value="salesperson" label="业务员" />
             <t-option value="agent" label="代理商" />
             <t-option value="admin" label="管理员" />
           </t-select>
         </t-form-item>
-        <t-form-item label="负责地区" v-if="createForm.role === 'agent'">
+        <t-form-item label="负责地区" v-if="createForm.role === 'agent' || createForm.role === 'salesperson'">
           <t-input v-model="createForm.region" placeholder="如：上海市长宁区" />
         </t-form-item>
         <t-form-item label="邀请人ID" v-if="createForm.role === 'customer'">
@@ -96,6 +97,13 @@ const loading = ref(false)
 const list = ref<any[]>([])
 const filters = reactive({ keyword: '', role: '' })
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+
+function roleLabel(r: string) {
+  return { admin: '管理员', agent: '代理商', salesperson: '业务员', customer: '客户' }[r] || '客户'
+}
+function roleTheme(r: string) {
+  return r === 'admin' ? 'primary' : r === 'agent' ? 'warning' : r === 'salesperson' ? 'success' : 'default'
+}
 
 const columns = [
   { colKey: 'id', title: 'ID', width: 80 },
@@ -167,7 +175,7 @@ async function onSaveEdit() {
       role: editForm.role,
       city_id: parseInt(editForm.city_id) || 310000,
     }
-    if (editForm.role === 'agent') body.region = editForm.region || ''
+    if (editForm.role === 'agent' || editForm.role === 'salesperson') body.region = editForm.region || ''
     if (editForm.role === 'customer') body.inviter_id = editForm.inviter_id || null
     await updateUser(editForm.id, body)
     MessagePlugin.success('更新成功')

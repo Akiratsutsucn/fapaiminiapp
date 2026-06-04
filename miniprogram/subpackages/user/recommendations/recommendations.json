@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "为你推荐",
+  "usingComponents": {
+    "house-card": "/components/house-card/house-card"
+  }
+}
