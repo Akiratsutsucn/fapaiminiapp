@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
 from ...core.security import get_admin_user
-from ...core.auction_status import effective_status_sql
+from ...core.auction_status import (
+    effective_status_sql, BARGAIN_DISCOUNT_MIN, BARGAIN_DISCOUNT_MAX,
+    MOBILE_VISIBLE_STATUSES,
+)
 from ...models.property import Property
 from ...models.user import User
 from ...models.demand import Demand
@@ -46,17 +49,21 @@ async def get_dashboard(
     )).scalar() or 0
 
     bargain_count = (await db.execute(
-        with_city(select(func.count(Property.id)).where(Property.bargain_potential > 0))
+        with_city(select(func.count(Property.id)).where(
+            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+            Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
+            Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
+        ))
     )).scalar() or 0
     yesterday_listed = (await db.execute(
         with_city(select(func.count(Property.id)).where(
-            func.date(Property.created_at) == yesterday
+            func.date(func.coalesce(Property.publish_date, Property.created_at)) == yesterday
         ))
     )).scalar() or 0
     yesterday_sold = (await db.execute(
         with_city(select(func.count(Property.id)).where(
             effective_status_sql().in_(["已成交", "已结束"]),
-            func.date(Property.updated_at) == yesterday,
+            func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == yesterday,
         ))
     )).scalar() or 0
 

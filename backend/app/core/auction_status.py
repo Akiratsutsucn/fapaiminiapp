@@ -41,6 +41,11 @@ MOBILE_DETAIL_STATUSES = MOBILE_VISIBLE_STATUSES + MOBILE_FALLBACK_STATUSES
 # 即将开拍但开拍时间已过、又缺结束时间时，超过该天数判定为已结束，避免永久卡在「进行中」。
 DEFAULT_STALE_DAYS = 3
 
+# 「捡漏」定义：法院折扣率（起拍价/评估价）在 1折~6.5折之间，且为可参拍状态（即将开拍/进行中）。
+# 全站统一口径，common.py / dashboard.py / properties.py 均引用。
+BARGAIN_DISCOUNT_MIN = 0.1
+BARGAIN_DISCOUNT_MAX = 0.65
+
 
 # ── 纯 Python 计算 ────────────────────────────────────────────────────────
 
