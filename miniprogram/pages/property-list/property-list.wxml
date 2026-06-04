@@ -10,6 +10,11 @@
     </view>
   </view>
 
+  <!-- 入口标题（来自首页四按钮跳转：捡漏房源/即将开拍房源/昨日上架房源/昨日成交房源） -->
+  <view class="preset-banner" wx:if="{{presetTitle}}">
+    <text class="preset-title">{{presetTitle}}</text>
+  </view>
+
   <!-- 筛选栏 -->
   <view class="filter-bar">
     <view class="filter-item {{activeFilterPanel === 'district' ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="district">
@@ -54,36 +59,41 @@
         <view class="option-item {{priceRange === '3000000-5000000' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="3000000-5000000">300-500万</view>
         <view class="option-item {{priceRange === '5000000-' ? 'selected' : ''}}" bindtap="onSelectPriceRange" data-value="5000000-">500万以上</view>
       </view>
-      <!-- 更多筛选 -->
-      <view class="filter-options" wx:if="{{activeFilterPanel === 'more'}}">
+      <!-- 更多筛选（多选 + 确认） -->
+      <view class="filter-more" wx:if="{{activeFilterPanel === 'more'}}">
         <view class="filter-group">
-          <text class="filter-group-title">物业类型</text>
+          <text class="filter-group-title">物业类型（可多选）</text>
           <view class="option-row">
-            <view class="option-item {{!selectedPropertyType ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="">全部</view>
-            <view class="option-item {{selectedPropertyType === '住宅' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="住宅">住宅</view>
-            <view class="option-item {{selectedPropertyType === '商业' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="商业">商业</view>
-            <view class="option-item {{selectedPropertyType === '工业' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="工业">工业</view>
-            <view class="option-item {{selectedPropertyType === '办公' ? 'selected' : ''}}" bindtap="onSelectPropertyType" data-value="办公">办公</view>
+            <view class="option-item multi {{pendingPropertyTypes.length === 0 ? 'selected' : ''}}" bindtap="onResetMore">全部</view>
+            <view class="option-item multi {{pendingPropertyTypes.indexOf('住宅') >= 0 ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="住宅">住宅</view>
+            <view class="option-item multi {{pendingPropertyTypes.indexOf('商业') >= 0 ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="商业">商业</view>
+            <view class="option-item multi {{pendingPropertyTypes.indexOf('工业') >= 0 ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="工业">工业</view>
+            <view class="option-item multi {{pendingPropertyTypes.indexOf('办公') >= 0 ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="办公">办公</view>
           </view>
         </view>
         <view class="filter-group">
-          <text class="filter-group-title">拍卖状态</text>
+          <text class="filter-group-title">拍卖状态（可多选）</text>
           <view class="option-row">
-            <view class="option-item {{!selectedAuctionStatus ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="">全部</view>
-            <view class="option-item {{selectedAuctionStatus === '即将开拍' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="即将开拍">即将开拍</view>
-            <view class="option-item {{selectedAuctionStatus === '进行中' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="进行中">进行中</view>
-            <view class="option-item {{selectedAuctionStatus === '中止' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="中止">中止</view>
-            <view class="option-item {{selectedAuctionStatus === '撤回' ? 'selected' : ''}}" bindtap="onSelectAuctionStatus" data-value="撤回">撤回</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('即将开拍') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="即将开拍">即将开拍</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('进行中') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="进行中">进行中</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('已成交') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="已成交">已成交</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('已结束') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="已结束">已结束</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('中止') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="中止">中止</view>
+            <view class="option-item multi {{pendingAuctionStatuses.indexOf('撤回') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="撤回">撤回</view>
           </view>
         </view>
         <view class="filter-group">
-          <text class="filter-group-title">拍卖轮次</text>
+          <text class="filter-group-title">拍卖轮次（可多选）</text>
           <view class="option-row">
-            <view class="option-item {{!selectedAuctionRound ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="">全部</view>
-            <view class="option-item {{selectedAuctionRound === '一拍' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="一拍">一拍</view>
-            <view class="option-item {{selectedAuctionRound === '二拍' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="二拍">二拍</view>
-            <view class="option-item {{selectedAuctionRound === '变卖' ? 'selected' : ''}}" bindtap="onSelectAuctionRound" data-value="变卖">变卖</view>
+            <view class="option-item multi {{pendingAuctionRounds.indexOf('一拍') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionRound" data-value="一拍">一拍</view>
+            <view class="option-item multi {{pendingAuctionRounds.indexOf('二拍') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionRound" data-value="二拍">二拍</view>
+            <view class="option-item multi {{pendingAuctionRounds.indexOf('变卖') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionRound" data-value="变卖">变卖</view>
+            <view class="option-item multi {{pendingAuctionRounds.indexOf('再次拍卖') >= 0 ? 'selected' : ''}}" bindtap="onToggleAuctionRound" data-value="再次拍卖">再次拍卖</view>
           </view>
+        </view>
+        <view class="more-actions">
+          <view class="btn-reset" bindtap="onResetMore">重置</view>
+          <view class="btn-confirm" bindtap="onConfirmMore">确认</view>
         </view>
       </view>
     </view>
@@ -105,3 +115,4 @@
     <text class="load-text" bindtap="onLoadMore">{{loading ? '加载中...' : '加载更多'}}</text>
   </view>
 </view>
+

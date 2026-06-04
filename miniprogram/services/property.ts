@@ -10,6 +10,11 @@ export interface PropertyListParams {
   property_type?: string;
   auction_status?: string;
   auction_round?: string;
+  // 入口附带的固定过滤（捡漏/昨日上架/昨日成交）
+  discount_min?: number;
+  discount_max?: number;
+  listed_day?: string;
+  sold_day?: string;
   sort_by?: string;
   sort_order?: string;
   page?: number;

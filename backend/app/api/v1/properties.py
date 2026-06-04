@@ -79,11 +79,23 @@ async def list_properties(
     property_type: str | None = Query(None),
     auction_status: str | None = Query(None),
     auction_round: str | None = Query(None),
+    discount_min: float | None = Query(None, description="折扣下限(如0.1)，捡漏入口用"),
+    discount_max: float | None = Query(None, description="折扣上限(如0.65)，捡漏入口用"),
+    listed_day: str | None = Query(None, description="上架日筛选：yesterday=昨日上架(真实上架日期)"),
+    sold_day: str | None = Query(None, description="成交日筛选：yesterday=昨日成交(真实结束日期)"),
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
+    from datetime import date as _date, timedelta as _timedelta
+
+    def _multi(v):
+        """逗号分隔的多值参数 → 去空白的列表；单值也兼容。"""
+        if not v:
+            return []
+        return [s.strip() for s in v.split(",") if s.strip()]
+
     conditions = []
 
     if city_id:
@@ -96,15 +108,45 @@ async def list_properties(
         conditions.append(Property.starting_price <= price_max)
     if keyword:
         conditions.append(Property.title.contains(keyword))
-    if property_type:
-        conditions.append(Property.property_type == property_type)
-    if auction_round:
-        conditions.append(Property.auction_round == auction_round)
 
-    # 状态过滤：用户显式选了状态则用之（限可参拍）；否则自动决定主状态或兜底已成交。
-    # 全部按 effective_status_sql() 实时计算，避免库存状态过期/抓错导致漏筛。
-    if auction_status and auction_status in MOBILE_VISIBLE_STATUSES:
-        conditions.append(effective_status_sql() == auction_status)
+    # 物业类型 / 拍卖轮次：支持逗号分隔多选
+    ptypes = _multi(property_type)
+    if ptypes:
+        conditions.append(Property.property_type.in_(ptypes))
+    rounds = _multi(auction_round)
+    if rounds:
+        conditions.append(Property.auction_round.in_(rounds))
+
+    # 折扣范围（捡漏入口）：court_discount_rate 落在 [discount_min, discount_max]
+    if discount_min is not None:
+        conditions.append(Property.court_discount_rate >= discount_min)
+    if discount_max is not None:
+        conditions.append(Property.court_discount_rate <= discount_max)
+
+    # 昨日上架：真实上架日期(publish_date 回退 created_at) == 昨天
+    if listed_day == "yesterday":
+        _y = _date.today() - _timedelta(days=1)
+        conditions.append(
+            func.date(func.coalesce(Property.publish_date, Property.created_at)) == _y
+        )
+
+    # 状态过滤：
+    # - sold_day=yesterday：昨日成交入口，强制已成交/已结束 + 真实结束日期==昨天
+    # - 否则按用户选的状态(支持多选)，再否则自动决定可参拍/兜底
+    statuses = _multi(auction_status)
+    if sold_day == "yesterday":
+        _y = _date.today() - _timedelta(days=1)
+        conditions.append(effective_status_sql().in_(["已成交", "已结束"]))
+        conditions.append(
+            func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == _y
+        )
+    elif statuses:
+        valid = [s for s in statuses if s in MOBILE_VISIBLE_STATUSES]
+        if valid:
+            conditions.append(effective_status_sql().in_(valid))
+        else:
+            listing_statuses = await _pick_listing_statuses(db, conditions)
+            conditions.append(effective_status_sql().in_(listing_statuses))
     else:
         listing_statuses = await _pick_listing_statuses(db, conditions)
         conditions.append(effective_status_sql().in_(listing_statuses))

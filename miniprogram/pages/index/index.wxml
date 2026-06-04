@@ -13,6 +13,7 @@
   <view class="hero">
     <view class="hero-tagline">FAPAI · 上海 / 宁波 / 杭州</view>
     <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
+    <view class="hero-gild"></view>
     <view class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源数据</view>
   </view>
 
@@ -22,7 +23,7 @@
   </view>
 
   <!-- ============ 行情数据卡（V2 大字报） ============ -->
-  <view class="stats-card-v2">
+  <view class="stats-card-v2 gild-top refined-border">
     <view class="stat-cell" bindtap="onStatTap" data-type="bargain">
       <text class="stat-num accent">{{stats.bargain_count}}</text>
       <text class="stat-label">捡漏房源</text>
@@ -42,7 +43,7 @@
   </view>
 
   <!-- 快捷入口 -->
-  <view class="quick-entry">
+  <view class="quick-entry glass-card">
     <view class="qe-item" bindtap="onViewAll">
       <view class="qe-icon-list"></view>
       <text class="qe-text">全部房源</text>
@@ -57,11 +58,11 @@
   <!-- ============ 法拍秘籍 ============ -->
   <view class="section" wx:if="{{articles.length > 0}}">
     <view class="section-head">
-      <view class="section-title-v2">法拍课堂<text class="badge-new">HOT</text></view>
-      <text class="section-sub">拍来盟科技 · 全部 ›</text>
+      <view class="section-title-v2"><text class="gild-bar"></text>法拍课堂<text class="badge-new">HOT</text></view>
+      <text class="section-sub" bindtap="onViewAllArticles">拍来盟科技 · 全部 ›</text>
     </view>
     <scroll-view class="article-scroll" scroll-x>
-      <view class="article-card" wx:for="{{articles}}" wx:key="id" bindtap="onArticleTap" data-id="{{item.id}}">
+      <view class="article-card refined-border" wx:for="{{articles}}" wx:key="id" bindtap="onArticleTap" data-id="{{item.id}}">
         <image class="article-cover" src="{{item.cover_image}}" mode="aspectFill" />
         <view class="article-info">
           <text class="article-title">{{item.title}}</text>
@@ -74,7 +75,7 @@
   <!-- ============ 精选房源 ============ -->
   <view class="section">
     <view class="section-head">
-      <view class="section-title-v2">头条捡漏</view>
+      <view class="section-title-v2"><text class="gild-bar"></text>头条捡漏</view>
       <view class="section-filters">
         <view class="filter-chip {{activeFilter === 'district' || selectedDistrict ? 'active' : ''}}" bindtap="onQuickFilter" data-filter="district">{{selectedDistrict || '区域'}}</view>
         <view class="filter-chip {{activeFilter === 'price' || selectedPriceLabel ? 'active' : ''}}" bindtap="onQuickFilter" data-filter="price">{{selectedPriceLabel || '起拍价'}}</view>

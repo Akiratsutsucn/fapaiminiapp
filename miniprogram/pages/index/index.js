@@ -2,7 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const property_1 = require("../../services/property");
 const article_1 = require("../../services/article");
-const DISTRICTS = ['浦东新区', '静安区', '徐汇区', '黄浦区', '长宁区', '虹口区', '杨浦区', '普陀区', '宝山区', '闵行区', '嘉定区', '松江区', '青浦区', '奉贤区', '金山区', '崇明区'];
+const DISTRICTS_BY_CITY = {
+    310000: ['浦东新区', '静安区', '徐汇区', '黄浦区', '长宁区', '虹口区', '杨浦区', '普陀区', '宝山区', '闵行区', '嘉定区', '松江区', '青浦区', '奉贤区', '金山区', '崇明区'],
+    330200: ['海曙区', '江北区', '江东区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
+    330100: ['上城区', '下城区', '江干区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
+};
+function districtsForCity(cityId) {
+    return DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000];
+}
+const DEFAULT_CITIES = [
+    { city_id: 310000, city_name: '上海', is_active: true },
+    { city_id: 330200, city_name: '宁波', is_active: true },
+    { city_id: 330100, city_name: '杭州', is_active: true },
+];
 const PRICE_RANGES = [
     { label: '100万以下', value: '0-1000000' },
     { label: '100-300万', value: '1000000-3000000' },
@@ -15,14 +27,14 @@ Page({
         stats: { bargain_count: 0, upcoming_count: 0, yesterday_listed: 0, yesterday_sold: 0 },
         articles: [],
         properties: [],
-        cities: [],
+        cities: DEFAULT_CITIES,
         currentCityId: 310000,
         currentCityName: '上海',
         activeFilter: '',
         selectedDistrict: '',
         selectedPriceLabel: '',
         selectedPriceRange: '',
-        districts: DISTRICTS,
+        districts: districtsForCity(310000),
         priceRanges: PRICE_RANGES,
     },
     onLoad() {
@@ -34,6 +46,11 @@ Page({
             this.setData({
                 currentCityId: app.globalData.currentCityId,
                 currentCityName: app.globalData.currentCityName,
+                districts: districtsForCity(app.globalData.currentCityId),
+                selectedDistrict: '',
+                selectedPriceLabel: '',
+                selectedPriceRange: '',
+                activeFilter: '',
             });
             this.loadData();
         }
@@ -50,7 +67,8 @@ Page({
                 (0, article_1.getRecommendedArticles)().catch(() => []),
                 (0, property_1.getCities)().catch(() => []),
             ]);
-            this.setData({ banners, stats, articles, cities });
+            const safeCities = (cities && cities.length > 0) ? cities : (this.data.cities.length > 0 ? this.data.cities : DEFAULT_CITIES);
+            this.setData({ banners, stats, articles, cities: safeCities });
             this.loadProperties();
         }
         catch (e) {
@@ -71,7 +89,13 @@ Page({
         }
         try {
             const result = await (0, property_1.getProperties)(params);
-            this.setData({ properties: result.items });
+            if (result.items && result.items.length > 0) {
+                this.setData({ properties: result.items });
+            }
+            else {
+                const props = await (0, property_1.getRecommendedProperties)(cityId).catch(() => []);
+                this.setData({ properties: props });
+            }
         }
         catch (e) {
             try {
@@ -85,7 +109,15 @@ Page({
     },
     onCityChange(e) {
         const { city } = e.detail;
-        this.setData({ currentCityId: city.city_id, currentCityName: city.city_name });
+        this.setData({
+            currentCityId: city.city_id,
+            currentCityName: city.city_name,
+            districts: districtsForCity(city.city_id),
+            selectedDistrict: '',
+            selectedPriceLabel: '',
+            selectedPriceRange: '',
+            activeFilter: '',
+        });
         const app = getApp();
         app.globalData.currentCityId = city.city_id;
         app.globalData.currentCityName = city.city_name;
@@ -93,12 +125,22 @@ Page({
     },
     onStatTap(e) {
         const type = e.currentTarget.dataset.type;
-        let params = '';
-        if (type === 'bargain')
-            params = 'sort_by=starting_price&sort_order=asc';
-        else if (type === 'upcoming')
-            params = 'auction_status=即将开拍';
-        wx.navigateTo({ url: `/pages/property-list/property-list?${params}` });
+        const cityId = this.data.currentCityId || getApp().globalData.currentCityId || 310000;
+        const parts = [`city_id=${cityId}`];
+        if (type === 'bargain') {
+            parts.push('discount_min=0.1', 'discount_max=0.65', 'auction_status=即将开拍,进行中');
+            parts.push('sort_by=starting_price', 'sort_order=asc');
+        }
+        else if (type === 'upcoming') {
+            parts.push('auction_status=即将开拍');
+        }
+        else if (type === 'listed') {
+            parts.push('listed_day=yesterday');
+        }
+        else if (type === 'sold') {
+            parts.push('sold_day=yesterday');
+        }
+        wx.navigateTo({ url: `/pages/property-list/property-list?${parts.join('&')}` });
     },
     onViewAll() {
         let params = '';
@@ -112,6 +154,9 @@ Page({
     onArticleTap(e) {
         const id = e.currentTarget.dataset.id;
         wx.navigateTo({ url: `/pages/article/article?id=${id}` });
+    },
+    onViewAllArticles() {
+        wx.navigateTo({ url: '/pages/article-list/article-list' });
     },
     onQuickFilter(e) {
         const filter = e.currentTarget.dataset.filter;
