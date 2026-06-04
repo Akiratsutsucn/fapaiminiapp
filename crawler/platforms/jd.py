@@ -1,12 +1,18 @@
-"""JD Auction (jd.com) crawler — DOM extraction with URL pattern matching.
+"""JD Auction (jd.com) crawler — 数据 API 驱动（取代脆弱的 DOM 滚动抓取）。
 
-JD's auction search at pmsearch.jd.com renders auction cards with links in the format:
-  //paimai.jd.com/<9-digit-paimaiId>
+京东拍卖搜索页 pmsearch.jd.com 是 React SPA，列表数据来自带 h5st 签名的接口
+`paimai_unifiedSearch`（签名由页面 JS 生成，无法离线伪造），故用 Playwright 加载页面
+并拦截该接口的 JSON 响应；翻页通过点击「下一页」让页面重新签名请求。
 
-The link text contains: title, location, price, status, bid count, remaining time.
+详情/多图通过 `getProductBasicInfo` 接口获取——该接口无需 h5st 签名，可用 httpx 直连，
+因此彻底绕开了 SSR 详情页的反爬（net::ERR_EMPTY_RESPONSE）。
+
+按返回数据里的 province/city 字段过滤目标城市（上海/宁波/杭州），不依赖 JD 的 cityId 编码。
 """
 import asyncio
+import json
 import re
+import urllib.parse
 
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from loguru import logger
@@ -20,6 +26,16 @@ from ..utils.retry import retry_on_failure
 # Pattern for valid auction detail URLs: //paimai.jd.com/<digits>
 _AUCTION_URL_RE = re.compile(r"paimai\.jd\.com/(\d+)")
 
+# 京东图片 CDN 前缀（imagePath 形如 jfs/t1/.../xxx.jpg）
+JD_IMG_PREFIX = "https://img10.360buyimg.com/n0/"
+
+# 目标城市：返回数据的 city 字段值 → city_id
+JD_CITY_MAP = {
+    "上海": 310000, "上海市": 310000,
+    "宁波市": 330200, "宁波": 330200,
+    "杭州市": 330100, "杭州": 330100,
+}
+
 
 def _is_auction_detail_url(href: str) -> bool:
     """Check if an href is a JD auction detail link (not notice/help/nav)."""
@@ -29,7 +45,7 @@ def _is_auction_detail_url(href: str) -> bool:
 
 
 class JDAuctionCrawler(AbstractBrokerCrawler):
-    """Crawler for JD judicial auction (京东拍卖·司法)."""
+    """Crawler for JD judicial auction (京东拍卖·司法)。API 驱动。"""
 
     platform = "京东拍卖"
 
@@ -37,6 +53,7 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
 
     def __init__(self):
         self._page: Page | None = None
+        self._row_cache: dict[str, dict] = {}  # paimaiId → 列表 API 原始行
 
     async def _get_page(self) -> Page:
         if not self._page:
@@ -48,152 +65,166 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
             await self._page.close()
             self._page = None
 
-    @retry_on_failure(max_retries=3, backoff_factor=2.0)
+    @retry_on_failure(max_retries=2, backoff_factor=2.0)
     async def collect_list_items(
         self, source_url: str | None = None, city: str = "上海", max_pages: int = 50
     ) -> list[ListItem]:
-        """Scroll through JD PM search results (React SPA with infinite scroll)."""
+        """通过拦截 paimai_unifiedSearch 接口 JSON 收集列表（取代 DOM 滚动）。
+
+        翻页：点击「下一页」让页面 JS 重新生成带 h5st 签名的请求。
+        过滤：按返回数据的 city/province 字段保留目标城市，不依赖 JD cityId 编码。
+        """
         url = source_url or self.BASE_SEARCH_URL
         page = await self._get_page()
-        items: list[ListItem] = []
-
         logger.info(f"[JD] Starting search: city={city}")
-        await page.goto(url, wait_until="domcontentloaded", timeout=settings.LIST_PAGE_TIMEOUT_MS)
 
-        # JD PM search is a React SPA — wait for hydration
-        await asyncio.sleep(3)
+        target_id = JD_CITY_MAP.get(city) or JD_CITY_MAP.get(city + "市")
+        rows: dict[str, dict] = {}      # paimaiId → row（去重）
+        captured: list[dict] = []       # 本次拦截到的接口响应
+
+        async def on_resp(resp):
+            if "paimai_unifiedSearch" not in resp.url:
+                return
+            try:
+                captured.append(await resp.json())
+            except Exception:
+                pass
+
+        page.on("response", lambda r: asyncio.create_task(on_resp(r)))
         try:
-            await page.wait_for_selector(
-                "a[href*='paimai.jd.com/']",
-                timeout=20000,
-            )
+            await page.goto(url, wait_until="domcontentloaded",
+                            timeout=settings.LIST_PAGE_TIMEOUT_MS)
         except PlaywrightTimeout:
-            logger.warning("[JD] Auction links not found via primary wait")
+            logger.warning(f"[JD] 列表页加载超时: {url}")
+        await asyncio.sleep(5)
 
-        # Try city filter
-        await self._apply_city_filter(page, city)
-        await random_sleep(1, 2)
+        def _harvest():
+            """把已拦截的响应并入 rows，按城市过滤。返回本批新增数。"""
+            added = 0
+            while captured:
+                j = captured.pop(0)
+                for it in (j.get("datas") or []):
+                    pid = str(it.get("productId") or it.get("id") or "")
+                    if not pid or pid in rows:
+                        continue
+                    # 按城市过滤：命中目标城市才保留
+                    cid = self._match_city(it)
+                    if target_id and cid != target_id:
+                        continue
+                    if not target_id and cid is None:
+                        continue
+                    it["_city_id"] = cid
+                    rows[pid] = it
+                    added += 1
+            return added
 
-        # Scroll to load items (infinite scroll SPA)
-        seen_urls: set[str] = set()
-        stale_count = 0
-        max_scrolls = max(20, max_pages)
-
-        for scroll_i in range(max_scrolls):
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await asyncio.sleep(2.5)
-
-            page_items = await self._extract_auction_items(page)
-            new_count = 0
-            for it in page_items:
-                if it.source_url not in seen_urls:
-                    seen_urls.add(it.source_url)
-                    items.append(it)
-                    new_count += 1
-
-            logger.debug(f"[JD] Scroll {scroll_i + 1}: {len(page_items)} visible, {new_count} new ({len(items)} total)")
-
-            if new_count == 0:
-                stale_count += 1
-                if stale_count >= 3:
-                    logger.info(f"[JD] No new items after 3 scrolls, stopping. Total: {len(items)}")
+        _harvest()
+        # 翻页：点击「下一页」直到无新增或达上限
+        max_clicks = max(10, max_pages)
+        stale = 0
+        for _ in range(max_clicks):
+            clicked = await page.evaluate("""() => {
+                const els = document.querySelectorAll('a, button, span, div, li');
+                for (const e of els) {
+                    if ((e.textContent || '').trim() === '下一页' && e.offsetParent !== null) {
+                        e.click(); return true;
+                    }
+                }
+                return false;
+            }""")
+            await asyncio.sleep(2.8)
+            added = _harvest()
+            if not clicked or added == 0:
+                stale += 1
+                if stale >= 2:
                     break
             else:
-                stale_count = 0
+                stale = 0
 
-        logger.info(f"[JD] Collection complete: {len(items)} items for {city}")
-        return items
+        # 缓存原始行供 fetch_detail_api 使用
+        for pid, row in rows.items():
+            self._row_cache[pid] = row
 
-    async def _apply_city_filter(self, page: Page, city: str) -> None:
-        """Click the city tab on JD PM search page."""
-        target = city
-        try:
-            clicked = await page.evaluate(f"""
-            () => {{
-                const els = document.querySelectorAll('span, a, div, li, button');
-                for (const el of els) {{
-                    if (el.textContent.trim() === '{target}' && el.offsetParent !== null) {{
-                        el.click();
-                        return true;
-                    }}
-                }}
-                return false;
-            }}
-            """)
-            if clicked:
-                logger.info(f"[JD] Clicked city filter: {target}")
-                await asyncio.sleep(2)  # Wait for React to re-render results
-            else:
-                logger.info(f"[JD] City filter '{target}' not found, using default results")
-        except Exception as e:
-            logger.debug(f"[JD] City filter click failed (non-critical): {e}")
-
-    async def _extract_auction_items(self, page: Page) -> list[ListItem]:
-        """Extract auction items by finding all paimai.jd.com/<digits> links.
-
-        The link text contains: location, title, prices, status, bid count.
-        Example link text:
-          "南京市江宁区禄口街道天禄大道1号博恩花园94幢402室不动产
-           南京市当前价:¥36.13万市场价:¥64.51万1次出价进行中预计剩余:1小时..."
-        """
-        raw = await page.evaluate("""
-        () => {
-            const items = [];
-            const seen = new Set();
-
-            // Find ALL links matching //paimai.jd.com/<digits>
-            document.querySelectorAll('a[href*="paimai.jd.com/"]').forEach(a => {
-                const href = (a.href || '').trim();
-                // Match pattern: paimai.jd.com/<digits> (not notice/help/etc.)
-                const match = href.match(/paimai\\.jd\\.com\\/(\\d+)/);
-                if (!match || match[0].includes('notice')) return;
-                if (seen.has(href)) return;
-                seen.add(href);
-
-                // Normalize protocol-relative URL
-                const fullUrl = href.startsWith('//') ? 'https:' + href : href;
-
-                // Extract structured data from link text
-                const text = (a.textContent || '').trim();
-
-                // Extract price: 当前价:¥XX.XX万
-                let priceText = '';
-                const priceMatch = text.match(/当前价[：:]\\s*[¥￥]?\\s*([\\d,.]+)\\s*(万|亿|元)?/);
-                if (priceMatch) priceText = priceMatch[0].substring(0, 30);
-
-                // Extract appraisal/market price
-                let appraisalText = '';
-                const apprMatch = text.match(/(?:评估价|市场价)[：:]\\s*[¥￥]?\\s*([\\d,.]+)\\s*(万|亿|元)?/);
-                if (apprMatch) appraisalText = apprMatch[0].substring(0, 30);
-
-                // Extract status: 进行中/已结束/已成交 etc.
-                let status = '';
-                const statusMatch = text.match(/(进行中|已结束|已成交|即将开拍|已撤回|中止|流拍)/);
-                if (statusMatch) status = statusMatch[1];
-
-                items.push({
-                    source_url: fullUrl,
-                    title: text.substring(0, 200),
-                    starting_price_text: priceText,
-                    auction_status: status,
-                    district: '',  // parse from detail page
-                    area_text: appraisalText,
-                });
-            });
-            return items;
-        }
-        """)
+        logger.info(f"[JD] {city}: 收集到 {len(rows)} 套（接口直取）")
         return [
             ListItem(
-                source_url=item["source_url"],
-                title=item.get("title", ""),
-                starting_price_text=item.get("starting_price_text", ""),
-                auction_status=item.get("auction_status", ""),
-                district=item.get("district", ""),
-                area_text=item.get("area_text", ""),
+                source_url=f"https://paimai.jd.com/{pid}?itemId={pid}",
+                title=row.get("title", ""),
+                district=(row.get("city") or "").replace("市", ""),
+                address=row.get("productAddress", ""),
             )
-            for item in raw
+            for pid, row in rows.items()
         ]
+
+    @staticmethod
+    def _match_city(item: dict) -> int | None:
+        """根据接口返回的 province/city 字段判定 city_id（目标三市之一），否则 None。"""
+        for key in ("city", "province", "courtCityName"):
+            v = (item.get(key) or "").strip()
+            if not v:
+                continue
+            if v in JD_CITY_MAP:
+                return JD_CITY_MAP[v]
+            # 上海是直辖市，province=上海、city=具体区
+            if "上海" in v:
+                return 310000
+            if "宁波" in v:
+                return 330200
+            if "杭州" in v:
+                return 330100
+        return None
+
+    async def fetch_detail_api(self, paimai_id: str) -> dict | None:
+        """调 getProductBasicInfo 接口（无需 h5st 签名，httpx 直连）拿详情+多图。
+
+        返回合并后的 dict：列表行 + 详情字段 + 图片列表。供 JDDetailParser.parse 使用。
+        """
+        paimai_id = str(paimai_id)
+        row = dict(self._row_cache.get(paimai_id) or {})
+        detail = {}
+        try:
+            import httpx
+            headers = {
+                "Referer": "https://paimai.jd.com/",
+                "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+            }
+            async with httpx.AsyncClient(timeout=15, headers=headers) as client:
+                resp = await client.get(
+                    "https://api.m.jd.com/api",
+                    params={
+                        "appid": "paimai",
+                        "functionId": "getProductBasicInfo",
+                        "body": json.dumps({"paimaiId": int(paimai_id)}),
+                        "loginType": "3",
+                    },
+                )
+                detail = (resp.json() or {}).get("data", {}) or {}
+        except Exception as e:
+            logger.debug(f"[JD] getProductBasicInfo failed for {paimai_id}: {e}")
+
+        if not row and not detail:
+            return None
+
+        # 图片：详情 paimaiImageResultList[].imagePath；缺失时回退列表 productImage
+        images = []
+        for im in (detail.get("paimaiImageResultList") or []):
+            p = (im.get("imagePath") or "").strip()
+            if p:
+                images.append(JD_IMG_PREFIX + p)
+        if not images and row.get("productImage"):
+            images.append(JD_IMG_PREFIX + str(row["productImage"]).strip())
+
+        # 合并：详情覆盖列表，但详情的空值不得覆盖列表的有效值
+        merged = dict(row)
+        for k, v in detail.items():
+            if v in (None, "", 0, 0.0) and merged.get(k) not in (None, "", 0, 0.0):
+                continue  # 详情为空、列表有值 → 保留列表值
+            merged[k] = v
+        merged["_images"] = images
+        merged["_paimai_id"] = paimai_id
+        merged["_city_id"] = row.get("_city_id")
+        return merged
 
     @retry_on_failure(max_retries=2, backoff_factor=2.0)
     async def fetch_detail(self, detail_url: str) -> str:

@@ -18,8 +18,12 @@ class JDDetailParser(AbstractParser):
 
     platform = "京东拍卖"
 
-    async def parse(self, html: str, source_url: str, city_id: int,
+    async def parse(self, html, source_url: str, city_id: int,
                     extra: dict | None = None) -> AuctionItem:
+        # 新路径：京东改为接口直取，传入的是 fetch_detail_api 合并后的 dict。
+        if isinstance(html, dict):
+            return self._parse_from_api(html, source_url, city_id, extra or {})
+
         soup = BeautifulSoup(html, "lxml")
         text = soup.get_text()
         text = re.sub(r'\s+', ' ', text)
@@ -54,6 +58,120 @@ class JDDetailParser(AbstractParser):
         )
 
         return item
+
+    def _parse_from_api(self, d: dict, source_url: str, city_id: int,
+                        extra: dict) -> AuctionItem:
+        """从京东接口（paimai_unifiedSearch + getProductBasicInfo 合并）构建 AuctionItem。
+
+        所有核心字段来自结构化 JSON，无需解析 HTML，稳定可靠。
+        """
+        cid = d.get("_city_id") or city_id or 310000
+        item = AuctionItem(
+            source_url=source_url,
+            auction_platform=Platform.JD.value,
+            city_id=cid,
+            province_city=city_name_by_id(cid) or "上海",
+        )
+
+        item.title = clean_text(d.get("title") or "")
+        item.image_urls = list(d.get("_images") or [])
+
+        # 价格（元）：minPrice/currentPrice=起拍/当前价, assessmentPrice=评估价, ensurePrice=保证金
+        def _money(v):
+            try:
+                return int(float(v))
+            except (TypeError, ValueError):
+                return 0
+        item.starting_price = _money(d.get("minPrice")) or _money(d.get("currentPrice"))
+        item.appraisal_price = _money(d.get("assessmentPrice"))
+        if not item.appraisal_price:
+            jbi = d.get("judicatureBasicInfoResult") or {}
+            item.appraisal_price = _money(jbi.get("marketPrice"))
+        item.market_deal_price = item.appraisal_price
+        item.deposit = _money(d.get("ensurePrice"))
+
+        # 时间戳（ms）→ datetime
+        for src_key, attr in (("startTime", "auction_start_time"),
+                              ("startTimeMills", "auction_start_time"),
+                              ("endTime", "auction_end_time"),
+                              ("endTimeMills", "auction_end_time")):
+            if getattr(item, attr):
+                continue
+            ts = d.get(src_key)
+            if ts:
+                try:
+                    setattr(item, attr, datetime.fromtimestamp(int(ts) / 1000))
+                except (ValueError, TypeError, OSError):
+                    pass
+
+        # 拍卖轮次：paimaiTimes(1=一拍,2=二拍) / auctionType 变卖
+        times = d.get("paimaiTimes")
+        atype = str(d.get("auctionType") or "")
+        if times == 2 or "二" in atype:
+            item.auction_round = "二拍"
+        elif "变卖" in atype or d.get("displayStatus") == 5:
+            item.auction_round = "变卖"
+        else:
+            item.auction_round = "一拍"
+
+        # 地址 / 区县 / 小区
+        addr = clean_text(d.get("productAddress") or "")
+        item.address = addr or item.title
+        # 区县：优先从标题/地址提取具体区县（京东 city 字段常为市级如「宁波市」，
+        # 不能直接当 district，否则会被外省白名单误判）。提取失败再回退 API city。
+        district = extract_district(item.title, cid) or extract_district(addr, cid)
+        if not district:
+            api_city = (d.get("city") or d.get("courtCityName") or "").strip()
+            # 仅当 API city 是具体区县（以区/县结尾）时才采用，市级值忽略
+            if api_city and (api_city.endswith("区") or api_city.endswith("县")
+                             or api_city.endswith("市") and api_city not in ("宁波市", "杭州市", "上海市")):
+                district = api_city
+        item.district = district
+        comm = extract_community_from_title(item.title)
+        if comm:
+            item.community_name = comm
+
+        # 法院（shopName 形如「上海市静安区人民法院」）
+        court = (d.get("shopName") or "").strip()
+        if court:
+            item.court_name = court
+
+        # 物业类型：京东标题/地址无显式类型，按关键词归类（与小程序四分类一致）
+        item.property_type = self._guess_property_type(item.title)
+
+        # 面积：标题/接口偶含「XX㎡」「建筑面积」
+        m = re.search(r'(?:建筑面积|面积)[：:约]*\s*([\d.]+)\s*(?:㎡|平|平方米)', item.title)
+        if not m:
+            m = re.search(r'([\d.]+)\s*(?:㎡|平方米)', item.title)
+        if m:
+            try:
+                item.area = float(m.group(1))
+            except ValueError:
+                pass
+
+        self._compute_derived_fields(item)
+        item.auction_status = _normalize_status(
+            "", item.auction_start_time, item.auction_end_time
+        )
+        return item
+
+    @staticmethod
+    def _guess_property_type(title: str) -> str:
+        t = title or ""
+        if any(k in t for k in ("住宅", "公寓", "公租房", "安置房", "经济适用")):
+            return "住宅"
+        if any(k in t for k in ("商业", "商铺", "店铺", "商场", "写字楼", "办公", "营业")):
+            return "商业"
+        if any(k in t for k in ("工业", "厂房", "仓库", "标准厂房")):
+            return "工业"
+        if any(k in t for k in ("土地", "地块", "宗地", "用地")):
+            return "其他"
+        if "车位" in t or "车库" in t:
+            return "其他"
+        # 默认按住宅（多数法拍为住宅；含「室/号楼/弄/幢」更确定）
+        if any(k in t for k in ("室", "号楼", "幢", "栋", "弄")):
+            return "住宅"
+        return "住宅"
 
     async def _fill_from_api(self, item, source_url: str) -> None:
         """从 https://api.m.jd.com 调 getProductBasicInfo 补结构化字段。"""

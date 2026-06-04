@@ -338,8 +338,12 @@ class CrawlEngine:
                                         auction_item = await parser.parse(
                                             api_data, item.source_url, city_id, extra=extra
                                         )
-                                        # Verify essential fields were parsed
-                                        if auction_item.title and auction_item.starting_price:
+                                        # Verify essential fields were parsed.
+                                        # 京东变卖类标的起拍价可能为 0，只要有标题即视为成功（接口直取已含全字段）。
+                                        _ok_cond = bool(auction_item.title) and (
+                                            platform_name == "京东拍卖" or bool(auction_item.starting_price)
+                                        )
+                                        if _ok_cond:
                                             _api_ok = True
                                         else:
                                             logger.warning(
