@@ -21,6 +21,7 @@ async def list_banners(
     return [{
         "id": b.id, "title": b.title, "image_url": b.image_url,
         "category": b.category, "link_url": b.link_url,
+        "article_id": b.article_id,
         "city_id": b.city_id, "sort_order": b.sort_order,
         "is_active": b.is_active, "created_at": str(b.created_at),
     } for b in rows]
@@ -37,6 +38,7 @@ async def create_banner(
         image_url=body.get("image_url", ""),
         category=body.get("category", ""),
         link_url=body.get("link_url", ""),
+        article_id=body.get("article_id") or None,
         city_id=body.get("city_id", 310000),
         sort_order=body.get("sort_order", 0),
     )
@@ -58,7 +60,7 @@ async def update_banner(
     if not b:
         raise HTTPException(status_code=404, detail="横幅不存在")
 
-    editable = {"title", "image_url", "category", "link_url", "city_id", "sort_order", "is_active"}
+    editable = {"title", "image_url", "category", "link_url", "article_id", "city_id", "sort_order", "is_active"}
     for k, v in body.items():
         if k in editable:
             setattr(b, k, v)

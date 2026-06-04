@@ -3,8 +3,11 @@
 Provides cached access_token retrieval and wxacode (unlimited) generation.
 Token is persisted in system_settings table to survive process restarts.
 """
+import html
 import json
+import re
 import time
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException
@@ -252,3 +255,142 @@ async def fetch_mp_published_articles(db: AsyncSession, limit: int = 40) -> list
             offset += page_size
 
     return out[:limit]
+
+
+# ========== 公众号文章链接导入（抓取单篇永久链接元信息）==========
+
+# 微信「群发」出去的图文无法通过 freepublish/material 接口列出（微信无此 API），
+# 但每篇已发布文章的永久链接 https://mp.weixin.qq.com/s/xxx 可被抓取。
+# 本函数解析单篇文章页，提取 标题/摘要/封面图/发布时间，供后台「粘贴链接导入」使用。
+
+_MP_ARTICLE_HOSTS = {"mp.weixin.qq.com"}
+
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+)
+
+
+def _re_first(html_text: str, *patterns: str) -> str | None:
+    for pat in patterns:
+        m = re.search(pat, html_text, re.S)
+        if m:
+            val = html.unescape(m.group(1)).strip()
+            if val:
+                return val
+    return None
+
+
+def _extract_source_id_from_url(url: str) -> str:
+    """以永久链接 /s/ 之后的 key 作为去重键；取不到则退回完整 url。"""
+    m = re.search(r"/s/([A-Za-z0-9_\-]+)", url)
+    if m:
+        return m.group(1)
+    return url.split("#", 1)[0].split("?", 1)[0]
+
+
+async def fetch_article_meta_from_url(url: str) -> dict:
+    """抓取公众号单篇文章永久链接，返回归一化字段。
+
+    仅允许 mp.weixin.qq.com 域名（防 SSRF / 误抓外部站点）。
+    返回 {source_id, title, summary, cover_image, mp_url, update_time}。
+    抓取失败或非法链接抛 HTTPException。
+    """
+    url = (url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="链接为空")
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    elif not url.startswith("https://"):
+        url = "https://" + url
+
+    host = (urlparse(url).hostname or "").lower()
+    if host not in _MP_ARTICLE_HOSTS:
+        raise HTTPException(status_code=400, detail=f"仅支持公众号文章链接（mp.weixin.qq.com），收到：{host or url}")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers={"User-Agent": _BROWSER_UA})
+            page = resp.text
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"抓取文章页失败：{e}")
+
+    # 已删除 / 异常页
+    for kw, msg in [
+        ("该内容已被发布者删除", "文章已被发布者删除"),
+        ("此内容因违规无法查看", "文章因违规无法查看"),
+        ("该公众号已迁移", "该公众号已迁移"),
+        ("参数错误", "链接参数错误，请确认是完整的文章链接"),
+    ]:
+        if kw in page:
+            raise HTTPException(status_code=400, detail=msg)
+
+    title = _re_first(
+        page,
+        r"var\s+msg_title\s*=\s*'([^']*)'",
+        r'property="og:title"\s+content="([^"]*)"',
+        r"<title>([^<]*)</title>",
+    )
+    summary = _re_first(
+        page,
+        r"var\s+msg_desc\s*=\s*\"([^\"]*)\"",
+        r"var\s+msg_desc\s*=\s*'([^']*)'",
+        r'property="og:description"\s+content="([^"]*)"',
+        r'name="description"\s+content="([^"]*)"',
+    )
+    cover = _re_first(
+        page,
+        r'var\s+msg_cdn_url\s*=\s*"([^"]*)"',
+        r"var\s+msg_cdn_url\s*=\s*'([^']*)'",
+        r'property="og:image"\s+content="([^"]*)"',
+    )
+    ct = _re_first(page, r'var\s+ct\s*=\s*"?(\d{10})"?', r"var\s+createTime\s*=\s*'([^']*)'")
+
+    if not title:
+        raise HTTPException(status_code=422, detail="未能解析到文章标题，可能链接已失效或非图文文章")
+
+    update_time = None
+    if ct and ct.isdigit():
+        update_time = int(ct)
+
+    content_html = _extract_mp_content(page)
+
+    return {
+        "source_id": _extract_source_id_from_url(url),
+        "title": title[:256],
+        "summary": (summary or "")[:512],
+        "cover_image": cover or "",
+        "content": content_html,
+        "mp_url": url,
+        "update_time": update_time,
+    }
+
+
+# 公众号正文容器：<div id="js_content" ...> ... </div>
+_MP_CONTENT_RE = re.compile(
+    r'<div[^>]*\bid="js_content"[^>]*>(.*?)</div>\s*(?:<script|<div[^>]*id="js_tags"|<div[^>]*class="rich_media_tool")',
+    re.S,
+)
+_MP_CONTENT_RE_FALLBACK = re.compile(r'<div[^>]*\bid="js_content"[^>]*>(.*?)</div>', re.S)
+
+
+def _extract_mp_content(page: str) -> str:
+    """从公众号文章页提取正文 HTML（js_content 容器内的富文本）。
+
+    - 把懒加载的 data-src 还原成 src，保证小程序 rich-text 能显示图片。
+    - 去掉 <script>/<style> 等无关标签，控制体量。
+    抓不到返回空字符串（前端会回退到摘要 + 原文链接）。
+    """
+    m = _MP_CONTENT_RE.search(page) or _MP_CONTENT_RE_FALLBACK.search(page)
+    if not m:
+        return ""
+    body = m.group(1)
+    # 懒加载图片：data-src -> src
+    body = re.sub(r'data-src=(["\'])', r'src=\1', body)
+    # 去掉 script/style 段
+    body = re.sub(r"<script[^>]*>.*?</script>", "", body, flags=re.S)
+    body = re.sub(r"<style[^>]*>.*?</style>", "", body, flags=re.S)
+    # visibility:hidden / opacity:0 的懒加载占位样式去掉，避免 rich-text 里整段不可见
+    body = body.replace("visibility: hidden;", "").replace("visibility:hidden;", "")
+    body = body.replace("opacity: 0;", "").replace("opacity:0;", "")
+    return body.strip()[:60000]

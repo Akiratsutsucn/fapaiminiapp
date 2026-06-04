@@ -1,5 +1,6 @@
 """Admin article management routes."""
 import math
+import re
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +8,7 @@ from datetime import date, datetime
 
 from ...core.database import get_session
 from ...core.security import get_admin_user
-from ...core.wechat import fetch_mp_published_articles
+from ...core.wechat import fetch_mp_published_articles, fetch_article_meta_from_url
 from ...models.article import Article
 from ...schemas import PaginatedResponse
 
@@ -82,6 +83,7 @@ async def list_articles(
         "cover_image": a.cover_image, "mp_url": a.mp_url,
         "is_home_show": a.is_home_show, "sort_order": a.sort_order,
         "source": getattr(a, "source", "manual"),
+        "has_content": bool(getattr(a, "content", None)),
         "published_at": str(a.published_at) if a.published_at else None,
         "created_at": str(a.created_at),
     } for a in rows]
@@ -108,6 +110,86 @@ async def sync_from_mp(
     }
 
 
+async def _upsert_fetched_article(db: AsyncSession, art: dict) -> str:
+    """把一篇归一化文章 upsert 进库，返回 'created' / 'updated' / 'skipped'。
+
+    按 source_id（公众号永久链接 key）去重，与 sync_articles_from_mp 一致。
+    """
+    sid = art.get("source_id")
+    if not sid:
+        return "skipped"
+    row = (await db.execute(
+        select(Article).where(Article.source_id == sid, Article.source == "wechat_mp")
+    )).scalar_one_or_none()
+    pub = None
+    if art.get("update_time"):
+        try:
+            pub = datetime.fromtimestamp(int(art["update_time"])).date()
+        except (ValueError, OSError):
+            pub = None
+    if row:
+        row.title = art["title"] or row.title
+        row.summary = art["summary"] or row.summary
+        row.cover_image = art["cover_image"] or row.cover_image
+        row.mp_url = art["mp_url"] or row.mp_url
+        if art.get("content"):
+            row.content = art["content"]
+        if pub:
+            row.published_at = pub
+        return "updated"
+    db.add(Article(
+        title=art["title"], summary=art["summary"],
+        content=art.get("content") or None,
+        cover_image=art["cover_image"], mp_url=art["mp_url"],
+        published_at=pub, source="wechat_mp", source_id=sid,
+        is_home_show=False, sort_order=0,
+    ))
+    return "created"
+
+
+@router.post("/import-from-url")
+async def import_from_url(
+    body: dict,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(get_admin_user),
+):
+    """粘贴公众号文章永久链接导入（支持多条，换行/空格分隔）。
+
+    适用于「群发」发出、freepublish 接口拉不到的历史文章。
+    """
+    raw = (body or {}).get("urls") or (body or {}).get("url") or ""
+    urls = [u.strip() for u in re.split(r"[\s\n]+", str(raw)) if u.strip()]
+    if not urls:
+        raise HTTPException(status_code=400, detail="请粘贴至少一条公众号文章链接")
+    if len(urls) > 30:
+        raise HTTPException(status_code=400, detail="单次最多导入 30 条链接")
+
+    created = updated = 0
+    failed: list[dict] = []
+    for u in urls:
+        try:
+            art = await fetch_article_meta_from_url(u)
+            result = await _upsert_fetched_article(db, art)
+            if result == "created":
+                created += 1
+            elif result == "updated":
+                updated += 1
+        except HTTPException as e:
+            failed.append({"url": u, "reason": e.detail})
+        except Exception as e:  # noqa: BLE001 抓取/解析意外错误兜底，不中断整批
+            failed.append({"url": u, "reason": str(e)})
+    await db.commit()
+
+    parts = [f"新增 {created} 篇", f"更新 {updated} 篇"]
+    if failed:
+        parts.append(f"失败 {len(failed)} 条")
+    return {
+        "message": "导入完成：" + "，".join(parts),
+        "created": created, "updated": updated,
+        "failed": failed, "total": len(urls),
+    }
+
+
 @router.post("")
 async def create_article(
     body: dict,
@@ -117,6 +199,7 @@ async def create_article(
     a = Article(
         title=body.get("title", ""),
         summary=body.get("summary", ""),
+        content=body.get("content") or None,
         cover_image=body.get("cover_image", ""),
         mp_url=body.get("mp_url", ""),
         is_home_show=body.get("is_home_show", False),
@@ -141,7 +224,7 @@ async def update_article(
     if not a:
         raise HTTPException(status_code=404, detail="文章不存在")
 
-    editable = {"title", "summary", "cover_image", "mp_url", "is_home_show", "sort_order"}
+    editable = {"title", "summary", "content", "cover_image", "mp_url", "is_home_show", "sort_order"}
     for k, v in body.items():
         if k in editable:
             if k == "published_at" and v:
@@ -150,6 +233,32 @@ async def update_article(
                 setattr(a, k, v)
     await db.commit()
     return {"message": "更新成功"}
+
+
+@router.post("/{article_id}/refetch-content")
+async def refetch_article_content(
+    article_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(get_admin_user),
+):
+    """重新抓取该文章公众号原文正文（用于补全历史文章的全文内容）。"""
+    a = (await db.execute(select(Article).where(Article.id == article_id))).scalar_one_or_none()
+    if not a:
+        raise HTTPException(status_code=404, detail="文章不存在")
+    if not a.mp_url:
+        raise HTTPException(status_code=400, detail="该文章无公众号原文链接，无法抓取正文")
+    art = await fetch_article_meta_from_url(a.mp_url)
+    a.title = art["title"] or a.title
+    a.summary = art["summary"] or a.summary
+    a.cover_image = art["cover_image"] or a.cover_image
+    if art.get("content"):
+        a.content = art["content"]
+    await db.commit()
+    return {
+        "message": "正文抓取完成" if art.get("content") else "未抓取到正文（链接可能已失效）",
+        "has_content": bool(art.get("content")),
+        "content_length": len(art.get("content") or ""),
+    }
 
 
 @router.delete("/{article_id}")

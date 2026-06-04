@@ -25,3 +25,11 @@ export function deleteArticle(id: number) {
 export function syncArticlesFromMp(limit = 40) {
   return http.post('/articles/sync-from-mp', { limit }).then(r => r.data)
 }
+
+export function importArticleFromUrl(urls: string) {
+  return http.post('/articles/import-from-url', { urls }).then(r => r.data)
+}
+
+export function refetchArticleContent(id: number) {
+  return http.post(`/articles/${id}/refetch-content`).then(r => r.data)
+}

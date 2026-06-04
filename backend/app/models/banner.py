@@ -13,6 +13,8 @@ class Banner(Base):
     image_url = Column(String(512), nullable=False, default="")
     category = Column(String(32), nullable=True)
     link_url = Column(String(512), nullable=True)
+    # 关联的文章 id（点击横幅时优先跳转到该文章详情，避免外链跳不动）
+    article_id = Column(Integer, nullable=True)
     city_id = Column(Integer, nullable=False, default=310000)
     sort_order = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)

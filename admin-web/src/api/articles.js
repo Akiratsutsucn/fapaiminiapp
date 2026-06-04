@@ -14,3 +14,9 @@ export function deleteArticle(id) {
 export function syncArticlesFromMp(limit = 40) {
     return http.post('/articles/sync-from-mp', { limit }).then(r => r.data);
 }
+export function importArticleFromUrl(urls) {
+    return http.post('/articles/import-from-url', { urls }).then(r => r.data);
+}
+export function refetchArticleContent(id) {
+    return http.post(`/articles/${id}/refetch-content`).then(r => r.data);
+}

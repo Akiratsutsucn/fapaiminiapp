@@ -9,13 +9,16 @@ const columns = [
     { colKey: 'image_url', title: '图片', width: 140 },
     { colKey: 'title', title: '标题', width: 150 },
     { colKey: 'category', title: '分类', width: 100 },
+    { colKey: 'city_id', title: '城市', width: 80 },
     { colKey: 'sort_order', title: '排序', width: 70 },
     { colKey: 'is_active', title: '状态', width: 80 },
     { colKey: 'op', title: '操作', width: 130 },
 ];
 const formVisible = ref(false);
 const isEdit = ref(false);
-const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', city_id: 310000, sort_order: 0, is_active: true });
+const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true });
+const CITY_MAP = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州' };
+function cityLabel(id) { return CITY_MAP[id] ?? '上海'; }
 onMounted(() => loadData());
 async function loadData() {
     loading.value = true;
@@ -27,8 +30,8 @@ async function loadData() {
         loading.value = false;
     }
 }
-function onAdd() { isEdit.value = false; Object.assign(formData, { id: 0, title: '', image_url: '', category: '', link_url: '', city_id: 310000, sort_order: 0, is_active: true }); formVisible.value = true; }
-function onEdit(row) { isEdit.value = true; Object.assign(formData, row); formVisible.value = true; }
+function onAdd() { isEdit.value = false; Object.assign(formData, { id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true }); formVisible.value = true; }
+function onEdit(row) { isEdit.value = true; Object.assign(formData, { article_id: 0, ...row }); formVisible.value = true; }
 async function onSave() {
     const payload = { ...formData };
     delete payload.id;
@@ -138,6 +141,11 @@ __VLS_15.slots.default;
     __VLS_23.slots.default;
     (row.is_active ? '启用' : '停用');
     var __VLS_23;
+}
+{
+    const { city_id: __VLS_thisSlot } = __VLS_15.slots;
+    const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
+    (__VLS_ctx.cityLabel(row.city_id));
 }
 {
     const { op: __VLS_thisSlot } = __VLS_15.slots;
@@ -309,108 +317,159 @@ const __VLS_84 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_85 = __VLS_asFunctionalComponent(__VLS_84, new __VLS_84({
-    label: "链接",
+    label: "关联文章ID",
 }));
 const __VLS_86 = __VLS_85({
-    label: "链接",
+    label: "关联文章ID",
 }, ...__VLS_functionalComponentArgsRest(__VLS_85));
 __VLS_87.slots.default;
-const __VLS_88 = {}.TInput;
-/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
+const __VLS_88 = {}.TInputNumber;
+/** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
 // @ts-ignore
 const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
-    modelValue: (__VLS_ctx.formData.link_url),
+    modelValue: (__VLS_ctx.formData.article_id),
+    min: (0),
+    placeholder: "填写文章ID，点击横幅直接进该文章",
 }));
 const __VLS_90 = __VLS_89({
-    modelValue: (__VLS_ctx.formData.link_url),
+    modelValue: (__VLS_ctx.formData.article_id),
+    min: (0),
+    placeholder: "填写文章ID，点击横幅直接进该文章",
 }, ...__VLS_functionalComponentArgsRest(__VLS_89));
+__VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+    ...{ style: {} },
+});
 var __VLS_87;
 const __VLS_92 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_93 = __VLS_asFunctionalComponent(__VLS_92, new __VLS_92({
-    label: "城市",
+    label: "链接",
 }));
 const __VLS_94 = __VLS_93({
-    label: "城市",
+    label: "链接",
 }, ...__VLS_functionalComponentArgsRest(__VLS_93));
 __VLS_95.slots.default;
-const __VLS_96 = {}.TSelect;
-/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
+const __VLS_96 = {}.TInput;
+/** @type {[typeof __VLS_components.TInput, typeof __VLS_components.tInput, ]} */ ;
 // @ts-ignore
 const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
-    modelValue: (__VLS_ctx.formData.city_id),
+    modelValue: (__VLS_ctx.formData.link_url),
+    placeholder: "无关联文章时用：站内路径或外部链接",
 }));
 const __VLS_98 = __VLS_97({
-    modelValue: (__VLS_ctx.formData.city_id),
+    modelValue: (__VLS_ctx.formData.link_url),
+    placeholder: "无关联文章时用：站内路径或外部链接",
 }, ...__VLS_functionalComponentArgsRest(__VLS_97));
-__VLS_99.slots.default;
-const __VLS_100 = {}.TOption;
-/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+var __VLS_95;
+const __VLS_100 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_101 = __VLS_asFunctionalComponent(__VLS_100, new __VLS_100({
-    value: (310000),
-    label: "上海",
+    label: "城市",
 }));
 const __VLS_102 = __VLS_101({
-    value: (310000),
-    label: "上海",
+    label: "城市",
 }, ...__VLS_functionalComponentArgsRest(__VLS_101));
-const __VLS_104 = {}.TOption;
-/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+__VLS_103.slots.default;
+const __VLS_104 = {}.TSelect;
+/** @type {[typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, typeof __VLS_components.TSelect, typeof __VLS_components.tSelect, ]} */ ;
 // @ts-ignore
 const __VLS_105 = __VLS_asFunctionalComponent(__VLS_104, new __VLS_104({
-    value: (330200),
-    label: "宁波",
+    modelValue: (__VLS_ctx.formData.city_id),
 }));
 const __VLS_106 = __VLS_105({
-    value: (330200),
-    label: "宁波",
+    modelValue: (__VLS_ctx.formData.city_id),
 }, ...__VLS_functionalComponentArgsRest(__VLS_105));
-var __VLS_99;
-var __VLS_95;
-const __VLS_108 = {}.TFormItem;
-/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+__VLS_107.slots.default;
+const __VLS_108 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_109 = __VLS_asFunctionalComponent(__VLS_108, new __VLS_108({
-    label: "排序",
+    value: (0),
+    label: "全部",
 }));
 const __VLS_110 = __VLS_109({
-    label: "排序",
+    value: (0),
+    label: "全部",
 }, ...__VLS_functionalComponentArgsRest(__VLS_109));
-__VLS_111.slots.default;
-const __VLS_112 = {}.TInputNumber;
-/** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+const __VLS_112 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_113 = __VLS_asFunctionalComponent(__VLS_112, new __VLS_112({
-    modelValue: (__VLS_ctx.formData.sort_order),
-    min: (0),
+    value: (310000),
+    label: "上海",
 }));
 const __VLS_114 = __VLS_113({
-    modelValue: (__VLS_ctx.formData.sort_order),
-    min: (0),
+    value: (310000),
+    label: "上海",
 }, ...__VLS_functionalComponentArgsRest(__VLS_113));
-var __VLS_111;
-const __VLS_116 = {}.TFormItem;
-/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+const __VLS_116 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_117 = __VLS_asFunctionalComponent(__VLS_116, new __VLS_116({
-    label: "启用",
+    value: (330200),
+    label: "宁波",
 }));
 const __VLS_118 = __VLS_117({
-    label: "启用",
+    value: (330200),
+    label: "宁波",
 }, ...__VLS_functionalComponentArgsRest(__VLS_117));
-__VLS_119.slots.default;
-const __VLS_120 = {}.TSwitch;
-/** @type {[typeof __VLS_components.TSwitch, typeof __VLS_components.tSwitch, ]} */ ;
+const __VLS_120 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_121 = __VLS_asFunctionalComponent(__VLS_120, new __VLS_120({
-    modelValue: (__VLS_ctx.formData.is_active),
+    value: (330100),
+    label: "杭州",
 }));
 const __VLS_122 = __VLS_121({
-    modelValue: (__VLS_ctx.formData.is_active),
+    value: (330100),
+    label: "杭州",
 }, ...__VLS_functionalComponentArgsRest(__VLS_121));
-var __VLS_119;
+var __VLS_107;
+var __VLS_103;
+const __VLS_124 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+// @ts-ignore
+const __VLS_125 = __VLS_asFunctionalComponent(__VLS_124, new __VLS_124({
+    label: "排序",
+}));
+const __VLS_126 = __VLS_125({
+    label: "排序",
+}, ...__VLS_functionalComponentArgsRest(__VLS_125));
+__VLS_127.slots.default;
+const __VLS_128 = {}.TInputNumber;
+/** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+// @ts-ignore
+const __VLS_129 = __VLS_asFunctionalComponent(__VLS_128, new __VLS_128({
+    modelValue: (__VLS_ctx.formData.sort_order),
+    min: (0),
+}));
+const __VLS_130 = __VLS_129({
+    modelValue: (__VLS_ctx.formData.sort_order),
+    min: (0),
+}, ...__VLS_functionalComponentArgsRest(__VLS_129));
+var __VLS_127;
+const __VLS_132 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+// @ts-ignore
+const __VLS_133 = __VLS_asFunctionalComponent(__VLS_132, new __VLS_132({
+    label: "启用",
+}));
+const __VLS_134 = __VLS_133({
+    label: "启用",
+}, ...__VLS_functionalComponentArgsRest(__VLS_133));
+__VLS_135.slots.default;
+const __VLS_136 = {}.TSwitch;
+/** @type {[typeof __VLS_components.TSwitch, typeof __VLS_components.tSwitch, ]} */ ;
+// @ts-ignore
+const __VLS_137 = __VLS_asFunctionalComponent(__VLS_136, new __VLS_136({
+    modelValue: (__VLS_ctx.formData.is_active),
+}));
+const __VLS_138 = __VLS_137({
+    modelValue: (__VLS_ctx.formData.is_active),
+}, ...__VLS_functionalComponentArgsRest(__VLS_137));
+var __VLS_135;
 var __VLS_59;
 var __VLS_51;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
@@ -426,6 +485,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             formVisible: formVisible,
             isEdit: isEdit,
             formData: formData,
+            cityLabel: cityLabel,
             onAdd: onAdd,
             onEdit: onEdit,
             onSave: onSave,

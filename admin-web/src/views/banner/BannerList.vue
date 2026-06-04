@@ -12,6 +12,9 @@
         <template #is_active="{ row }">
           <t-tag :theme="row.is_active ? 'success' : 'default'">{{ row.is_active ? '启用' : '停用' }}</t-tag>
         </template>
+        <template #city_id="{ row }">
+          {{ cityLabel(row.city_id) }}
+        </template>
         <template #op="{ row }">
           <t-space>
             <t-button variant="text" size="small" @click="onEdit(row)">编辑</t-button>
@@ -26,9 +29,13 @@
         <t-form-item label="标题"><t-input v-model="formData.title" /></t-form-item>
         <t-form-item label="图片URL"><t-input v-model="formData.image_url" /></t-form-item>
         <t-form-item label="分类"><t-input v-model="formData.category" /></t-form-item>
-        <t-form-item label="链接"><t-input v-model="formData.link_url" /></t-form-item>
+        <t-form-item label="关联文章ID">
+          <t-input-number v-model="formData.article_id" :min="0" placeholder="填写文章ID，点击横幅直接进该文章" />
+          <span style="margin-left:8px;color:#888;font-size:12px;">优先于链接；填了文章ID点击横幅进站内文章</span>
+        </t-form-item>
+        <t-form-item label="链接"><t-input v-model="formData.link_url" placeholder="无关联文章时用：站内路径或外部链接" /></t-form-item>
         <t-form-item label="城市">
-          <t-select v-model="formData.city_id"><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /></t-select>
+          <t-select v-model="formData.city_id"><t-option :value="0" label="全部" /><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /></t-select>
         </t-form-item>
         <t-form-item label="排序"><t-input-number v-model="formData.sort_order" :min="0" /></t-form-item>
         <t-form-item label="启用"><t-switch v-model="formData.is_active" /></t-form-item>
@@ -49,6 +56,7 @@ const columns = [
   { colKey: 'image_url', title: '图片', width: 140 },
   { colKey: 'title', title: '标题', width: 150 },
   { colKey: 'category', title: '分类', width: 100 },
+  { colKey: 'city_id', title: '城市', width: 80 },
   { colKey: 'sort_order', title: '排序', width: 70 },
   { colKey: 'is_active', title: '状态', width: 80 },
   { colKey: 'op', title: '操作', width: 130 },
@@ -56,7 +64,10 @@ const columns = [
 
 const formVisible = ref(false)
 const isEdit = ref(false)
-const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', city_id: 310000, sort_order: 0, is_active: true })
+const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true })
+
+const CITY_MAP: Record<number, string> = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州' }
+function cityLabel(id: number) { return CITY_MAP[id] ?? '上海' }
 
 onMounted(() => loadData())
 
@@ -68,8 +79,8 @@ async function loadData() {
   } finally { loading.value = false }
 }
 
-function onAdd() { isEdit.value = false; Object.assign(formData, { id: 0, title: '', image_url: '', category: '', link_url: '', city_id: 310000, sort_order: 0, is_active: true }); formVisible.value = true }
-function onEdit(row: any) { isEdit.value = true; Object.assign(formData, row); formVisible.value = true }
+function onAdd() { isEdit.value = false; Object.assign(formData, { id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true }); formVisible.value = true }
+function onEdit(row: any) { isEdit.value = true; Object.assign(formData, { article_id: 0, ...row }); formVisible.value = true }
 
 async function onSave() {
   const payload: any = { ...formData }

@@ -11,6 +11,8 @@ class Article(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(256), nullable=False, default="")
     summary = Column(String(512), nullable=True)
+    # 文章正文（公众号原文 HTML，供小程序内直接阅读，无需跳转）
+    content = Column(Text, nullable=True)
     cover_image = Column(String(512), nullable=True)
     mp_url = Column(String(512), nullable=True)
     is_home_show = Column(Boolean, nullable=False, default=False)

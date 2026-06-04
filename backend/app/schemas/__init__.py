@@ -219,6 +219,7 @@ class ArticleOut(BaseModel):
     id: int
     title: str = ""
     summary: Optional[str] = None
+    content: Optional[str] = None
     cover_image: Optional[str] = None
     mp_url: Optional[str] = None
     published_at: Optional[date] = None
@@ -234,6 +235,7 @@ class BannerOut(BaseModel):
     image_url: str = ""
     category: Optional[str] = None
     link_url: Optional[str] = None
+    article_id: Optional[int] = None
     sort_order: int = 0
 
     model_config = {"from_attributes": True}
@@ -276,6 +278,9 @@ class AdminDemandUpdate(BaseModel):
     agent_wechat: Optional[str] = None
     remark: Optional[str] = None
     status: Optional[str] = Field(None, pattern="^(待处理|已分配|已完成)$")
+    assigned_user_id: Optional[int] = None
+    assigned_role: Optional[str] = None
+    assigned_name: Optional[str] = None
 
 
 class AdminPropertyCreate(BaseModel):

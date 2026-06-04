@@ -20,6 +20,11 @@ class Demand(Base):
     own_funds = Column(String(32), nullable=True)
     target_district = Column(String(64), nullable=True)
     agent_wechat = Column(String(64), nullable=True)
+    # 分配对接人（业务员/代理商）—— 关联到 users，便于其在小程序「客户需求管理」查看
+    assigned_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    assigned_role = Column(String(16), nullable=True)  # salesperson 业务员 / agent 代理商
+    assigned_name = Column(String(64), nullable=True)  # 对接人显示名（冗余，便于列表展示）
+    assign_read = Column(Integer, nullable=False, default=0, server_default="0")  # 对接人是否已读 0未读/1已读
     remark = Column(Text, nullable=True)
     # 来源：demand-form=选房需求表单, message=联系客服留言
     source = Column(String(16), nullable=False, default="demand-form", server_default="demand-form")
