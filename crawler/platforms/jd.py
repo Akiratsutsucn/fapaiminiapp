@@ -94,12 +94,28 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
                 pass
 
         page.on("response", lambda r: asyncio.create_task(on_resp(r)))
-        try:
-            await page.goto(url, wait_until="domcontentloaded",
-                            timeout=settings.LIST_PAGE_TIMEOUT_MS)
-        except PlaywrightTimeout:
-            logger.warning(f"[JD] 列表页加载超时: {url}")
-        await asyncio.sleep(5)
+
+        # 首屏加载（带重试）：京东列表接口偶发空响应（反爬限流），重载+加长等待重试。
+        async def _load_until_data(max_attempts: int = 3) -> bool:
+            for attempt in range(max_attempts):
+                try:
+                    await page.goto(url, wait_until="domcontentloaded",
+                                    timeout=settings.LIST_PAGE_TIMEOUT_MS)
+                except PlaywrightTimeout:
+                    logger.warning(f"[JD] 列表页加载超时(第{attempt+1}次): {url}")
+                # 等接口返回；逐步加长等待
+                for _ in range(6 + attempt * 4):
+                    await asyncio.sleep(1.5)
+                    if captured:
+                        return True
+                if attempt < max_attempts - 1:
+                    # 限流恢复需要时间，重试前冷却递增（15s, 30s）
+                    cool = 15 + attempt * 15
+                    logger.info(f"[JD] {city} 首屏无数据，冷却 {cool}s 后重载重试({attempt+2}/{max_attempts})")
+                    await asyncio.sleep(cool)
+            return bool(captured)
+
+        await _load_until_data()
 
         def _harvest():
             """把已拦截的响应并入 rows，按城市过滤。返回本批新增数。"""

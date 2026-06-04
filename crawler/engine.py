@@ -269,7 +269,11 @@ class CrawlEngine:
                 except Exception as e:
                     logger.error(f"[{platform_name}] Failed to collect from {cfg.label}: {e}")
                     continue
-                await random_sleep(1, 3)
+                # 京东列表接口对高频访问敏感：城市间留足冷却时间，避免后一城市被限流返回 0
+                if platform_name == "京东拍卖":
+                    await random_sleep(25, 40)
+                else:
+                    await random_sleep(1, 3)
 
             platform_stats["list_items"] = len(all_list_items)
             self.result.total_list_items += len(all_list_items)
