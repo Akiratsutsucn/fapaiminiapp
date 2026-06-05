@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_session
 from ...core.auction_status import (
     effective_status_sql, BARGAIN_DISCOUNT_MIN, BARGAIN_DISCOUNT_MAX,
-    MOBILE_VISIBLE_STATUSES,
+    MOBILE_VISIBLE_STATUSES, listed_on_sql,
 )
 from ...models.banner import Banner
 from ...models.property import Property
@@ -64,12 +64,10 @@ async def market_stats(
     )).scalar() or 0
 
     yesterday = date.today() - timedelta(days=1)
-    # 昨日上架：用平台真实上架日期 publish_date，缺失时回退入库时间 created_at
-    listed_date = func.coalesce(Property.publish_date, Property.created_at)
+    # 昨日上架：用平台真实上架日期 publish_date（公拍网/阿里），不再回退入库时间 created_at。
+    # 口径封装在 listed_on_sql，与列表页 listed_day=yesterday 入口完全一致。
     yesterday_listed = (await db.execute(
-        _apply(select(func.count(Property.id))).where(
-            func.date(listed_date) == yesterday
-        )
+        _apply(select(func.count(Property.id))).where(listed_on_sql(yesterday))
     )).scalar() or 0
 
     # 昨日成交：仅「已成交」状态，用平台真实结束时间 auction_end_time（拍卖结束=成交时点），

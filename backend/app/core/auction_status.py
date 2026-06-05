@@ -41,6 +41,13 @@ MOBILE_DETAIL_STATUSES = MOBILE_VISIBLE_STATUSES + MOBILE_FALLBACK_STATUSES
 # 即将开拍但开拍时间已过、又缺结束时间时，超过该天数判定为已结束，避免永久卡在「进行中」。
 DEFAULT_STALE_DAYS = 3
 
+# 「昨日上架」口径里 publish_date 不可信、需排除的平台。
+# 背景：京东解析器把 publish_date 填成「抓取那一刻」(datetime.now)，并非平台真实发布日，
+# 且库内京东房源 90% 该字段为空、其余为抓取时间。直接计入会让「昨日上架」重新虚高/失真。
+# 公拍网(从法院公告落款提取)、阿里(平台 API 时间戳) 的 publish_date 为真实上架日，予以采用。
+# 待京东解析器能提取真实公告日期后，从本集合移除即可。
+UNRELIABLE_PUBLISH_DATE_PLATFORMS = ("京东拍卖",)
+
 # 「捡漏」定义：法院折扣率（起拍价/评估价）在 1折~6.5折之间，且为可参拍状态（即将开拍/进行中）。
 # 全站统一口径，common.py / dashboard.py / properties.py 均引用。
 BARGAIN_DISCOUNT_MIN = 0.1
@@ -119,4 +126,24 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
         (and_(or_(s.is_(None), s == ""), st.is_(None), et.is_(None)), "即将开拍"),
         # 8. 兜底：保留存储值
         else_=s,
+    )
+
+
+def listed_on_sql(target_date):
+    """返回「某房源的真实上架日 == target_date」的 SQLAlchemy 布尔条件。
+
+    上架日 = 平台真实发布日 publish_date（不再回退 created_at 入库时间——入库时间会因
+    爬虫批量补抓存量房源而堆在同一天，导致「昨日上架」虚高失真）。
+    京东等 publish_date 不可信的平台被排除（见 UNRELIABLE_PUBLISH_DATE_PLATFORMS）。
+
+    首页 market-stats 的 yesterday_listed 计数与列表页 listed_day=yesterday 入口
+    必须共用本函数，保证「首页数字 == 列表共xxx套」。
+    """
+    from sqlalchemy import and_, func
+    from ..models.property import Property
+
+    return and_(
+        Property.publish_date.isnot(None),
+        Property.auction_platform.notin_(UNRELIABLE_PUBLISH_DATE_PLATFORMS),
+        func.date(Property.publish_date) == target_date,
     )

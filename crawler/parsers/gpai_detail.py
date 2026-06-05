@@ -13,6 +13,64 @@ from ..cleaners.city import city_name_by_id
 from ..cleaners.status import normalize_status as _normalize_status
 
 
+# ====================================================================
+# 法院公告落款日期提取（= 房源真实上架日 publish_date）
+# ====================================================================
+_CN_NUM = {"〇": 0, "零": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+           "六": 6, "七": 7, "八": 8, "九": 9}
+_COURT = r"([一-龥]{2,12}?人民法院)"
+_RE_SIGN_AR = re.compile(_COURT + r"(20\d{2})年(\d{1,2})月(\d{1,2})日")
+_RE_SIGN_CN = re.compile(
+    _COURT + r"([〇零一二三四五六七八九]{4})年"
+    r"([〇零一二三四五六七八九十]{1,3})月([〇零一二三四五六七八九十]{1,3})日"
+)
+
+
+def _cn_year(s: str) -> int:
+    """二〇二六 → 2026。"""
+    return int("".join(str(_CN_NUM[c]) for c in s))
+
+
+def _cn_md(s: str) -> int:
+    """中文月/日：四 / 十 / 十一 / 三十 / 三十一 → int。"""
+    if s == "十":
+        return 10
+    if s in _CN_NUM:
+        return _CN_NUM[s]
+    if s.startswith("十"):          # 十一..十九
+        return 10 + _CN_NUM[s[1]]
+    if "十" in s:                   # 二十 / 三十 / 二十一 / 三十一
+        tens, _, ones = s.partition("十")
+        return _CN_NUM[tens] * 10 + (_CN_NUM[ones] if ones else 0)
+    return _CN_NUM[s]
+
+
+def extract_court_announce_date(text: str):
+    """从公拍网详情页正文提取「法院公告落款日期」。
+
+    返回 datetime（落款日，取最早的一个，对应公告发布日），无法提取时返回 None。
+    兼容阿拉伯数字(2026年5月21日)与中文数字(二〇二六年五月十一日)两种落款写法。
+    """
+    if not text:
+        return None
+    flat = re.sub(r"\s+", "", text)
+    dates = []
+    for m in _RE_SIGN_AR.finditer(flat):
+        try:
+            dates.append(datetime(int(m.group(2)), int(m.group(3)), int(m.group(4))))
+        except ValueError:
+            pass
+    for m in _RE_SIGN_CN.finditer(flat):
+        try:
+            dates.append(datetime(_cn_year(m.group(2)), _cn_md(m.group(3)), _cn_md(m.group(4))))
+        except (ValueError, KeyError):
+            pass
+    if not dates:
+        return None
+    # 同一页常出现两处落款（竞买公告+竞买须知），日期一致；取最早，避免误取正文里更晚的杂项日期。
+    return min(dates)
+
+
 class GPaiDetailParser(AbstractParser):
     """Parse a GPai (s.gpai.net) detail page HTML into an AuctionItem."""
 
@@ -616,7 +674,13 @@ class GPaiDetailParser(AbstractParser):
     # ============================================================
 
     def _extract_dates(self, soup: BeautifulSoup, item: AuctionItem) -> None:
-        item.publish_date = datetime.now()
+        # publish_date 取「法院公告落款日期」= 房源真实上架日（法律意义上的公告发布日）。
+        # 公拍网详情页正文里，竞买公告/竞买须知末尾有「XX人民法院 + 落款日期」，
+        # 日期可能是阿拉伯数字(2026年5月21日)或中文数字(二〇二六年五月十一日)。
+        # 提取不到时回退 datetime.now()（极少数无标准落款的页面）。
+        text = soup.get_text("\n", strip=True)
+        announce = extract_court_announce_date(text)
+        item.publish_date = announce or datetime.now()
         item.source_updated_at = datetime.now()
 
     # ============================================================

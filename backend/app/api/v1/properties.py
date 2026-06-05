@@ -10,6 +10,7 @@ from ...core.database import get_session
 from ...core.auction_status import (
     effective_status, effective_status_sql,
     MOBILE_VISIBLE_STATUSES, MOBILE_FALLBACK_STATUSES, MOBILE_DETAIL_STATUSES,
+    listed_on_sql,
 )
 from ...core.district_priority import tier_sql_expr
 from ...models.property import Property, PropertyImage
@@ -124,17 +125,15 @@ async def list_properties(
     if discount_max is not None:
         conditions.append(Property.court_discount_rate <= discount_max)
 
-    # 昨日上架：真实上架日期(publish_date 回退 created_at) == 昨天
+    # 昨日上架：真实上架日期 publish_date == 昨天（口径与首页 market-stats 共用 listed_on_sql）
     if listed_day == "yesterday":
         _y = _date.today() - _timedelta(days=1)
-        conditions.append(
-            func.date(func.coalesce(Property.publish_date, Property.created_at)) == _y
-        )
+        conditions.append(listed_on_sql(_y))
 
     # 状态过滤（口径须与首页 market-stats 各计数一一对应，保证首页数字 == 列表「共xxx套」）：
     # - sold_day=yesterday：昨日成交入口，仅「已成交」+ 真实结束日期==昨天
-    # - listed_day=yesterday：昨日上架入口，只按上架日期过滤（上方已加），不再套可参拍状态，
-    #   与 market-stats.yesterday_listed（无状态过滤）一致
+    # - listed_day=yesterday：昨日上架入口，只按真实上架日期过滤（上方 listed_on_sql 已加），
+    #   不再套可参拍状态，与 market-stats.yesterday_listed（同样只用 listed_on_sql）一致
     # - 否则按用户选的状态(支持多选)，再否则自动决定可参拍/兜底
     statuses = _multi(auction_status)
     if sold_day == "yesterday":
