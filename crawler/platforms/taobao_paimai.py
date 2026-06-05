@@ -240,6 +240,20 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             self._page = await browser_manager.new_page()
         return self._page
 
+    async def _renew_page(self):
+        """关掉当前 page 重建一个新 page。
+
+        经云镜隧道时，新建连接会换一个出口住宅 IP；旧出口若是 IPv6（对淘宝详情页
+        不稳定，常返回骨架/超时）时换连接可命中更可靠的 IPv4 出口，提升 SSR 成功率。
+        """
+        if self._page:
+            try:
+                await self._page.close()
+            except Exception:
+                pass
+            self._page = None
+        return await self._get_page()
+
     async def close(self) -> None:
         if self._http_client:
             await self._http_client.aclose()
@@ -601,13 +615,23 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
         logger.debug(f"[TaobaoPaiMai] SSR load: item={item_id}")
 
-        for attempt in range(2):
+        # 经云镜隧道时出口 IP 随连接轮换，IPv6 出口对淘宝详情页常返回骨架/超时；
+        # 故失败或骨架时换 page（=换出口 IP）重试，最多 SSR_MAX_ATTEMPTS 次。
+        SSR_MAX_ATTEMPTS = 4
+        for attempt in range(SSR_MAX_ATTEMPTS):
+            if attempt > 0:
+                # 换出口 IP 再试（仅当走代理时有意义；直连时只是重建 page，无害）。
+                # cookie 加在共享 context 上，新 page 自动继承，无需重注。
+                try:
+                    page = await self._renew_page()
+                except Exception:
+                    page = await self._get_page()
             try:
                 # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             except Exception as e:
                 logger.warning(f"[TaobaoPaiMai] SSR goto failed (attempt {attempt}): {e}")
-                if attempt == 0:
+                if attempt < SSR_MAX_ATTEMPTS - 1:
                     continue
                 return None
 

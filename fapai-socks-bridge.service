@@ -1,0 +1,18 @@
+[Unit]
+Description=法拍 SOCKS 桥接器(本地无认证 socks5 -> 云镜认证 socks5 住宅IP)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/fapai
+EnvironmentFile=-/opt/fapai/.env
+ExecStart=/opt/fapai/venv/bin/python -m crawler.socks_bridge
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/fapai/socks-bridge.log
+StandardError=append:/var/log/fapai/socks-bridge.log
+
+[Install]
+WantedBy=multi-user.target
