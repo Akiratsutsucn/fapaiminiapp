@@ -79,7 +79,6 @@
       "desc": "用于获取您的位置信息以展示附近房源"
     }
   },
-  "lazyCodeLoading": "requiredComponents",
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

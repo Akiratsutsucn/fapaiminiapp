@@ -91,7 +91,7 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
     可直接用于 .where() / func.count() / group_by() / order_by()，
     确保分页、计数、排序都在 DB 层按真实状态进行。
     """
-    from sqlalchemy import case, and_
+    from sqlalchemy import case, and_, or_
     from ..models.property import Property
 
     now = now or datetime.now()
@@ -113,6 +113,10 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
         (and_(st.isnot(None), et.is_(None), st <= now, st < stale_cutoff), "已结束"),
         # 6. 已过开拍但缺结束时间且在 stale 期内 → 进行中
         (and_(st.isnot(None), et.is_(None), st <= now, st >= stale_cutoff), "进行中"),
-        # 7. 兜底：保留存储值
+        # 7. 完全无时间信息且存储值为空 → 兜底「即将开拍」（与 Python effective_status 的
+        #    `return stored or "即将开拍"` 对齐；JD/淘宝部分房源 auction_status 抓为空串
+        #    且时间字段全 None，缺这条会导致 SQL 算出空串，详情页可见性判断把它们当下架）。
+        (and_(or_(s.is_(None), s == ""), st.is_(None), et.is_(None)), "即将开拍"),
+        # 8. 兜底：保留存储值
         else_=s,
     )
