@@ -9,6 +9,11 @@ function priceNumberOnly(price) {
         return (wan / 10000).toFixed(2);
     return wan.toFixed(0);
 }
+const PLATFORM_KEY_MAP = {
+    '京东拍卖': 'jd',
+    '阿里拍卖': 'ali',
+    '公拍网': 'gpai',
+};
 Component({
     properties: {
         property: {
@@ -46,6 +51,8 @@ Component({
                 hotTag,
                 savingWan,
                 auctionTime: p.auction_start_time ? (0, format_1.formatDate)(p.auction_start_time, 'MM-DD HH:mm') : '',
+                platformLabel: p.auction_platform || '',
+                platformKey: PLATFORM_KEY_MAP[p.auction_platform || ''] || '',
             });
         },
     },
@@ -66,6 +73,8 @@ Component({
         hotTag: '',
         savingWan: '',
         auctionTime: '',
+        platformLabel: '',
+        platformKey: '',
     },
     methods: {
         onTap() {

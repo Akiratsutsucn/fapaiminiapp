@@ -177,6 +177,33 @@
   color: var(--text-secondary);
 }
 
+/* 平台来源标签：浅色描边小标签，三色区分阿里/京东/公拍。
+   位于价格行末尾，与 .price-sub 的 flex:1 自然推到最右边。 */
+.platform-tag {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 20rpx;
+  line-height: 1.2;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  border: 1rpx solid currentColor;
+  background: transparent;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.platform-jd {
+  color: #E1251B;
+}
+
+.platform-ali {
+  color: #FF6A00;
+}
+
+.platform-gpai {
+  color: #3D5C7C;
+}
+
 .card-time {
   display: flex;
   align-items: center;

@@ -134,6 +134,7 @@ class PropertyListItem(BaseModel):
     auction_end_time: Optional[datetime] = None
     cover_image: Optional[str] = None
     property_type: str = "住宅"
+    auction_platform: str = ""
 
     model_config = {"from_attributes": True}
 

@@ -11,6 +11,7 @@ from ...core.auction_status import (
     effective_status, effective_status_sql,
     MOBILE_VISIBLE_STATUSES, MOBILE_FALLBACK_STATUSES, MOBILE_DETAIL_STATUSES,
 )
+from ...core.district_priority import tier_sql_expr
 from ...models.property import Property, PropertyImage
 from ...models.community import CommunityInfo
 from ...schemas import (
@@ -160,14 +161,23 @@ async def list_properties(
     count_q = select(func.count(Property.id)).where(and_(*conditions))
     total = (await db.execute(count_q)).scalar() or 0
 
-    # Query with sorting
-    order_col = getattr(Property, sort_by, None) if sort_by in ("starting_price", "appraisal_price", "area") else Property.created_at
-    order_clause = order_col.asc() if sort_order == "asc" else order_col.desc()
+    # 排序：用户主动选了字段(starting_price/appraisal_price/area)就按该字段；
+    # 否则套主城优先 4 档 + 开拍时间升序 + created_at desc 兜底（默认排序口径）。
+    if sort_by in ("starting_price", "appraisal_price", "area"):
+        order_col = getattr(Property, sort_by)
+        order_clauses = [order_col.asc() if sort_order == "asc" else order_col.desc()]
+    else:
+        order_clauses = [
+            tier_sql_expr().asc(),
+            Property.auction_start_time.is_(None).asc(),
+            Property.auction_start_time.asc(),
+            Property.created_at.desc(),
+        ]
 
     q = (
         select(Property)
         .where(and_(*conditions))
-        .order_by(order_clause)
+        .order_by(*order_clauses)
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
@@ -194,6 +204,7 @@ async def list_properties(
             auction_end_time=p.auction_end_time,
             cover_image=cover,
             property_type=p.property_type,
+            auction_platform=p.auction_platform,
         ))
 
     return PaginatedResponse(
@@ -219,7 +230,8 @@ async def recommend_properties(
     q = (
         select(Property)
         .where(and_(*conditions))
-        .order_by(Property.auction_start_time.is_(None).asc(),
+        .order_by(tier_sql_expr().asc(),
+                  Property.auction_start_time.is_(None).asc(),
                   Property.auction_start_time.asc(),
                   Property.created_at.desc())
         .limit(page_size)
@@ -239,6 +251,7 @@ async def recommend_properties(
             auction_start_time=p.auction_start_time,
             auction_end_time=p.auction_end_time, cover_image=cover,
             property_type=p.property_type,
+            auction_platform=p.auction_platform,
         ))
     return items
 

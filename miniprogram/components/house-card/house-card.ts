@@ -7,6 +7,12 @@ function priceNumberOnly(price: number): string {
   return wan.toFixed(0);
 }
 
+const PLATFORM_KEY_MAP: Record<string, string> = {
+  '京东拍卖': 'jd',
+  '阿里拍卖': 'ali',
+  '公拍网': 'gpai',
+};
+
 Component({
   properties: {
     property: {
@@ -47,6 +53,8 @@ Component({
         hotTag,
         savingWan,
         auctionTime: p.auction_start_time ? formatDate(p.auction_start_time, 'MM-DD HH:mm') : '',
+        platformLabel: p.auction_platform || '',
+        platformKey: PLATFORM_KEY_MAP[p.auction_platform || ''] || '',
       });
     },
   },
@@ -68,6 +76,8 @@ Component({
     hotTag: '',
     savingWan: '',
     auctionTime: '',
+    platformLabel: '',
+    platformKey: '',
   },
 
   methods: {
