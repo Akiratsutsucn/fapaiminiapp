@@ -238,6 +238,11 @@ Page({
     this.setData({ pendingPropertyTypes: cur });
   },
 
+  // 物业类型「全部」：只清空物业类型，不影响拍卖状态/轮次的已选
+  onClearPropertyTypes() {
+    this.setData({ pendingPropertyTypes: [] });
+  },
+
   onToggleAuctionStatus(e: any) {
     const val = e.currentTarget.dataset.value;
     const cur = [...this.data.pendingAuctionStatuses];

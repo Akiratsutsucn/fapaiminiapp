@@ -72,12 +72,13 @@ async def market_stats(
         )
     )).scalar() or 0
 
-    # 昨日成交：成交/结束状态，用平台真实结束时间 auction_end_time（拍卖结束=成交时点），
-    # 缺失时回退 updated_at。
+    # 昨日成交：仅「已成交」状态，用平台真实结束时间 auction_end_time（拍卖结束=成交时点），
+    # 缺失时回退 updated_at。口径须与 properties.py 的 sold_day 列表入口完全一致，
+    # 保证首页数字 == 列表「共xxx套」。
     sold_date = func.coalesce(Property.auction_end_time, Property.updated_at)
     yesterday_sold = (await db.execute(
         _apply(select(func.count(Property.id))).where(
-            effective_status_sql().in_(["已成交", "已结束"]),
+            effective_status_sql() == "已成交",
             func.date(sold_date) == yesterday,
         )
     )).scalar() or 0
@@ -97,13 +98,17 @@ async def list_cities():
 
 @router.get("/home-summary")
 async def home_summary(db: AsyncSession = Depends(get_session)):
-    """登录页/首屏用：三城市合计的真实统计（每次查询即时计算，自然每日更新）。
+    """登录页/首屏用：上海+宁波+杭州三城合计的真实统计（每次查询即时计算，自然每日更新）。
 
     - on_auction：可参拍房源数（即将开拍 + 进行中，按实时状态计算）
     - bargain：可参拍且折扣 1折~6.5折的捡漏房源数
     - avg_discount：可参拍房源的平均折扣（court_discount_rate 0~1）
+
+    注意：限定三城（库里可能混入河北等其它城市的脏数据），避免登录页数字被污染。
     """
-    visible = effective_status_sql().in_(["即将开拍", "进行中"])
+    city_ids = [c["city_id"] for c in CITIES]
+    in_cities = Property.city_id.in_(city_ids)
+    visible = and_(effective_status_sql().in_(["即将开拍", "进行中"]), in_cities)
 
     on_auction = (await db.execute(
         select(func.count(Property.id)).where(visible)

@@ -130,16 +130,21 @@ async def list_properties(
             func.date(func.coalesce(Property.publish_date, Property.created_at)) == _y
         )
 
-    # 状态过滤：
-    # - sold_day=yesterday：昨日成交入口，强制已成交/已结束 + 真实结束日期==昨天
+    # 状态过滤（口径须与首页 market-stats 各计数一一对应，保证首页数字 == 列表「共xxx套」）：
+    # - sold_day=yesterday：昨日成交入口，仅「已成交」+ 真实结束日期==昨天
+    # - listed_day=yesterday：昨日上架入口，只按上架日期过滤（上方已加），不再套可参拍状态，
+    #   与 market-stats.yesterday_listed（无状态过滤）一致
     # - 否则按用户选的状态(支持多选)，再否则自动决定可参拍/兜底
     statuses = _multi(auction_status)
     if sold_day == "yesterday":
         _y = _date.today() - _timedelta(days=1)
-        conditions.append(effective_status_sql().in_(["已成交", "已结束"]))
+        conditions.append(effective_status_sql() == "已成交")
         conditions.append(
             func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == _y
         )
+    elif listed_day == "yesterday":
+        # 昨日上架：状态不限，仅靠上方的上架日期条件过滤
+        pass
     elif statuses:
         valid = [s for s in statuses if s in MOBILE_VISIBLE_STATUSES]
         if valid:

@@ -226,6 +226,9 @@ Page({
             cur.push(val);
         this.setData({ pendingPropertyTypes: cur });
     },
+    onClearPropertyTypes() {
+        this.setData({ pendingPropertyTypes: [] });
+    },
     onToggleAuctionStatus(e) {
         const val = e.currentTarget.dataset.value;
         const cur = [...this.data.pendingAuctionStatuses];

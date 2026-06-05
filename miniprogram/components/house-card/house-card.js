@@ -27,7 +27,7 @@ Component({
             const saving = (p.appraisal_price || 0) - (p.starting_price || 0);
             const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
             const rate = p.court_discount_rate || 0;
-            const discount = rate >= 0.1 && rate <= 0.65 ? (0, format_1.formatDiscount)(rate) : '';
+            const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
             const hotTag = rate >= 1 ? '超人气' : '';
             this.setData({
                 coverImage: p.cover_image || '/images/default-house.png',
