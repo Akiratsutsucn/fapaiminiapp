@@ -69,6 +69,10 @@ cd "$ADMIN_DIR"
 npm install
 npm run build
 cp -r dist/* /var/www/html/admin/
+# 注意：nginx.conf 的两个 443 server 块引用 letsencrypt 证书，
+# 首次部署前须先签发证书（见下方 Next steps 第 1 步），否则 nginx -t 会因找不到证书失败。
+# certbot 续期 HTTP-01 验证目录：
+mkdir -p /var/www/certbot
 nginx -t && systemctl reload nginx
 
 # ---- Done ----
@@ -80,7 +84,12 @@ echo "  Admin:   https://admin.fapaizhelianmeng.cn"
 echo "=============================================="
 echo ""
 echo "Next steps:"
-echo "  1. Configure SSL: certbot --nginx -d xcxapi.fapaizhelianmeng.cn -d admin.fapaizhelianmeng.cn"
+echo "  1. Configure SSL (首次/证书过期时):"
+echo "       certbot certonly --webroot -w /var/www/certbot \\"
+echo "         -d xcxapi.fapaizhelianmeng.cn -d admin.fapaizhelianmeng.cn"
+echo "     证书签发后再执行 nginx -t && systemctl reload nginx"
 echo "  2. Update .env with production SECRET_KEY"
 echo "  3. Verify /picture mount: df -h /picture"
-echo "  4. Test: curl https://xcxapi.fapaizhelianmeng.cn/health"
+echo "  4. Test HTTPS + 80 跳转:"
+echo "       curl -I http://xcxapi.fapaizhelianmeng.cn/   # 期望 301 -> https"
+echo "       curl https://xcxapi.fapaizhelianmeng.cn/health"

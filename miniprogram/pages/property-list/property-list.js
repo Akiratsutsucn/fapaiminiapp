@@ -45,6 +45,8 @@ Page({
         presetSoldDay: '',
         sortBy: 'default',
         sortOrder: 'asc',
+        searchHistory: [],
+        showHistory: false,
     },
     onLoad(options) {
         const init = {};
@@ -85,6 +87,12 @@ Page({
         }
         init.currentCityId = cityId;
         init.districtOptions = districtsForCity(cityId);
+        try {
+            init.searchHistory = wx.getStorageSync('search_history') || [];
+        }
+        catch (_) {
+            init.searchHistory = [];
+        }
         this.setData(init);
         this.loadList();
     },
@@ -177,12 +185,53 @@ Page({
         this.setData({ keyword: e.detail.value });
     },
     onSearch() {
-        this.setData({ page: 1, list: [] });
+        this.saveHistory(this.data.keyword);
+        this.setData({ page: 1, list: [], showHistory: false });
         this.loadList();
     },
     onClearKeyword() {
         this.setData({ keyword: '', page: 1, list: [] });
         this.loadList();
+    },
+    onSearchFocus() {
+        this.setData({ showHistory: true });
+    },
+    onSearchBlur() {
+        setTimeout(() => this.setData({ showHistory: false }), 200);
+    },
+    onTapHistory(e) {
+        const kw = e.currentTarget.dataset.kw;
+        this.saveHistory(kw);
+        this.setData({ keyword: kw, page: 1, list: [], showHistory: false });
+        this.loadList();
+    },
+    onClearHistory() {
+        this.setData({ searchHistory: [] });
+        try {
+            wx.removeStorageSync('search_history');
+        }
+        catch (_) {
+        }
+    },
+    saveHistory(kw) {
+        const word = (kw || '').trim();
+        if (!word)
+            return;
+        let history = this.data.searchHistory.filter((h) => h !== word);
+        history.unshift(word);
+        history = history.slice(0, 5);
+        this.setData({ searchHistory: history });
+        try {
+            wx.setStorageSync('search_history', history);
+        }
+        catch (_) {
+        }
+    },
+    onContact() {
+        wx.navigateTo({ url: '/pages/customer-service/customer-service' });
+    },
+    onScrollTop() {
+        wx.pageScrollTo({ scrollTop: 0, duration: 300 });
     },
     onTogglePanel(e) {
         const panel = e.currentTarget.dataset.panel;

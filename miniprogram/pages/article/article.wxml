@@ -44,7 +44,10 @@
   <float-action-bar
     primary-text="联系客服"
     show-calc="{{false}}"
+    show-fav="{{true}}"
+    faved="{{isFavorited}}"
     bind:share="onShare"
+    bind:fav="onToggleFavorite"
     bind:contact="onContact"
   />
 </view>

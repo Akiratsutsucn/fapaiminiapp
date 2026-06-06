@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "house-card": "/components/house-card/house-card"
+    "house-card": "/components/house-card/house-card",
+    "float-buttons": "/components/float-buttons/float-buttons"
   }
 }

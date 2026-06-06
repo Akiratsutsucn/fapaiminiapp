@@ -1,4 +1,31 @@
 <view class="page">
+  <!-- 顶部筛选栏：区县板块 + 起拍价 -->
+  <view class="map-filter-bar">
+    <view class="mf-chip {{activePanel === 'district' || selectedDistrict ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="district">
+      <text>{{selectedDistrict || '区县板块'}}</text>
+      <view class="mf-arrow"></view>
+    </view>
+    <view class="mf-chip {{activePanel === 'price' || priceLabel ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="price">
+      <text>{{priceLabel || '起拍价'}}</text>
+      <view class="mf-arrow"></view>
+    </view>
+  </view>
+
+  <!-- 筛选下拉面板 -->
+  <view class="mf-panel" wx:if="{{activePanel}}">
+    <view class="mf-mask" bindtap="onClosePanel"></view>
+    <view class="mf-options">
+      <block wx:if="{{activePanel === 'district'}}">
+        <view class="mf-opt {{!selectedDistrict ? 'sel' : ''}}" bindtap="onSelectDistrict" data-value="">全部区县</view>
+        <view class="mf-opt {{selectedDistrict === item ? 'sel' : ''}}" wx:for="{{districtOptions}}" wx:key="*this" bindtap="onSelectDistrict" data-value="{{item}}">{{item}}</view>
+      </block>
+      <block wx:if="{{activePanel === 'price'}}">
+        <view class="mf-opt {{!priceRange ? 'sel' : ''}}" bindtap="onSelectPrice" data-value="" data-label="">不限</view>
+        <view class="mf-opt {{priceRange === item.value ? 'sel' : ''}}" wx:for="{{priceRanges}}" wx:key="value" bindtap="onSelectPrice" data-value="{{item.value}}" data-label="{{item.label}}">{{item.label}}</view>
+      </block>
+    </view>
+  </view>
+
   <map
     id="propertyMap"
     class="map"

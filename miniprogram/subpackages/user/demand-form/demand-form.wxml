@@ -1,7 +1,24 @@
 <view class="form-page">
+  <!-- AI 语音说需求：按住说话，自动转写填入备注 -->
+  <view class="voice-card">
+    <view class="voice-head">
+      <text class="voice-title">AI 语音说需求</text>
+      <text class="voice-sub">按住下方按钮，说出你想要的法拍房，松手自动转文字</text>
+    </view>
+    <view class="voice-btn {{recording ? 'recording' : ''}}"
+      bindtouchstart="onVoiceStart" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
+      <view class="voice-ico"></view>
+      <text>{{recording ? '正在聆听…松手结束' : '按住 说出需求'}}</text>
+    </view>
+    <view class="voice-result" wx:if="{{form.voice_text}}">
+      <text class="vr-label">识别结果（可编辑）</text>
+      <textarea class="vr-text" value="{{form.voice_text}}" bindinput="onFieldInput" data-field="voice_text" auto-height placeholder="语音识别的需求描述会显示在这里" />
+    </view>
+  </view>
+
   <view class="form-group">
     <text class="form-label">姓名 <text class="required">*</text></text>
-    <input class="form-input" placeholder="请输入姓名" value="{{form.name}}" bindinput="onFieldInput" data-field="name" />
+    <input class="form-input" placeholder="请输入真实姓名（用于客服 1 对 1 联系）" value="{{form.name}}" bindinput="onFieldInput" data-field="name" />
   </view>
   <view class="form-group">
     <text class="form-label">性别 <text class="required">*</text></text>

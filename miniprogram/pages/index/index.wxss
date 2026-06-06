@@ -8,6 +8,17 @@
 .city-bar {
   padding: var(--spacing-xs) var(--spacing-md);
   background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.city-switch-hint {
+  font-size: 22rpx;
+  color: var(--blue-200);
+  letter-spacing: 0.5rpx;
+  flex-shrink: 0;
+  margin-left: 12rpx;
 }
 
 /* ===== Hero 大字报 ===== */
@@ -123,22 +134,48 @@
   margin-top: 8rpx;
 }
 
+.stat-hint {
+  display: block;
+  font-size: 18rpx;
+  color: var(--accent-orange-text);
+  margin-top: 6rpx;
+  letter-spacing: 0.5rpx;
+}
+
+.stat-hint-empty {
+  visibility: hidden;
+}
+
+.stat-cell-static {
+  /* 昨日成交：仅展示数字，不可点击 */
+}
+
 /* ===== 快捷入口 ===== */
 .quick-entry {
   margin: 0 24rpx 16rpx;
   border-radius: var(--radius-md);
-  padding: 16rpx 0;
+  padding: 20rpx 0;
   display: flex;
   align-items: center;
   box-shadow: var(--shadow-card);
 }
 
 .qe-item {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
+}
+
+/* 全部房源：放大醒目，占据更大比例 */
+.qe-item-primary {
+  flex: 2;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.qe-item-map {
+  flex: 1;
 }
 
 .qe-text {
@@ -147,35 +184,45 @@
   color: var(--blue-700);
 }
 
-.qe-icon-list, .qe-icon-map {
-  width: 36rpx;
-  height: 36rpx;
-  position: relative;
+.qe-text-primary {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: var(--accent-orange-text);
+  letter-spacing: 1rpx;
 }
 
-.qe-icon-list {
-  background: linear-gradient(
-    to bottom,
-    var(--accent-orange) 0, var(--accent-orange) 4rpx,
-    transparent 4rpx, transparent 14rpx,
-    var(--accent-orange) 14rpx, var(--accent-orange) 18rpx,
-    transparent 18rpx, transparent 28rpx,
-    var(--accent-orange) 28rpx, var(--accent-orange) 32rpx
-  );
+/* 全部房源新图标：网格九宫格样式（替换原三横线图标） */
+.qe-icon-all {
+  width: 44rpx;
+  height: 44rpx;
+  position: relative;
+  flex-shrink: 0;
+  background-image:
+    linear-gradient(var(--accent-orange), var(--accent-orange)),
+    linear-gradient(var(--accent-orange), var(--accent-orange)),
+    linear-gradient(var(--accent-orange), var(--accent-orange)),
+    linear-gradient(var(--accent-orange), var(--accent-orange));
+  background-size: 18rpx 18rpx;
+  background-repeat: no-repeat;
+  background-position: 0 0, 26rpx 0, 0 26rpx, 26rpx 26rpx;
   border-radius: 2rpx;
 }
 
 .qe-icon-map {
-  border: 3rpx solid var(--accent-orange);
+  width: 32rpx;
+  height: 32rpx;
+  position: relative;
+  flex-shrink: 0;
+  border: 3rpx solid var(--blue-500);
   border-radius: 50%;
 }
 
 .qe-icon-map::after {
   content: '';
   position: absolute;
-  width: 14rpx;
-  height: 14rpx;
-  background: var(--accent-orange);
+  width: 12rpx;
+  height: 12rpx;
+  background: var(--blue-500);
   border-radius: 50%;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
@@ -183,7 +230,7 @@
 
 .qe-divider {
   width: 1rpx;
-  height: 40rpx;
+  height: 48rpx;
   background: var(--blue-100);
 }
 

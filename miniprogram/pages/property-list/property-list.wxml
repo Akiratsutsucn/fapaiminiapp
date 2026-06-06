@@ -11,9 +11,19 @@ module.exports.has = function (arr, val) {
   <view class="search-bar">
     <view class="search-input-wrap">
       <view class="search-icon"></view>
-      <input class="search-input" placeholder="搜索小区名、标题" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="onSearch" confirm-type="search" />
+      <input class="search-input" placeholder="搜索小区名、标题" value="{{keyword}}" bindinput="onKeywordInput" bindconfirm="onSearch" bindfocus="onSearchFocus" bindblur="onSearchBlur" confirm-type="search" />
       <view class="search-clear" wx:if="{{keyword}}" bindtap="onClearKeyword">
         <view class="search-clear-icon"></view>
+      </view>
+    </view>
+    <!-- 搜索历史（聚焦且有历史时展示，最多 5 条） -->
+    <view class="search-history" wx:if="{{showHistory && searchHistory.length > 0}}">
+      <view class="sh-head">
+        <text class="sh-title">搜索历史</text>
+        <view class="sh-clear" bindtap="onClearHistory">清空</view>
+      </view>
+      <view class="sh-tags">
+        <view class="sh-tag" wx:for="{{searchHistory}}" wx:key="*this" bindtap="onTapHistory" data-kw="{{item}}">{{item}}</view>
       </view>
     </view>
   </view>
@@ -84,10 +94,6 @@ module.exports.has = function (arr, val) {
           <view class="option-row">
             <view class="option-item multi {{m.has(pendingAuctionStatuses, '即将开拍') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="即将开拍">即将开拍</view>
             <view class="option-item multi {{m.has(pendingAuctionStatuses, '进行中') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="进行中">进行中</view>
-            <view class="option-item multi {{m.has(pendingAuctionStatuses, '已成交') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="已成交">已成交</view>
-            <view class="option-item multi {{m.has(pendingAuctionStatuses, '已结束') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="已结束">已结束</view>
-            <view class="option-item multi {{m.has(pendingAuctionStatuses, '中止') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="中止">中止</view>
-            <view class="option-item multi {{m.has(pendingAuctionStatuses, '撤回') ? 'selected' : ''}}" bindtap="onToggleAuctionStatus" data-value="撤回">撤回</view>
           </view>
         </view>
         <view class="filter-group">
@@ -122,5 +128,13 @@ module.exports.has = function (arr, val) {
   <view class="load-more" wx:if="{{hasMore}}">
     <text class="load-text" bindtap="onLoadMore">{{loading ? '加载中...' : '加载更多'}}</text>
   </view>
+
+  <!-- 到底提示 -->
+  <view class="list-bottom-line" wx:if="{{!hasMore && list.length > 0}}">
+    <text>— 我是底线 —</text>
+  </view>
+
+  <!-- 浮动按钮：联系客服 + 回到顶部 -->
+  <float-buttons bind:contact="onContact" bind:top="onScrollTop" />
 </view>
 

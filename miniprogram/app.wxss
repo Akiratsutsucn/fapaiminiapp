@@ -55,15 +55,15 @@ page {
   --radius-xl: 40rpx;
   --radius-pill: 999rpx;
 
-  /* 字号 */
-  --font-xs: 20rpx;
-  --font-sm: 24rpx;
-  --font-md: 28rpx;
-  --font-lg: 32rpx;
-  --font-xl: 36rpx;
-  --font-xxl: 44rpx;
-  --font-display: 80rpx;       /* 大字报：起拍价/标题数字 */
-  --font-display-sm: 56rpx;    /* 中等大字报：列表卡 hero 价格 */
+  /* 字号 —— 第五轮：全局上升 2 个字号（+4rpx），缓解用户反映字体偏小 */
+  --font-xs: 24rpx;
+  --font-sm: 28rpx;
+  --font-md: 32rpx;
+  --font-lg: 36rpx;
+  --font-xl: 40rpx;
+  --font-xxl: 48rpx;
+  --font-display: 84rpx;       /* 大字报：起拍价/标题数字 */
+  --font-display-sm: 60rpx;    /* 中等大字报：列表卡 hero 价格 */
 
   /* 阴影 */
   --shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);

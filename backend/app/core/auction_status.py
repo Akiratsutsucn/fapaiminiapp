@@ -129,21 +129,12 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
 def listed_on_sql(target_date):
     """返回「某房源的真实上架日 == target_date」的 SQLAlchemy 布尔条件。
 
-    上架日 = 房源首次被抓取入库的日期 created_at（= 平台上「昨日新出现」的房源），
-    这是最直接反映「新上架」的真实信号。created_at 在 repository.upsert 里只在首次
-    insert 时设置、后续 update 不修改，故能稳定代表首次发现时点。
+    上架日 = 平台公告落款日 publish_date（公拍网从法院公告落款提取、阿里取平台时间戳）。
+    按用户要求采用「公告落款日期」口径，不再用 created_at 入库日。
+    publish_date 为空或平台不可信（京东，见 UNRELIABLE_PUBLISH_DATE_PLATFORMS）的房源被排除。
 
-    平台口径：
-      - 排除京东（库内多为已结束/已撤回的过期房源，且系批量补抓，不是真实新上架）。
-      - 阿里 / 公拍网：按 created_at 计入。
-
-    为什么不用 publish_date：三平台 publish_date 多为 datetime.now 假值，仅公拍网经
-    解析改造后为真实公告落款日但在拍量极小；阿里拿不到真实公告日。
-    为什么不用 auction_start_time 前推：开拍时间前推只是平移开拍分布，反映的是「N 天后
-    开拍的房源何时该上架」，而非「昨天新上架了什么」，最近几日恒偏小，不符合指标语义。
-
-    已知局限：爬虫某天成功补抓一批积压存量时，该日 created_at 会偏高（一次性历史包袱，
-    爬虫覆盖稳定后自然消失）。
+    已知局限：阿里/京东拿不到真实法院公告落款日，仅公拍网经解析为真实落款日，
+    故该口径下「昨日上架」主要反映公拍网新上架量，阿里计入的是平台时间戳近似值。
 
     首页 market-stats 的 yesterday_listed 计数与列表页 listed_day=yesterday 入口
     必须共用本函数，保证「首页数字 == 列表共xxx套」。
@@ -152,6 +143,7 @@ def listed_on_sql(target_date):
     from ..models.property import Property
 
     return and_(
+        Property.publish_date.isnot(None),
         Property.auction_platform.notin_(UNRELIABLE_PUBLISH_DATE_PLATFORMS),
-        func.date(Property.created_at) == target_date,
+        func.date(Property.publish_date) == target_date,
     )

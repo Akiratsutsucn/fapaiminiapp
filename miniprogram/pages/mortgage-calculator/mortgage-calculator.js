@@ -123,12 +123,12 @@ Page({
             calculated: true,
             result: {
                 loanAmount: totalLoan.toFixed(1),
-                monthly: monthly.toFixed(0),
+                monthly: (monthly * 10000).toFixed(0),
                 totalInterest: totalInterest.toFixed(1),
                 totalPayment: (totalLoan + totalInterest).toFixed(1),
-                minIncome: (monthly * 2).toFixed(0),
-                firstMonthly: firstMonthly.toFixed(0),
-                monthlyDecrease: monthlyDecrease.toFixed(0),
+                minIncome: (monthly * 10000 * 2).toFixed(0),
+                firstMonthly: (firstMonthly * 10000).toFixed(0),
+                monthlyDecrease: (monthlyDecrease * 10000).toFixed(0),
             },
         });
     },

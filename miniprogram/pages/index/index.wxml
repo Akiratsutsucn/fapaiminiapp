@@ -7,14 +7,15 @@
       currentCityName="{{currentCityName}}"
       bind:change="onCityChange"
     />
+    <text class="city-switch-hint">点击左侧按钮，可进行城市切换</text>
   </view>
 
   <!-- ============ Hero 大字报 ============ -->
   <view class="hero">
-    <view class="hero-tagline">FAPAI · 上海 / 宁波 / 杭州</view>
+    <view class="hero-tagline">FAPAI · 立足上海 / 宁波 / 杭州　泛长三角地区　辐射全国法拍市场</view>
     <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
     <view class="hero-gild"></view>
-    <view class="hero-sub">实时同步 阿里 · 京东 · 公拍 三平台房源数据</view>
+    <view class="hero-sub">同步自 阿里 · 京东 · 公拍 等权威平台房源数据</view>
   </view>
 
   <!-- 横幅轮播（叠加在 hero 下方负 margin） -->
@@ -27,29 +28,33 @@
     <view class="stat-cell" bindtap="onStatTap" data-type="bargain">
       <text class="stat-num accent">{{stats.bargain_count}}</text>
       <text class="stat-label">捡漏房源</text>
+      <text class="stat-hint">点击看详情</text>
     </view>
     <view class="stat-cell" bindtap="onStatTap" data-type="upcoming">
       <text class="stat-num">{{stats.upcoming_count}}</text>
       <text class="stat-label">即将开拍</text>
+      <text class="stat-hint">点击看详情</text>
     </view>
     <view class="stat-cell" bindtap="onStatTap" data-type="listed">
       <text class="stat-num">{{stats.yesterday_listed}}</text>
       <text class="stat-label">昨日上架</text>
+      <text class="stat-hint">点击看详情</text>
     </view>
-    <view class="stat-cell" bindtap="onStatTap" data-type="sold">
+    <view class="stat-cell stat-cell-static">
       <text class="stat-num">{{stats.yesterday_sold}}</text>
       <text class="stat-label">昨日成交</text>
+      <text class="stat-hint stat-hint-empty"> </text>
     </view>
   </view>
 
   <!-- 快捷入口 -->
   <view class="quick-entry glass-card">
-    <view class="qe-item" bindtap="onViewAll">
-      <view class="qe-icon-list"></view>
-      <text class="qe-text">全部房源</text>
+    <view class="qe-item qe-item-primary" bindtap="onViewAll">
+      <view class="qe-icon-all"></view>
+      <text class="qe-text qe-text-primary">点我查看全部房源</text>
     </view>
     <view class="qe-divider"></view>
-    <view class="qe-item" bindtap="onMapFind">
+    <view class="qe-item qe-item-map" bindtap="onMapFind">
       <view class="qe-icon-map"></view>
       <text class="qe-text">地图找房</text>
     </view>

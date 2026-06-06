@@ -13,7 +13,7 @@
       <image class="brand-logo" src="/images/logo.png" mode="aspectFit" />
     </view>
     <text class="brand-name">法拍者联盟</text>
-    <text class="brand-subtitle">FAPAI · 上海 / 宁波 / 杭州</text>
+    <text class="brand-subtitle">FAPAI · 深耕长三角法拍</text>
   </view>
 
   <!-- Hero 大字报 -->
@@ -62,6 +62,9 @@
   </view>
 
   <view class="login-footer">
+    <text class="footer-disclaimer">本平台所载法拍房源信息均来自人民法院诉讼资产网、阿里资产·司法拍卖、京东司法拍卖、公拍网等公开渠道，仅供参考，不构成任何投资或交易建议。竞买请以各拍卖平台及法院公告的官方信息为准，平台不对信息的完整性、准确性、时效性承担法律责任。</text>
     <text class="footer-text">© 拍来盟科技 · 客服 400-007-6786</text>
+    <text class="footer-icp" catchtap="onViewICP">{{icpNumber}}</text>
+    <text class="footer-icp" catchtap="onViewPolice">{{policeNumber}}</text>
   </view>
 </view>

@@ -236,7 +236,7 @@ Page({
       const startWan = (p.starting_price / 10000).toFixed(1);
       const apprWan = (p.appraisal_price / 10000).toFixed(1);
       const ratio = p.starting_price / p.appraisal_price;
-      const discount = ((1 - ratio) * 10).toFixed(1); // 几折
+      const discountPct = ((1 - ratio) * 100).toFixed(0); // 较评估价低百分之几
       const diff = ((p.appraisal_price - p.starting_price) / 10000).toFixed(1);
       let level = '';
       if (ratio < 0.65) level = '远低于评估价，捡漏空间显著';

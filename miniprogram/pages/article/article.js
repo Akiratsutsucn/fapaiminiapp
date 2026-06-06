@@ -1,19 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const article_1 = require("../../services/article");
+const user_1 = require("../../services/user");
 const storage_1 = require("../../utils/storage");
+const app = getApp();
 Page({
     data: {
         article: {},
         contentNodes: '',
         liked: false,
         likeCount: 0,
+        isFavorited: false,
+        favoriteId: 0,
     },
     onLoad(options) {
         const id = parseInt(options.id);
         if (id) {
             this.loadArticle(id);
             this.loadLikeState(id);
+            this.checkFavoriteStatus(id);
             (0, storage_1.addBrowseHistory)('article', id);
         }
     },
@@ -34,7 +39,20 @@ Page({
             return '';
         let s = html;
         s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
-        s = s.replace(/<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:12px auto;"');
+        // 去掉图片上会撑破屏幕的固定宽高属性与内联宽高样式
+        s = s.replace(/<img[^>]*>/gi, (tag) => {
+            let t = tag;
+            // 移除 width/height 属性（含 data-w/data-width 等常见公众号属性）
+            t = t.replace(/\s(?:width|height|data-w|data-width|data-ratio)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+            // 移除内联样式里的 width/height/max-width，避免覆盖自适应
+            t = t.replace(/style\s*=\s*("|')([^"']*)\1/gi, (m, q, css) => {
+                const cleaned = css.replace(/(?:max-)?width\s*:[^;]+;?/gi, '').replace(/height\s*:[^;]+;?/gi, '');
+                return `style=${q}${cleaned}${q}`;
+            });
+            return t;
+        });
+        // 统一加上自适应样式
+        s = s.replace(/<img/gi, '<img style="max-width:100%;width:100%;height:auto;display:block;margin:12px auto;"');
         return s;
     },
     loadLikeState(id) {
@@ -89,6 +107,46 @@ Page({
         });
     },
     onShare() {
+    },
+    async checkFavoriteStatus(articleId) {
+        if (!app.isLoggedIn || !app.isLoggedIn())
+            return;
+        try {
+            const res = await (0, user_1.getFavorites)('article', 1, 100);
+            const fav = (res.items || []).find((f) => f.target_id === articleId);
+            if (fav) {
+                this.setData({ isFavorited: true, favoriteId: fav.id });
+            }
+        }
+        catch (_) {
+        }
+    },
+    async onToggleFavorite() {
+        if (!app.isLoggedIn || !app.isLoggedIn()) {
+            wx.navigateTo({ url: '/pages/login/login' });
+            return;
+        }
+        const articleId = this.data.article.id;
+        if (!articleId)
+            return;
+        const newState = !this.data.isFavorited;
+        this.setData({ isFavorited: newState });
+        try {
+            if (newState) {
+                const res = await (0, user_1.addFavorite)('article', articleId);
+                if (res && res.id)
+                    this.setData({ favoriteId: res.id });
+            }
+            else {
+                await (0, user_1.removeFavorite)(this.data.favoriteId);
+                this.setData({ favoriteId: 0 });
+            }
+            wx.showToast({ title: newState ? '已收藏' : '已取消收藏', icon: 'none' });
+        }
+        catch (e) {
+            this.setData({ isFavorited: !newState });
+            wx.showToast({ title: '操作失败', icon: 'none' });
+        }
     },
     onShareAppMessage() {
         const a = this.data.article;

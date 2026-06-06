@@ -74,9 +74,18 @@
     ]
   },
   "requiredPrivateInfos": ["getLocation"],
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.5",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
   "permission": {
     "scope.userLocation": {
       "desc": "用于获取您的位置信息以展示附近房源"
+    },
+    "scope.record": {
+      "desc": "用于语音输入您的购房需求"
     }
   },
   "style": "v2",

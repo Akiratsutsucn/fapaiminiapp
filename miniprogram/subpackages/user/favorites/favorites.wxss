@@ -34,6 +34,49 @@
   padding-top: 8rpx;
 }
 
+/* 文章收藏卡 */
+.fav-article {
+  display: flex;
+  gap: 20rpx;
+  background: var(--bg-card);
+  margin: 16rpx 24rpx;
+  padding: 20rpx;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.fa-cover {
+  width: 200rpx;
+  height: 140rpx;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--blue-100);
+}
+
+.fa-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.fa-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--blue-900);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.fa-date {
+  font-size: 22rpx;
+  color: var(--text-hint);
+}
+
 .empty-state {
   text-align: center;
   padding: 160rpx 0;

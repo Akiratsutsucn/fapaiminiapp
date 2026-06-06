@@ -23,7 +23,7 @@
       <text>{{loading ? '加载中...' : '加载更多'}}</text>
     </view>
     <view class="list-end" wx:else>
-      <text>没有更多了</text>
+      <text>— 我是底线 —</text>
     </view>
   </block>
 </view>

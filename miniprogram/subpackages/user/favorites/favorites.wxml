@@ -12,6 +12,13 @@
   </view>
 
   <view class="fav-list" wx:if="{{activeTab === 'article'}}">
-    <view class="empty-state"><text>暂无收藏的文章</text></view>
+    <view class="fav-article" wx:for="{{articleList}}" wx:key="id" bindtap="onArticleTap" data-id="{{item.id}}" wx:if="{{articleList.length > 0}}">
+      <image class="fa-cover" src="{{item.cover_image || '/images/default-house.png'}}" mode="aspectFill" />
+      <view class="fa-info">
+        <text class="fa-title">{{item.title}}</text>
+        <text class="fa-date">{{item.publish_date || item.created_at}}</text>
+      </view>
+    </view>
+    <view class="empty-state" wx:if="{{articleList.length === 0}}"><text>暂无收藏的文章</text></view>
   </view>
 </view>

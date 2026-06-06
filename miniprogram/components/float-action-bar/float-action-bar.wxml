@@ -12,6 +12,10 @@
       <view class="bar-icon icon-analysis"></view>
       <text class="bar-label">板块分析</text>
     </view>
+    <view class="bar-btn" wx:if="{{showFav}}" bindtap="onFav" hover-class="bar-btn-hover">
+      <view class="bar-icon {{faved ? 'icon-fav-active' : 'icon-fav'}}"></view>
+      <text class="bar-label">{{faved ? '已收藏' : '文章收藏'}}</text>
+    </view>
     <view class="bar-btn" wx:if="{{showSafeAuction}}" bindtap="onSafeAuction" hover-class="bar-btn-hover">
       <view class="bar-icon icon-safe"></view>
       <text class="bar-label">安全法拍</text>

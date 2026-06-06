@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     # access_token 比前端的 idle 超时多 5 分钟，确保用户在最后一次点击之前 token 还有效
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 35
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # refresh_token 有效期 14 天：用户 14 天内再次打开小程序可凭 refresh_token 静默续期，免重新登录
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
 
     # ===== local image storage (cosfs mount, shared with crawler) =====
     IMAGE_STORAGE_PATH: str = "/picture"

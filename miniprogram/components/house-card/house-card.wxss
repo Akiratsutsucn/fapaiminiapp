@@ -21,16 +21,17 @@
   position: absolute;
   top: 16rpx;
   left: 16rpx;
-  padding: 6rpx 16rpx;
-  font-size: 22rpx;
-  font-weight: 600;
+  padding: 10rpx 22rpx;
+  font-size: 28rpx;
+  font-weight: 700;
   border-radius: var(--radius-pill);
   color: #fff;
   z-index: 2;
   background: rgba(26, 47, 82, 0.7);
   backdrop-filter: blur(20rpx);
   -webkit-backdrop-filter: blur(20rpx);
-  letter-spacing: 1rpx;
+  letter-spacing: 2rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.25);
 }
 
 .card-tag-v2.tag-blue   { background: rgba(58, 90, 140, 0.85); }
@@ -110,7 +111,7 @@
 .card-body { padding: 20rpx 24rpx; }
 
 .card-title {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: var(--blue-900);
   line-height: 1.4;
@@ -119,7 +120,7 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   margin-bottom: 12rpx;
-  letter-spacing: -0.5rpx;
+  letter-spacing: 1.5rpx;
 }
 
 .card-meta {

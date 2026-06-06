@@ -486,7 +486,7 @@
   font-weight: 800;
   color: #fff;
   margin-bottom: 6rpx;
-  letter-spacing: -0.5rpx;
+  letter-spacing: 3.5rpx;
 }
 
 .promo-sub {
