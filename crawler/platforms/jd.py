@@ -14,6 +14,7 @@ import json
 import re
 import urllib.parse
 
+from bs4 import BeautifulSoup
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from loguru import logger
 
@@ -123,7 +124,10 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
             while captured:
                 j = captured.pop(0)
                 for it in (j.get("datas") or []):
-                    pid = str(it.get("productId") or it.get("id") or "")
+                    # 关键：用短 id（字段 `id`，即 paimaiId）作为规范标识。
+                    # getProductBasicInfo 接口只认短 id；productId 是长 id（10034...），
+                    # 用它构建 source_url 会导致后续详情补全调接口取不到任何字段。
+                    pid = str(it.get("id") or it.get("productId") or "")
                     if not pid or pid in rows:
                         continue
                     # 按城市过滤：命中目标城市才保留
@@ -249,7 +253,47 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         merged["_images"] = images
         merged["_paimai_id"] = paimai_id
         merged["_city_id"] = row.get("_city_id")
+
+        # 面积：主接口无此字段，只存在于「标的物详情」tab 正文，需渲染详情页提取。
+        # 用户已确认接受京东额外渲染的耗时成本。渲染失败不致命（面积留 0）。
+        try:
+            detail_url = f"https://paimai.jd.com/{paimai_id}?itemId={paimai_id}"
+            html = await self.fetch_detail(detail_url)
+            merged["_area"] = self._extract_area_from_html(html)
+        except Exception as e:
+            logger.debug(f"[JD] area render failed for {paimai_id}: {e}")
+            merged["_area"] = 0.0
         return merged
+
+    @staticmethod
+    def _extract_area_from_html(html: str) -> float:
+        """从渲染后的京东详情页 HTML 提取建筑面积（㎡）。
+
+        面积只存在于「标的物详情」tab 正文，主接口无此字段，必须渲染页面后提取。
+        正文常把「建筑面积」「47.99」「平方米」拆在多个 <span>，故先取纯文本再正则。
+        """
+        if not isinstance(html, str) or not html:
+            return 0.0
+        try:
+            text = BeautifulSoup(html, "lxml").get_text(separator=" ")
+        except Exception:
+            text = html
+        text = re.sub(r"\s+", " ", text)
+        # 负向先行排除「地下建筑面积」（地下部分非套内/总建面）
+        patterns = [
+            r"(?<!地下)建筑面积[为约是：:\s]*([\d]+(?:\.\d+)?)\s*(?:平方米|㎡|平米)",
+            r"(?<!地下)建筑面积[^0-9]{0,8}([\d]+(?:\.\d+)?)",
+        ]
+        for pat in patterns:
+            m = re.search(pat, text)
+            if m:
+                try:
+                    v = float(m.group(1))
+                except ValueError:
+                    continue
+                if 5 <= v <= 5000:  # 合理单户建面区间，排除宗地/使用权超大面积
+                    return v
+        return 0.0
 
     @retry_on_failure(max_retries=2, backoff_factor=2.0)
     async def fetch_detail(self, detail_url: str) -> str:

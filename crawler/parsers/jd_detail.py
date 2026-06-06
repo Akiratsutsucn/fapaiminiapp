@@ -76,19 +76,26 @@ class JDDetailParser(AbstractParser):
         item.title = clean_text(d.get("title") or "")
         item.image_urls = list(d.get("_images") or [])
 
-        # 价格（元）：minPrice/currentPrice=起拍/当前价, assessmentPrice=评估价, ensurePrice=保证金
+        # 价格（元）：startPrice=起拍价/变卖价（数值），assessmentPrice=评估价,
+        # ensurePrice=保证金, priceLowerOffset=增价幅度（最小加价单位）。
+        # 注意：minPrice 是字符串标志位（"有"/"无"），不是价格，不能用作起拍价。
         def _money(v):
             try:
                 return int(float(v))
             except (TypeError, ValueError):
                 return 0
-        item.starting_price = _money(d.get("minPrice")) or _money(d.get("currentPrice"))
+        item.starting_price = (_money(d.get("startPrice"))
+                               or _money(d.get("currentPrice"))
+                               or _money(d.get("minPrice")))
         item.appraisal_price = _money(d.get("assessmentPrice"))
         if not item.appraisal_price:
             jbi = d.get("judicatureBasicInfoResult") or {}
             item.appraisal_price = _money(jbi.get("marketPrice"))
         item.market_deal_price = item.appraisal_price
         item.deposit = _money(d.get("ensurePrice"))
+        # 增价幅度：京东接口字段 priceLowerOffset（最小加价单位，如 7000）。
+        # priceHigherOffset 是上限/封顶偏移，非加价幅度，不取。
+        item.increment_amount = _money(d.get("priceLowerOffset"))
 
         # 时间戳（ms）→ datetime
         for src_key, attr in (("startTime", "auction_start_time"),
@@ -139,15 +146,24 @@ class JDDetailParser(AbstractParser):
         # 物业类型：京东标题/地址无显式类型，按关键词归类（与小程序四分类一致）
         item.property_type = self._guess_property_type(item.title)
 
-        # 面积：标题/接口偶含「XX㎡」「建筑面积」
-        m = re.search(r'(?:建筑面积|面积)[：:约]*\s*([\d.]+)\s*(?:㎡|平|平方米)', item.title)
-        if not m:
-            m = re.search(r'([\d.]+)\s*(?:㎡|平方米)', item.title)
-        if m:
-            try:
-                item.area = float(m.group(1))
-            except ValueError:
-                pass
+        # 面积：优先用 crawler 渲染详情页提取的 _area（京东主接口无面积字段，
+        # 只存在于「标的物详情」tab 正文，需 Playwright 渲染后提取）；
+        # 渲染缺失时回退标题里的「XX㎡」。
+        area_val = d.get("_area")
+        try:
+            if area_val and float(area_val) > 0:
+                item.area = float(area_val)
+        except (TypeError, ValueError):
+            pass
+        if not item.area:
+            m = re.search(r'(?:建筑面积|面积)[：:约]*\s*([\d.]+)\s*(?:㎡|平|平方米)', item.title)
+            if not m:
+                m = re.search(r'([\d.]+)\s*(?:㎡|平方米)', item.title)
+            if m:
+                try:
+                    item.area = float(m.group(1))
+                except ValueError:
+                    pass
 
         self._compute_derived_fields(item)
         item.auction_status = _normalize_status(
