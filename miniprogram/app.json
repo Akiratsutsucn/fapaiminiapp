@@ -76,7 +76,7 @@
   "requiredPrivateInfos": ["getLocation"],
   "plugins": {
     "WechatSI": {
-      "version": "0.3.5",
+      "version": "0.3.7",
       "provider": "wx069ba97219f66d99"
     }
   },
