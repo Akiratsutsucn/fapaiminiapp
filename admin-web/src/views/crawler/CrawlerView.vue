@@ -5,6 +5,16 @@
       <t-col :span="6">
         <t-card title="运行状态">
           <t-descriptions :items="statusItems" />
+          <t-divider style="margin:12px 0" />
+          <t-link
+            theme="primary"
+            href="https://u.yunjingl2tp.com/sk5line/index"
+            target="_blank"
+            hover="color"
+          >
+            <template #prefix-icon><t-icon name="swap" /></template>
+            住宅IP切换（登录云镜手动换IP）
+          </t-link>
         </t-card>
       </t-col>
       <t-col :span="6">
