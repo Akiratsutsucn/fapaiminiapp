@@ -13,8 +13,21 @@ App({
             this.globalData.token = token;
             this.globalData.refreshToken = wx.getStorageSync('refresh_token') || '';
         }
-        const systemInfo = wx.getSystemInfoSync();
-        this.globalData.systemInfo = systemInfo;
+        try {
+            const windowInfo = wx.getWindowInfo();
+            const systemInfo = wx.getSystemSetting();
+            const deviceInfo = wx.getDeviceInfo();
+            const appBaseInfo = wx.getAppBaseInfo();
+            this.globalData.systemInfo = {
+                ...windowInfo,
+                ...systemInfo,
+                ...deviceInfo,
+                ...appBaseInfo,
+            };
+        }
+        catch (e) {
+            this.globalData.systemInfo = wx.getSystemInfoSync();
+        }
     },
     setToken(accessToken, refreshToken) {
         this.globalData.token = accessToken;
