@@ -68,19 +68,46 @@ Page({
 
   async loadUserData() {
     try {
+      // 第一批：核心数据（用户信息+统计），并发加载
       const [userInfo, stats] = await Promise.all([
-        getUserProfile().catch(() => null),
-        getUserStats().catch(() => ({ favorite_count: 0, participated_count: 0, won_count: 0 })),
+        getUserProfile().catch(err => {
+          console.error('获取用户信息失败:', err);
+          return null;
+        }),
+        getUserStats().catch(err => {
+          console.error('获取统计数据失败:', err);
+          return { favorite_count: 0, participated_count: 0, won_count: 0 };
+        }),
       ]);
-      if (userInfo) this.setData({ userInfo });
-      if (stats) this.setData({ stats });
-      getRecommendationUnread().then((r: any) => this.setData({ recUnread: (r && r.unread) || 0 })).catch(() => {});
-      const role = (userInfo && (userInfo as any).role) || '';
-      if (role === 'agent' || role === 'salesperson') {
-        getMyDemandsUnread().then((r: any) => this.setData({ demandUnread: (r && r.unread) || 0 })).catch(() => {});
+
+      if (userInfo) {
+        this.setData({ userInfo });
       }
+      if (stats) {
+        this.setData({ stats });
+      }
+
+      // 第二批：未读数（非关键），并发加载，不阻塞页面
+      const role = (userInfo && (userInfo as any).role) || '';
+      Promise.all([
+        getRecommendationUnread()
+          .then((r: any) => this.setData({ recUnread: (r && r.unread) || 0 }))
+          .catch(err => {
+            console.error('获取推荐未读数失败:', err);
+            this.setData({ recUnread: 0 });
+          }),
+        (role === 'agent' || role === 'salesperson')
+          ? getMyDemandsUnread()
+              .then((r: any) => this.setData({ demandUnread: (r && r.unread) || 0 }))
+              .catch(err => {
+                console.error('获取需求未读数失败:', err);
+                this.setData({ demandUnread: 0 });
+              })
+          : Promise.resolve(),
+      ]);
     } catch (e) {
       console.error('加载用户数据失败:', e);
+      wx.showToast({ title: '加载失败，请稍后重试', icon: 'none', duration: 2000 });
     }
   },
 

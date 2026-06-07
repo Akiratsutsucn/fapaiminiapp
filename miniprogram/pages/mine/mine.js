@@ -65,22 +65,42 @@ Page({
     async loadUserData() {
         try {
             const [userInfo, stats] = await Promise.all([
-                (0, user_1.getUserProfile)().catch(() => null),
-                (0, user_1.getUserStats)().catch(() => ({ favorite_count: 0, participated_count: 0, won_count: 0 })),
+                (0, user_1.getUserProfile)().catch(err => {
+                    console.error('获取用户信息失败:', err);
+                    return null;
+                }),
+                (0, user_1.getUserStats)().catch(err => {
+                    console.error('获取统计数据失败:', err);
+                    return { favorite_count: 0, participated_count: 0, won_count: 0 };
+                }),
             ]);
-            if (userInfo)
+            if (userInfo) {
                 this.setData({ userInfo });
-            if (stats)
-                this.setData({ stats });
-            (0, user_1.getRecommendationUnread)().then((r) => this.setData({ recUnread: (r && r.unread) || 0 })).catch(() => { });
-            // 业务员/代理商：加载分配的客户需求未读数
-            const role = (userInfo && userInfo.role) || '';
-            if (role === 'agent' || role === 'salesperson') {
-                (0, user_1.getMyDemandsUnread)().then((r) => this.setData({ demandUnread: (r && r.unread) || 0 })).catch(() => { });
             }
+            if (stats) {
+                this.setData({ stats });
+            }
+            const role = (userInfo && userInfo.role) || '';
+            Promise.all([
+                (0, user_1.getRecommendationUnread)()
+                    .then((r) => this.setData({ recUnread: (r && r.unread) || 0 }))
+                    .catch(err => {
+                    console.error('获取推荐未读数失败:', err);
+                    this.setData({ recUnread: 0 });
+                }),
+                (role === 'agent' || role === 'salesperson')
+                    ? (0, user_1.getMyDemandsUnread)()
+                        .then((r) => this.setData({ demandUnread: (r && r.unread) || 0 }))
+                        .catch(err => {
+                        console.error('获取需求未读数失败:', err);
+                        this.setData({ demandUnread: 0 });
+                    })
+                    : Promise.resolve(),
+            ]);
         }
         catch (e) {
             console.error('加载用户数据失败:', e);
+            wx.showToast({ title: '加载失败，请稍后重试', icon: 'none', duration: 2000 });
         }
     },
     onGoLogin() {
