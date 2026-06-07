@@ -6,9 +6,6 @@
       <text class="dc-discount" wx:if="{{discount}}">{{discount}}</text>
       <text class="dc-saving" wx:if="{{savingWan}}">立省 {{savingWan}} 万</text>
     </view>
-    <view class="card-hot-corner" wx:elif="{{hotTag}}">
-      <text class="hc-text">{{hotTag}}</text>
-    </view>
   </view>
   <view class="card-body">
     <view class="card-title">{{title}}</view>

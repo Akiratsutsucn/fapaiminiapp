@@ -33,7 +33,6 @@ Component({
             const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
             const rate = p.court_discount_rate || 0;
             const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
-            const hotTag = rate >= 1 ? '超人气' : '';
             this.setData({
                 coverImage: p.cover_image || '/images/default-house.png',
                 statusLabel: (0, format_1.statusLabel)(p.auction_status),

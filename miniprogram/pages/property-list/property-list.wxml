@@ -52,9 +52,6 @@ module.exports.has = function (arr, val) {
     <view class="sort-item {{sortBy === 'starting_price' ? 'active' : ''}}" bindtap="onSort" data-sort="starting_price">
       起拍价<view class="sort-icon {{sortBy === 'starting_price' ? sortOrder : ''}}"></view>
     </view>
-    <view class="sort-item {{sortBy === 'appraisal_price' ? 'active' : ''}}" bindtap="onSort" data-sort="appraisal_price">
-      评估价<view class="sort-icon {{sortBy === 'appraisal_price' ? sortOrder : ''}}"></view>
-    </view>
     <view class="sort-item {{sortBy === 'area' ? 'active' : ''}}" bindtap="onSort" data-sort="area">
       面积<view class="sort-icon {{sortBy === 'area' ? sortOrder : ''}}"></view>
     </view>
