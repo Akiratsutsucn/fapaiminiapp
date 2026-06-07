@@ -7,9 +7,9 @@ const CITY_CENTERS = {
     330100: { lat: 30.2741, lng: 120.1551 },
 };
 const DISTRICTS_BY_CITY = {
-    310000: ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区', '嘉定区', '浦东新区', '金山区', '松江区', '青浦区', '奉贤区', '崇明区'],
-    330200: ['海曙区', '江北区', '江东区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
-    330100: ['上城区', '下城区', '江干区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
+    310000: ['浦东新区', '静安区', '徐汇区', '黄浦区', '长宁区', '虹口区', '杨浦区', '普陀区', '宝山区', '闵行区', '嘉定区', '松江区', '青浦区', '奉贤区', '金山区', '崇明区'],
+    330200: ['海曙区', '江北区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
+    330100: ['上城区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
 };
 const PRICE_RANGES = [
     { label: '100万以下', value: '0-1000000' },
@@ -17,9 +17,6 @@ const PRICE_RANGES = [
     { label: '300-500万', value: '3000000-5000000' },
     { label: '500万以上', value: '5000000-' },
 ];
-function districtsForCity(cityId) {
-    return DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000];
-}
 Page({
     data: {
         latitude: 31.2304,
@@ -27,10 +24,11 @@ Page({
         scale: 12,
         markers: [],
         properties: [],
+        allProperties: [],
         selectedProperty: null,
         loading: false,
         activePanel: '',
-        districtOptions: districtsForCity(310000),
+        districtOptions: [],
         selectedDistrict: '',
         priceRanges: PRICE_RANGES,
         priceRange: '',
@@ -39,7 +37,9 @@ Page({
     onLoad() {
         const app = getApp();
         const cityId = app.globalData.currentCityId || 310000;
-        this.setData({ districtOptions: districtsForCity(cityId) });
+        this.setData({
+            districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000]
+        });
         this.getLocation();
     },
     getLocation() {
@@ -64,10 +64,11 @@ Page({
             if (center && !this.data.latitude) {
                 this.setData({ latitude: center.lat, longitude: center.lng });
             }
-            this.allProperties = items;
-            const filtered = this.applyFilters(items);
-            this.setData({ properties: filtered });
-            this.updateMarkers(filtered);
+            this.setData({
+                allProperties: items,
+                properties: items,
+            });
+            this.updateMarkers(items);
         }
         catch (e) {
             console.error('加载地图标记失败:', e);
@@ -76,26 +77,23 @@ Page({
             this.setData({ loading: false });
         }
     },
-    applyFilters(items) {
-        let result = items || [];
-        const district = this.data.selectedDistrict;
-        if (district) {
-            result = result.filter(p => p.district === district);
+    applyFilters() {
+        const { allProperties, selectedDistrict, priceRange } = this.data;
+        let filtered = allProperties;
+        if (selectedDistrict) {
+            filtered = filtered.filter((p) => p.district === selectedDistrict);
         }
-        const range = this.data.priceRange;
-        if (range) {
-            const [min, max] = range.split('-');
-            const minV = min ? parseInt(min) : 0;
-            const maxV = max ? parseInt(max) : Infinity;
-            result = result.filter(p => {
+        if (priceRange) {
+            const [min, max] = priceRange.split('-').map(s => s ? parseInt(s) : null);
+            filtered = filtered.filter((p) => {
                 const price = p.starting_price || 0;
-                return price >= minV && price <= maxV;
+                if (min && price < min)
+                    return false;
+                if (max && price > max)
+                    return false;
+                return true;
             });
         }
-        return result;
-    },
-    refreshMarkers() {
-        const filtered = this.applyFilters(this.allProperties || []);
         this.setData({ properties: filtered });
         this.updateMarkers(filtered);
     },
@@ -107,15 +105,22 @@ Page({
         this.setData({ activePanel: '' });
     },
     onSelectDistrict(e) {
-        const val = e.currentTarget.dataset.value;
-        this.setData({ selectedDistrict: val, activePanel: '' });
-        this.refreshMarkers();
+        const value = e.currentTarget.dataset.value;
+        this.setData({
+            selectedDistrict: value,
+            activePanel: '',
+        });
+        this.applyFilters();
     },
     onSelectPrice(e) {
-        const val = e.currentTarget.dataset.value;
+        const value = e.currentTarget.dataset.value;
         const label = e.currentTarget.dataset.label;
-        this.setData({ priceRange: val, priceLabel: label, activePanel: '' });
-        this.refreshMarkers();
+        this.setData({
+            priceRange: value,
+            priceLabel: label,
+            activePanel: '',
+        });
+        this.applyFilters();
     },
     updateMarkers(items) {
         const markers = items

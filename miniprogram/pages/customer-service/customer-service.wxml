@@ -42,6 +42,4 @@
     </view>
     <button class="cs-submit-btn btn-primary" bindtap="onSubmitMessage" loading="{{submitting}}">提交留言</button>
   </view>
-
-  <button class="cs-cancel btn-outline" bindtap="onCancel">返回</button>
 </view>
