@@ -10,6 +10,11 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=False,
+    # MySQL 会按 wait_timeout 单方面掐断空闲连接，池中陈旧连接被取用时报
+    # 2013 Lost connection，表现为前端「请求失败」随机高发。pre_ping 因 aiomysql
+    # ping() 签名不兼容不可用，改用 pool_recycle：连接存活超 1 小时即回收重建。
+    pool_recycle=3600,
+    pool_timeout=30,
     **(
         {"connect_args": {"check_same_thread": False}} if settings.DB_TYPE == "sqlite" else {}
     ),

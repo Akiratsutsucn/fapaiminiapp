@@ -57,7 +57,7 @@ function request(options) {
         wx.showLoading({ title: '加载中...', mask: true });
     }
     return new Promise((resolve, reject) => {
-        const doRequest = (token) => {
+        const doRequest = (token, retriesLeft = 2) => {
             const headers = { 'Content-Type': 'application/json', ...header };
             if (auth && token) {
                 headers['Authorization'] = `Bearer ${token}`;
@@ -68,6 +68,7 @@ function request(options) {
                 method,
                 data,
                 header: headers,
+                timeout: 15000,
                 success(res) {
                     var _a, _b;
                     if (showLoading)
@@ -109,6 +110,10 @@ function request(options) {
                     }
                 },
                 fail(err) {
+                    if (retriesLeft > 0) {
+                        setTimeout(() => doRequest(token, retriesLeft - 1), (3 - retriesLeft) * 400);
+                        return;
+                    }
                     if (showLoading)
                         wx.hideLoading();
                     wx.showToast({ title: '网络异常', icon: 'none' });

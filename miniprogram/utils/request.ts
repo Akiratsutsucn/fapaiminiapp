@@ -73,7 +73,7 @@ export function request<T = any>(options: RequestOptions): Promise<T> {
   }
 
   return new Promise((resolve, reject) => {
-    const doRequest = (token: string) => {
+    const doRequest = (token: string, retriesLeft = 2) => {
       const headers: Record<string, string> = { 'Content-Type': 'application/json', ...header };
       if (auth && token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -86,6 +86,7 @@ export function request<T = any>(options: RequestOptions): Promise<T> {
         method,
         data,
         header: headers,
+        timeout: 15000,
         success(res: any) {
           if (showLoading) wx.hideLoading();
 
@@ -124,6 +125,12 @@ export function request<T = any>(options: RequestOptions): Promise<T> {
           }
         },
         fail(err) {
+          // 网络瞬时抖动（超时/断流）自动重试，最多 2 次，间隔递增。
+          // 大幅降低「请求失败/网络异常」的偶发弹窗。
+          if (retriesLeft > 0) {
+            setTimeout(() => doRequest(token, retriesLeft - 1), (3 - retriesLeft) * 400);
+            return;
+          }
           if (showLoading) wx.hideLoading();
           wx.showToast({ title: '网络异常', icon: 'none' });
           reject(err);
