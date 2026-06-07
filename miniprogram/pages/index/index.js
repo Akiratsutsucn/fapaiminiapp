@@ -24,7 +24,6 @@ const PRICE_RANGES = [
 Page({
     data: {
         banners: [],
-        allBanners: [],
         stats: { bargain_count: 0, upcoming_count: 0, yesterday_listed: 0, yesterday_sold: 0 },
         articles: [],
         properties: [],
@@ -60,16 +59,7 @@ Page({
         }
     },
     onPullDownRefresh() {
-        // 下拉刷新时，若 banner 多于 3 张，随机换一批 3 张展示
-        this.reshuffleBanners();
         this.loadData().finally(() => wx.stopPullDownRefresh());
-    },
-    reshuffleBanners() {
-        const all = this.data.allBanners || [];
-        if (all.length > 3) {
-            const shuffled = [...all].sort(() => Math.random() - 0.5).slice(0, 3);
-            this.setData({ banners: shuffled });
-        }
     },
     async loadData() {
         const cityId = this.data.currentCityId;
@@ -81,11 +71,7 @@ Page({
                 (0, property_1.getCities)().catch(() => []),
             ]);
             const safeCities = (cities && cities.length > 0) ? cities : (this.data.cities.length > 0 ? this.data.cities : DEFAULT_CITIES);
-            const allBanners = banners || [];
-            const shownBanners = allBanners.length > 3
-                ? [...allBanners].sort(() => Math.random() - 0.5).slice(0, 3)
-                : allBanners;
-            this.setData({ banners: shownBanners, allBanners, stats, articles, cities: safeCities });
+            this.setData({ banners, stats, articles, cities: safeCities });
             this.loadProperties();
         }
         catch (e) {

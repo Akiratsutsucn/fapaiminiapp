@@ -221,7 +221,7 @@ Page({
                 level = '接近评估价，仍有一定折扣';
             else
                 level = '基本贴近评估价';
-            out.priceInsight = `起拍总价 ${startWan} 万元，较评估价 ${apprWan} 万元低 ${diff} 万元（约 ${discountPct}%），${level}。`;
+            out.priceInsight = `起拍总价 ${startWan} 万元，较评估价 ${apprWan} 万元低 ${diff} 万元（约 ${discount} 折），${level}。`;
         }
         else if (p.starting_price) {
             const startWan = (p.starting_price / 10000).toFixed(1);
@@ -334,8 +334,9 @@ Page({
         this.setData({ noticeExpanded: !this.data.noticeExpanded });
     },
     onRiskTap(e) {
+        var _a, _b;
         const idx = e.currentTarget.dataset.index;
-        const tag = this.data.property && this.data.property.risk_tags && this.data.property.risk_tags[idx];
+        const tag = (_b = (_a = this.data.property) === null || _a === void 0 ? void 0 : _a.risk_tags) === null || _b === void 0 ? void 0 : _b[idx];
         if (!tag)
             return;
         wx.showModal({
@@ -482,7 +483,8 @@ Page({
                 if (res.tapIndex === 0) {
                     const wan = price ? (price / 10000).toFixed(0) : '';
                     wx.navigateTo({ url: `/pages/mortgage-calculator/mortgage-calculator?total=${wan}` });
-                } else if (res.tapIndex === 1) {
+                }
+                else if (res.tapIndex === 1) {
                     wx.navigateTo({ url: `/pages/tax-calculator/tax-calculator?price=${price}&area=${area}` });
                 }
             },

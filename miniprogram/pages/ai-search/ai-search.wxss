@@ -1,0 +1,171 @@
+.ai-search-page {
+  min-height: 100vh;
+  background: #f5f6f8;
+  padding: 32rpx;
+}
+
+.as-header {
+  text-align: center;
+  margin-bottom: 48rpx;
+}
+
+.as-icon {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+}
+
+.as-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1a2f52;
+  margin-bottom: 8rpx;
+}
+
+.as-subtitle {
+  display: block;
+  font-size: 24rpx;
+  color: #8a8a8a;
+}
+
+.as-input-wrap {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.as-input {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 28rpx;
+  line-height: 44rpx;
+  color: #333;
+}
+
+.as-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.as-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.as-btn-voice {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.as-btn-voice.recording {
+  background: #ff6b35;
+  color: #fff;
+}
+
+.as-btn-search {
+  background: #ff6b35;
+  color: #fff;
+}
+
+.voice-icon {
+  width: 32rpx;
+  height: 32rpx;
+  background: currentColor;
+}
+
+.as-examples {
+  margin-bottom: 32rpx;
+}
+
+.as-examples-title {
+  display: block;
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+}
+
+.as-example-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.as-tag {
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.as-parsed {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.as-parsed-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.as-parsed-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.as-parsed-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: #f0f0f0;
+  border-radius: 8rpx;
+}
+
+.as-parsed-item .label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.as-parsed-item .value {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.as-results-header {
+  margin-bottom: 24rpx;
+}
+
+.as-results-count {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.as-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.as-empty {
+  text-align: center;
+  padding: 120rpx 0;
+  font-size: 28rpx;
+  color: #999;
+}

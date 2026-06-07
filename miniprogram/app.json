@@ -4,6 +4,7 @@
     "pages/agreement/agreement",
     "pages/privacy/privacy",
     "pages/index/index",
+    "pages/ai-search/ai-search",
     "pages/property-list/property-list",
     "pages/property-detail/property-detail",
     "pages/article/article",

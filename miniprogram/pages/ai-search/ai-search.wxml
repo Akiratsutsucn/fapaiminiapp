@@ -1,0 +1,89 @@
+<view class="ai-search-page">
+  <view class="as-header">
+    <view class="as-icon">🤖</view>
+    <text class="as-title">AI 智能选房</text>
+    <text class="as-subtitle">说出你的需求，AI 帮你找房</text>
+  </view>
+
+  <!-- 输入区域 -->
+  <view class="as-input-wrap">
+    <textarea
+      class="as-input"
+      placeholder="例如：徐汇区三室两厅500万以下"
+      value="{{query}}"
+      bindinput="onQueryInput"
+      maxlength="100"
+      auto-height
+    />
+    <view class="as-actions">
+      <button class="as-btn as-btn-voice" bindtap="onVoiceInput" wx:if="{{!recording}}">
+        <view class="voice-icon"></view>
+        <text>语音输入</text>
+      </button>
+      <button class="as-btn as-btn-voice recording" bindtap="onStopRecord" wx:if="{{recording}}">
+        <view class="voice-icon"></view>
+        <text>停止录音</text>
+      </button>
+      <button class="as-btn as-btn-search" bindtap="onSearch" loading="{{searching}}">搜索</button>
+    </view>
+  </view>
+
+  <!-- 示例引导 -->
+  <view class="as-examples" wx:if="{{!searched}}">
+    <text class="as-examples-title">试试这样说：</text>
+    <view class="as-example-tags">
+      <view class="as-tag" bindtap="onTapExample" data-text="浦东新区两室一厅300万以下">浦东新区两室一厅300万以下</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="徐汇区100平以上捡漏房">徐汇区100平以上捡漏房</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="静安区即将开拍的住宅">静安区即将开拍的住宅</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="宁波江北区200到300万">宁波江北区200到300万</view>
+    </view>
+  </view>
+
+  <!-- 解析结果 -->
+  <view class="as-parsed" wx:if="{{parsed && Object.keys(parsed).length > 0}}">
+    <text class="as-parsed-title">AI 理解为：</text>
+    <view class="as-parsed-items">
+      <view class="as-parsed-item" wx:if="{{parsed.district}}">
+        <text class="label">区域</text>
+        <text class="value">{{parsed.district}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.layout}}">
+        <text class="label">户型</text>
+        <text class="value">{{parsed.layout}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.price_min || parsed.price_max}}">
+        <text class="label">价格</text>
+        <text class="value">{{priceText}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.area_min || parsed.area_max}}">
+        <text class="label">面积</text>
+        <text class="value">{{areaText}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.property_type}}">
+        <text class="label">类型</text>
+        <text class="value">{{parsed.property_type}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.auction_status}}">
+        <text class="label">状态</text>
+        <text class="value">{{parsed.auction_status}}</text>
+      </view>
+      <view class="as-parsed-item" wx:if="{{parsed.discount_min}}">
+        <text class="label">标签</text>
+        <text class="value">捡漏房源</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="as-results" wx:if="{{searched}}">
+    <view class="as-results-header">
+      <text class="as-results-count">找到 {{total}} 套房源</text>
+    </view>
+    <view class="as-list" wx:if="{{list.length > 0}}">
+      <house-card wx:for="{{list}}" wx:key="id" property="{{item}}" />
+    </view>
+    <view class="as-empty" wx:if="{{list.length === 0 && !searching}}">
+      <text>暂无匹配房源，试试调整条件</text>
+    </view>
+  </view>
+</view>

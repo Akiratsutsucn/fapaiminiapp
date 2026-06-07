@@ -2,15 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const auth_1 = require("../../services/auth");
 const property_1 = require("../../services/property");
-// 备案号（工信部 + 公安）。小程序备案号对应"小程序"主体备案。
-const ICP_NUMBER = "浙ICP备2026034931号-1X";
-const POLICE_NUMBER = "浙公网安备33010202005787号";
 Page({
     data: {
         loading: false,
         agreed: false,
-        icpNumber: ICP_NUMBER,
-        policeNumber: POLICE_NUMBER,
         summary: {
             onAuctionText: '--',
             bargain: '--',
@@ -68,19 +63,5 @@ Page({
     },
     onViewPrivacy() {
         wx.navigateTo({ url: '/pages/privacy/privacy' });
-    },
-    onViewICP() {
-        // 备案号公示：点击复制，便于用户到 beian.miit.gov.cn 核验
-        wx.setClipboardData({
-            data: this.data.icpNumber,
-            success: () => wx.showToast({ title: '备案号已复制', icon: 'none' }),
-        });
-    },
-    onViewPolice() {
-        // 公安网安备号公示：点击复制，便于用户到 beian.mps.gov.cn 核验
-        wx.setClipboardData({
-            data: this.data.policeNumber,
-            success: () => wx.showToast({ title: '网安备号已复制', icon: 'none' }),
-        });
     },
 });

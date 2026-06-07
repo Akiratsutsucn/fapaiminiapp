@@ -8,11 +8,8 @@ Page({
         try {
             const res = await (0, user_1.getMyDemands)(1, 50);
             const statusMap = { '待处理': 'pending', '已分配': 'assigned', '已完成': 'done' };
-            const list = (res.items || []).map((d) => Object.assign({}, d, {
-                statusClass: statusMap[d.status] || 'pending',
-            }));
+            const list = (res.items || []).map((d) => ({ ...d, statusClass: statusMap[d.status] || 'pending' }));
             this.setData({ list });
-            // 进入页面即把未读标记为已读（消角标）
             const unread = (res.items || []).filter((d) => !d.assign_read);
             for (const d of unread) {
                 (0, user_1.markMyDemandRead)(d.id).catch(() => { });

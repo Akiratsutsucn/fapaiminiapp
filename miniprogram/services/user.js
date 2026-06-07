@@ -56,7 +56,9 @@ async function markRecommendationRead(recId) {
     return (0, request_1.request)({ url: `/user/recommendations/${recId}/read`, method: 'POST' });
 }
 async function getMyDemands(page = 1, pageSize = 50) {
-    return (0, request_1.request)({ url: `/user/my-demands?page=${page}&page_size=${pageSize}` });
+    return (0, request_1.request)({
+        url: `/user/my-demands?page=${page}&page_size=${pageSize}`,
+    });
 }
 async function getMyDemandsUnread() {
     return (0, request_1.request)({ url: '/user/my-demands/unread-count' });

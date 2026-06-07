@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "AI 智能选房",
+  "usingComponents": {
+    "house-card": "/components/house-card/house-card"
+  }
+}
