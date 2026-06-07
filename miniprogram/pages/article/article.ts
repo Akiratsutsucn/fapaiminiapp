@@ -35,8 +35,19 @@ Page({
     if (!html) return '';
     let s = html;
     s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
-    // 图片自适应宽度
-    s = s.replace(/<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:12px auto;"');
+    // 公众号原文 <img> 常自带 width/height 属性或内联固定宽度，
+    // 在 rich-text 中优先级高于注入样式，导致图片超出屏幕。
+    // 先剥离图片上的 width/height 属性与原有 style，再统一注入自适应样式。
+    s = s.replace(/<img[^>]*>/gi, (tag) => {
+      let t = tag
+        .replace(/\s(width|height)\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/\s(width|height)\s*=\s*\d+/gi, '')
+        .replace(/\sstyle\s*=\s*["'][^"']*["']/gi, '');
+      return t.replace(
+        /<img/i,
+        '<img style="max-width:100%;width:100%;height:auto;display:block;margin:12px auto;box-sizing:border-box;"'
+      );
+    });
     return s;
   },
 

@@ -91,13 +91,20 @@
   font-size: 22rpx;
   color: var(--blue-200);
   margin-top: 6rpx;
-  letter-spacing: 4rpx;
+  letter-spacing: 1rpx;
+  line-height: 1.4;
 }
 
 .login-brand {
   flex-direction: row;
   align-items: center;
   align-self: flex-start;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .login-brand .brand-name,

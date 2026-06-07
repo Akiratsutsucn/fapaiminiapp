@@ -91,8 +91,19 @@ async def get_stats(
     db: AsyncSession = Depends(get_session),
 ):
     uid = int(user_data["sub"])
+    # 关注房源计数需与「关注房源」列表口径一致：仅统计仍在架（可参拍/可访问详情）的房源。
+    # 房源下架（已结束/已撤回/流拍等，详情接口走 _mobile_filter 返回 404）后，
+    # 列表页会过滤掉它，计数也必须同步排除，否则数字与列表对不上、不会随下架减少。
+    from ...core.auction_status import effective_status_sql, MOBILE_DETAIL_STATUSES
+    from ...models.property import Property
     fav_count = (await db.execute(
-        select(func.count(UserFavorite.id)).where(UserFavorite.user_id == uid)
+        select(func.count(UserFavorite.id))
+        .join(Property, Property.id == UserFavorite.target_id)
+        .where(
+            UserFavorite.user_id == uid,
+            UserFavorite.favorite_type == "property",
+            effective_status_sql().in_(MOBILE_DETAIL_STATUSES),
+        )
     )).scalar() or 0
     return UserStats(favorite_count=fav_count)
 

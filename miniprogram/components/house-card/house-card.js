@@ -44,7 +44,7 @@ Component({
                 district: p.district || '',
                 propertyType: p.property_type || '',
                 auctionRound: p.auction_round || '',
-                area: p.area ? p.area.toFixed(2) : '',
+                area: p.area ? String(Math.round(p.area)) : '',
                 layout: p.layout || '',
                 title: p.title || '',
                 discount,

@@ -12,7 +12,7 @@
 
   <!-- ============ Hero 大字报 ============ -->
   <view class="hero">
-    <view class="hero-tagline">FAPAI · 立足上海 / 宁波 / 杭州　泛长三角地区　辐射全国法拍市场</view>
+    <view class="hero-tagline">FAPAI · 立足长三角地区，辐射全国法拍市场</view>
     <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
     <view class="hero-gild"></view>
     <view class="hero-sub">同步自 阿里 · 京东 · 公拍 等权威平台房源数据</view>
@@ -105,6 +105,10 @@
 
     <view wx:if="{{properties.length > 0}}">
       <house-card wx:for="{{properties}}" wx:key="id" property="{{item}}" />
+      <!-- 到底提示 -->
+      <view class="list-bottom-line">
+        <text>— 我是底线 —</text>
+      </view>
     </view>
     <view class="empty-state" wx:else>
       <text>暂无房源数据</text>

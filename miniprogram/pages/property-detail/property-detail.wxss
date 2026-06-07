@@ -595,6 +595,32 @@
   border-radius: var(--radius-sm);
   margin-top: var(--spacing-sm);
 }
+.map-wrap {
+  position: relative;
+  margin-top: var(--spacing-sm);
+}
+.map-wrap .map-canvas {
+  margin-top: 0;
+  pointer-events: none;
+}
+.map-zoom-hint {
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 22rpx;
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+.map-zoom-icon {
+  font-size: 24rpx;
+  line-height: 1;
+}
 
 /* 板块分析浮层 */
 .analysis-overlay {

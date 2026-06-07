@@ -4,13 +4,21 @@
   min-height: 100vh;
 }
 
+.list-bottom-line {
+  text-align: center;
+  padding: 40rpx 0 48rpx;
+  font-size: 24rpx;
+  color: var(--text-hint);
+  letter-spacing: 2rpx;
+}
+
 /* ===== 城市栏 ===== */
 .city-bar {
   padding: var(--spacing-xs) var(--spacing-md);
   background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .city-switch-hint {

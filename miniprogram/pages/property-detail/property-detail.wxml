@@ -245,16 +245,22 @@
     <!-- 房源位置地图（有坐标时才显示） -->
     <view class="map-section" wx:if="{{property.lat && property.lng}}">
       <view class="section-title">房源位置</view>
-      <map
-        class="map-canvas"
-        latitude="{{property.lat}}"
-        longitude="{{property.lng}}"
-        scale="15"
-        markers="{{mapMarkers}}"
-        show-location="{{false}}"
-        enable-scroll="{{true}}"
-        enable-zoom="{{true}}"
-      ></map>
+      <view class="map-wrap" bindtap="onOpenMap">
+        <map
+          class="map-canvas"
+          latitude="{{property.lat}}"
+          longitude="{{property.lng}}"
+          scale="15"
+          markers="{{mapMarkers}}"
+          show-location="{{false}}"
+          enable-scroll="{{false}}"
+          enable-zoom="{{false}}"
+        ></map>
+        <view class="map-zoom-hint">
+          <text class="map-zoom-icon">⛶</text>
+          <text>点击放大查看</text>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{amenities && amenities.amenities && Object.keys(amenities.amenities).length > 0}}">

@@ -397,6 +397,23 @@ Page({
     onContact() {
         wx.navigateTo({ url: '/pages/customer-service/customer-service' });
     },
+    onOpenMap() {
+        const p = this.data.property;
+        if (!p || !p.lat || !p.lng) {
+            wx.showToast({ title: '暂无位置信息', icon: 'none' });
+            return;
+        }
+        const name = p.community_name || p.title || '房源位置';
+        const address = [p.district, p.sub_district, p.ring_road].filter(Boolean).join('') || name;
+        wx.openLocation({
+            latitude: Number(p.lat),
+            longitude: Number(p.lng),
+            scale: 18,
+            name,
+            address,
+            fail: () => wx.showToast({ title: '地图打开失败', icon: 'none' }),
+        });
+    },
     async onAnalysis() {
         if (this.data.analysisUrl) {
             this.openExternalLink(this.data.analysisUrl);

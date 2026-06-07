@@ -436,6 +436,25 @@ Page({
     wx.navigateTo({ url: '/pages/customer-service/customer-service' });
   },
 
+  // 点击地图：打开微信原生全屏地图，用户可自由放大/缩放查看周边
+  onOpenMap() {
+    const p: any = this.data.property;
+    if (!p || !p.lat || !p.lng) {
+      wx.showToast({ title: '暂无位置信息', icon: 'none' });
+      return;
+    }
+    const name = p.community_name || p.title || '房源位置';
+    const address = [p.district, p.sub_district, p.ring_road].filter(Boolean).join('') || name;
+    wx.openLocation({
+      latitude: Number(p.lat),
+      longitude: Number(p.lng),
+      scale: 18,
+      name,
+      address,
+      fail: () => wx.showToast({ title: '地图打开失败', icon: 'none' }),
+    });
+  },
+
   async onAnalysis() {
     if (this.data.analysisUrl) {
       this.openExternalLink(this.data.analysisUrl);
