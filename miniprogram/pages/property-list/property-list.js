@@ -163,13 +163,22 @@ Page({
                     params.price_max = parseInt(max);
             }
             const result = await (0, property_1.getProperties)(params);
-            const list = this.data.page === 1 ? result.items : [...this.data.list, ...result.items];
-            this.setData({
-                list,
-                total: result.total,
-                hasMore: this.data.page < result.total_pages,
-                loading: false,
-            });
+            if (this.data.page === 1) {
+                this.setData({
+                    list: result.items,
+                    total: result.total,
+                    hasMore: this.data.page < result.total_pages,
+                    loading: false,
+                });
+            }
+            else {
+                // 上拉加载只下发新增的一页（路径语法增量追加），避免把已渲染的
+                // 全量列表重复 setData。列表越长收益越大，显著缓解滚动/切换跳帧。
+                const start = this.data.list.length;
+                const patch = { total: result.total, hasMore: this.data.page < result.total_pages, loading: false };
+                result.items.forEach((it, i) => { patch[`list[${start + i}]`] = it; });
+                this.setData(patch);
+            }
         }
         catch (e) {
             this.setData({ loading: false });
