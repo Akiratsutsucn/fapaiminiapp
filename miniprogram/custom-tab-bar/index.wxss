@@ -31,6 +31,16 @@
   gap: 4rpx;
 }
 
+/* 首页按钮向右靠拢10rpx */
+.tab-item:first-child {
+  margin-right: -10rpx;
+}
+
+/* 我的按钮向左靠拢10rpx */
+.tab-item:last-child {
+  margin-left: -10rpx;
+}
+
 .tab-icon {
   width: 48rpx;
   height: 48rpx;
