@@ -7,12 +7,11 @@
     <text class="tab-text {{selected === 0 ? 'active' : ''}}">首页</text>
   </view>
 
-  <!-- 中间：AI选房（敬请期待） -->
+  <!-- 中间：AI选房 -->
   <view class="tab-center" bindtap="onAiSelect">
     <view class="ai-btn">
       <text class="ai-btn-text">AI选房</text>
     </view>
-    <text class="ai-btn-badge">敬请期待</text>
   </view>
 
   <!-- 我的 -->

@@ -10,10 +10,8 @@ Component({
     },
 
     onAiSelect() {
-      wx.showToast({
-        title: 'AI选房功能开发中，敬请期待',
-        icon: 'none',
-        duration: 2000,
+      wx.navigateTo({
+        url: '/pages/ai-search/ai-search',
       });
     },
   },
