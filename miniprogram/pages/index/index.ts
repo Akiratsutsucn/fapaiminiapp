@@ -49,6 +49,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 0 });
+    }
     const app = getApp<IAppOption>();
     if (app.globalData.currentCityId !== this.data.currentCityId) {
       this.setData({

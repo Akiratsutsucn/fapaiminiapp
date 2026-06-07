@@ -1,0 +1,90 @@
+.tab-bar {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  height: calc(100rpx + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  z-index: 999;
+}
+
+.tab-bar-border {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1rpx;
+  background: rgba(0, 0, 0, 0.08);
+  transform: scaleY(0.5);
+}
+
+.tab-item {
+  flex: 1;
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.tab-text {
+  font-size: 22rpx;
+  color: #8a8a8a;
+  line-height: 1;
+}
+
+.tab-text.active {
+  color: #FF6B35;
+}
+
+/* 中间 AI选房 凸起圆形按钮 */
+.tab-center {
+  flex: 1;
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.ai-btn {
+  position: absolute;
+  top: -36rpx;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF8A50 0%, #FF6B35 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.45);
+  border: 6rpx solid #ffffff;
+}
+
+.ai-btn-text {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1rpx;
+}
+
+.ai-btn-badge {
+  position: absolute;
+  top: 80rpx;
+  font-size: 18rpx;
+  color: #FF6B35;
+  background: rgba(255, 107, 53, 0.1);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  white-space: nowrap;
+  line-height: 1.4;
+}

@@ -39,20 +39,16 @@ Page({
             return '';
         let s = html;
         s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
-        // 去掉图片上会撑破屏幕的固定宽高属性与内联宽高样式
+        // 公众号原文 <img> 常自带 width/height 属性或内联固定宽度，
+        // 在 rich-text 中优先级高于注入样式，导致图片超出屏幕。
+        // 先剥离图片上的 width/height 属性与原有 style，再统一注入唯一一个自适应样式
+        // （避免出现两个 style 属性导致解析行为不确定、原尺寸生效）。
         s = s.replace(/<img[^>]*>/gi, (tag) => {
-            let t = tag;
-            // 移除 width/height 属性（含 data-w/data-width 等常见公众号属性）
-            t = t.replace(/\s(?:width|height|data-w|data-width|data-ratio)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-            // 移除内联样式里的 width/height/max-width，避免覆盖自适应
-            t = t.replace(/style\s*=\s*("|')([^"']*)\1/gi, (m, q, css) => {
-                const cleaned = css.replace(/(?:max-)?width\s*:[^;]+;?/gi, '').replace(/height\s*:[^;]+;?/gi, '');
-                return `style=${q}${cleaned}${q}`;
-            });
-            return t;
+            let t = tag
+                .replace(/\s(?:width|height|data-w|data-width|data-ratio)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+                .replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, '');
+            return t.replace(/<img/i, '<img style="max-width:100%;width:100%;height:auto;display:block;margin:12px auto;box-sizing:border-box;"');
         });
-        // 统一加上自适应样式
-        s = s.replace(/<img/gi, '<img style="max-width:100%;width:100%;height:auto;display:block;margin:12px auto;"');
         return s;
     },
     loadLikeState(id) {
