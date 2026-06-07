@@ -303,6 +303,7 @@ async def map_markers(
         "auction_status": effective_status(r.auction_status, r.auction_start_time, r.auction_end_time),
         "property_type": r.property_type,
         "area": r.area,
+        "district": r.district,
     } for r in rows]
 
 
