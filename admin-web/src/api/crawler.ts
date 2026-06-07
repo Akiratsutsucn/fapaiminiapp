@@ -8,6 +8,17 @@ export interface CrawlerStatus {
   [key: string]: any
 }
 
+export interface CookieStatus {
+  configured: boolean
+  preview: string
+}
+
+export interface CookiesStatusResponse {
+  taobao: CookieStatus
+  jd: CookieStatus
+  gpai: CookieStatus
+}
+
 export function getCrawlerStatus() {
   return http.get<CrawlerStatus>('/crawler/status').then(r => r.data)
 }
@@ -18,4 +29,12 @@ export function listCrawlerTasks() {
 
 export function triggerCrawler(body: { platform?: string } = {}) {
   return http.post('/crawler/trigger', body).then(r => r.data)
+}
+
+export function getCookiesStatus() {
+  return http.get<CookiesStatusResponse>('/crawler/cookies').then(r => r.data)
+}
+
+export function updateCookie(platform: string, cookie: string) {
+  return http.post('/crawler/cookies', { platform, cookie }).then(r => r.data)
 }

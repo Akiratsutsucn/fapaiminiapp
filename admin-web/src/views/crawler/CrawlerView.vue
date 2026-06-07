@@ -27,6 +27,34 @@
           </t-space>
         </t-card>
       </t-col>
+      <t-col :span="12">
+        <t-card title="Cookie管理">
+          <t-space direction="vertical" style="width:100%">
+            <div v-for="platform in platforms" :key="platform.key" style="margin-bottom:16px">
+              <div style="display:flex;align-items:center;margin-bottom:8px">
+                <span style="font-weight:500;margin-right:8px">{{ platform.name }}</span>
+                <t-tag :theme="cookiesStatus[platform.key]?.configured ? 'success' : 'warning'" size="small">
+                  {{ cookiesStatus[platform.key]?.configured ? '已配置' : '未配置' }}
+                </t-tag>
+              </div>
+              <t-textarea
+                v-model="cookieInputs[platform.key]"
+                :placeholder="`粘贴${platform.name}的Cookie字符串`"
+                :autosize="{ minRows: 2, maxRows: 4 }"
+                style="margin-bottom:8px"
+              />
+              <t-button
+                size="small"
+                theme="primary"
+                @click="onUpdateCookie(platform.key)"
+                :loading="cookieLoading[platform.key]"
+              >
+                保存Cookie
+              </t-button>
+            </div>
+          </t-space>
+        </t-card>
+      </t-col>
     </t-row>
 
     <t-card title="任务记录">
@@ -52,13 +80,31 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { getCrawlerStatus, listCrawlerTasks, triggerCrawler } from '@/api/crawler'
+import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie } from '@/api/crawler'
 
 const triggerLoading = ref(false)
 const taskLoading = ref(false)
 const tasks = ref<any[]>([])
 const statsVisible = ref(false)
 const currentStats = ref<any>(null)
+
+const platforms = [
+  { key: 'taobao', name: '淘宝拍卖' },
+  { key: 'jd', name: '京东拍卖' },
+  { key: 'gpai', name: '公拍网' },
+]
+
+const cookiesStatus = ref<any>({})
+const cookieInputs = ref<any>({
+  taobao: '',
+  jd: '',
+  gpai: '',
+})
+const cookieLoading = ref<any>({
+  taobao: false,
+  jd: false,
+  gpai: false,
+})
 
 function showStats(row: any) {
   currentStats.value = row.stats_summary
@@ -79,7 +125,7 @@ const taskColumns = [
   { colKey: 'op', title: '详情', width: 80 },
 ]
 
-onMounted(() => { loadStatus(); loadTasks() })
+onMounted(() => { loadStatus(); loadTasks(); loadCookiesStatus() })
 
 async function loadStatus() {
   try {
@@ -97,6 +143,35 @@ async function loadTasks() {
     const data: any = await listCrawlerTasks()
     tasks.value = data
   } finally { taskLoading.value = false }
+}
+
+async function loadCookiesStatus() {
+  try {
+    const data: any = await getCookiesStatus()
+    cookiesStatus.value = data
+  } catch (err) {
+    console.error('加载Cookie状态失败:', err)
+  }
+}
+
+async function onUpdateCookie(platform: string) {
+  const cookie = cookieInputs.value[platform]?.trim()
+  if (!cookie) {
+    MessagePlugin.warning('请输入Cookie内容')
+    return
+  }
+
+  cookieLoading.value[platform] = true
+  try {
+    await updateCookie(platform, cookie)
+    MessagePlugin.success('Cookie已保存')
+    cookieInputs.value[platform] = ''
+    await loadCookiesStatus()
+  } catch (err: any) {
+    MessagePlugin.error(err.message || 'Cookie保存失败')
+  } finally {
+    cookieLoading.value[platform] = false
+  }
 }
 
 async function onTriggerAll() {

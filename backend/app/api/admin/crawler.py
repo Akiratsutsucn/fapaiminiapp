@@ -5,8 +5,10 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
@@ -18,6 +20,11 @@ from ...models.crawl import CrawlTask
 router = APIRouter()
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+
+
+class CookieUpdateRequest(BaseModel):
+    platform: str  # "taobao" | "jd" | "gpai"
+    cookie: str
 
 
 def _get_venv_python() -> str:
@@ -126,4 +133,113 @@ async def crawler_status(
         "last_run_at": str(latest.last_run_at) if latest and latest.last_run_at else None,
         "last_status": latest.status if latest else "unknown",
         "is_running": running > 0,
+    }
+
+
+@router.get("/cookies")
+async def get_cookies_status(
+    admin: dict = Depends(get_admin_user),
+):
+    """获取三个平台的cookie配置状态。"""
+    env_files = [
+        PROJECT_ROOT / "crawler" / ".env",
+        PROJECT_ROOT / "backend" / ".env",
+        PROJECT_ROOT / ".env",
+    ]
+
+    cookies_status = {
+        "taobao": {"configured": False, "preview": ""},
+        "jd": {"configured": False, "preview": ""},
+        "gpai": {"configured": False, "preview": ""},
+    }
+
+    # 读取第一个存在的.env文件
+    for env_file in env_files:
+        if not env_file.exists():
+            continue
+
+        try:
+            content = env_file.read_text(encoding="utf-8")
+            for line in content.splitlines():
+                line = line.strip()
+                if line.startswith("TAOBAO_COOKIE="):
+                    value = line.split("=", 1)[1].strip('"').strip("'")
+                    if value:
+                        cookies_status["taobao"]["configured"] = True
+                        cookies_status["taobao"]["preview"] = value[:50] + "..." if len(value) > 50 else value
+                elif line.startswith("JD_COOKIE="):
+                    value = line.split("=", 1)[1].strip('"').strip("'")
+                    if value:
+                        cookies_status["jd"]["configured"] = True
+                        cookies_status["jd"]["preview"] = value[:50] + "..." if len(value) > 50 else value
+                elif line.startswith("GPAI_COOKIE="):
+                    value = line.split("=", 1)[1].strip('"').strip("'")
+                    if value:
+                        cookies_status["gpai"]["configured"] = True
+                        cookies_status["gpai"]["preview"] = value[:50] + "..." if len(value) > 50 else value
+            break  # 找到第一个文件就停止
+        except Exception as e:
+            logger.error(f"读取 .env 文件失败: {e}")
+            continue
+
+    return cookies_status
+
+
+@router.post("/cookies")
+async def update_cookie(
+    req: CookieUpdateRequest,
+    admin: dict = Depends(get_admin_user),
+):
+    """更新指定平台的cookie到.env文件。"""
+    platform_map = {
+        "taobao": "TAOBAO_COOKIE",
+        "jd": "JD_COOKIE",
+        "gpai": "GPAI_COOKIE",
+    }
+
+    if req.platform not in platform_map:
+        raise HTTPException(status_code=400, detail="不支持的平台")
+
+    env_key = platform_map[req.platform]
+    cookie_value = req.cookie.strip()
+
+    if not cookie_value:
+        raise HTTPException(status_code=400, detail="Cookie不能为空")
+
+    # 更新所有可能的.env文件
+    env_files = [
+        PROJECT_ROOT / "crawler" / ".env",
+        PROJECT_ROOT / "backend" / ".env",
+        PROJECT_ROOT / ".env",
+    ]
+
+    updated_files = []
+    for env_file in env_files:
+        if not env_file.exists():
+            continue
+
+        try:
+            # 读取现有内容
+            lines = env_file.read_text(encoding="utf-8").splitlines()
+
+            # 删除旧的配置行
+            new_lines = [line for line in lines if not line.strip().startswith(f"{env_key}=")]
+
+            # 添加新的配置
+            new_lines.append(f'{env_key}="{cookie_value}"')
+
+            # 写回文件
+            env_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+            updated_files.append(str(env_file))
+            logger.info(f"已更新 {env_key} 到 {env_file}")
+        except Exception as e:
+            logger.error(f"更新 {env_file} 失败: {e}")
+            raise HTTPException(status_code=500, detail=f"更新配置文件失败: {str(e)}")
+
+    if not updated_files:
+        raise HTTPException(status_code=500, detail="未找到可更新的.env文件")
+
+    return {
+        "message": f"{req.platform} Cookie已更新",
+        "updated_files": updated_files,
     }
