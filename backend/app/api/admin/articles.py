@@ -104,6 +104,15 @@ async def sync_from_mp(
     limit = int((body or {}).get("limit", 40))
     limit = max(1, min(limit, 100))
     result = await sync_articles_from_mp(db, limit=limit)
+    if result["total"] == 0:
+        # 微信 freepublish/material 接口只能列出「通过发布接口发布」或「永久素材草稿」的图文，
+        # 公众号后台手动群发/发表的文章微信不提供 API 列出（见 core.wechat 注释），故返回 0 篇。
+        # 不报错（调用本身成功），但如实告知并引导改用「粘贴链接导入」。
+        return {
+            "message": "未拉取到文章。微信接口只能同步「通过发布接口发布」的图文，"
+                       "公众号后台手动群发的文章无法列出，请改用右侧「粘贴链接导入」。",
+            **result,
+        }
     return {
         "message": f"同步完成：新增 {result['created']} 篇，更新 {result['updated']} 篇",
         **result,

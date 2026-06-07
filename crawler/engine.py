@@ -496,6 +496,20 @@ class CrawlEngine:
                             )
                             return "skipped_non_real_estate", None
 
+                        # (b2) 「房屋内物品/室内物品」类纯动产：标题以「…物品」结尾，被拍主体是
+                        #      屋内物品本身（动产），非不动产。必须排除「房屋及/房产及/…及室内物品」
+                        #      「（含室内物品）」「…不动产」等连房带物的真房产打包标的——只要标题含
+                        #      及/以及/不动产/房产/房地产/全幢/整幢 即视为真房产，予以保留。
+                        #      例：「林碧云名下位于…201室房屋内物品」(纯物品) → 跳过；
+                        #          「…602室及室内物品」「…（含室内物品）」(连房带物) → 保留。
+                        if _re_asset.search(r"(房屋内物品|室内物品|屋内物品|房内物品)\s*$", title) and \
+                           not _re_asset.search(r"(及|以及|不动产|房产|房地产|全幢|整幢)", title):
+                            logger.info(
+                                f"[{platform_name}] Skipping movable-asset (房屋内物品类纯动产): "
+                                f"{title[:40]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
+
                         non_real_estate_kw = _re_asset.compile(
                             r"车牌|本田|奔驰|宝马|奥迪|大众|丰田|日产|路虎|保时捷|普通客车|轿车|商务车|货车|挖掘机|装载机|捷豹|荣威"
                             r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车|牌汽车|号牌"

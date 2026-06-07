@@ -20,7 +20,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16rpx 24rpx;
+  padding: 16rpx 24rpx 26rpx;
   background: linear-gradient(transparent, rgba(26, 47, 82, 0.85));
   color: #fff;
   font-size: 26rpx;

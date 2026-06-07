@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h2 class="page-title">文章管理（法拍秘籍）</h2>
+    <h2 class="page-title">文章管理（公众号文章）</h2>
     <t-card>
       <div class="search-bar">
         <t-input v-model="filters.keyword" placeholder="搜索标题" clearable style="width:200px" @change="onSearch" />
