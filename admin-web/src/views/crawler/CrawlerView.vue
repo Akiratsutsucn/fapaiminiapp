@@ -30,27 +30,61 @@
       <t-col :span="12">
         <t-card title="Cookie管理">
           <t-space direction="vertical" style="width:100%">
-            <div v-for="platform in platforms" :key="platform.key" style="margin-bottom:16px">
-              <div style="display:flex;align-items:center;margin-bottom:8px">
-                <span style="font-weight:500;margin-right:8px">{{ platform.name }}</span>
-                <t-tag :theme="cookiesStatus[platform.key]?.configured ? 'success' : 'warning'" size="small">
-                  {{ cookiesStatus[platform.key]?.configured ? '已配置' : '未配置' }}
-                </t-tag>
+            <div v-for="platform in platforms" :key="platform.key" style="margin-bottom:20px;padding:12px;border:1px solid #e7e7e7;border-radius:6px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <div>
+                  <span style="font-weight:600;font-size:15px;margin-right:8px">{{ platform.name }}</span>
+                  <t-tag :theme="cookiesStatus[platform.key]?.configured ? 'success' : 'warning'" size="small">
+                    {{ cookiesStatus[platform.key]?.configured ? '已配置' : '未配置' }}
+                  </t-tag>
+                </div>
               </div>
-              <t-textarea
-                v-model="cookieInputs[platform.key]"
-                :placeholder="`粘贴${platform.name}的Cookie字符串`"
-                :autosize="{ minRows: 2, maxRows: 4 }"
-                style="margin-bottom:8px"
-              />
-              <t-button
-                size="small"
-                theme="primary"
-                @click="onUpdateCookie(platform.key)"
-                :loading="cookieLoading[platform.key]"
-              >
-                保存Cookie
-              </t-button>
+
+              <t-space direction="vertical" style="width:100%">
+                <div style="background:#f5f5f5;padding:10px;border-radius:4px;font-size:13px;color:#666">
+                  <div style="margin-bottom:6px">1. 点击"登录{{ platform.name }}"按钮，在新窗口完成登录</div>
+                  <div>2. 登录成功后，回到本页点击"提取Cookie"按钮</div>
+                </div>
+
+                <t-space>
+                  <t-button
+                    size="small"
+                    variant="outline"
+                    @click="onOpenLoginPage(platform)"
+                  >
+                    <template #icon><t-icon name="login" /></template>
+                    登录{{ platform.name }}
+                  </t-button>
+
+                  <t-button
+                    size="small"
+                    theme="primary"
+                    @click="onExtractCookie(platform.key)"
+                    :loading="extractLoading[platform.key]"
+                  >
+                    <template #icon><t-icon name="precise-monitor" /></template>
+                    提取Cookie
+                  </t-button>
+                </t-space>
+
+                <t-divider style="margin:8px 0" />
+
+                <div style="font-size:12px;color:#999">或手动粘贴Cookie：</div>
+                <t-textarea
+                  v-model="cookieInputs[platform.key]"
+                  :placeholder="`手动粘贴${platform.name}的Cookie字符串`"
+                  :autosize="{ minRows: 2, maxRows: 3 }"
+                  style="font-size:12px"
+                />
+                <t-button
+                  size="small"
+                  variant="base"
+                  @click="onUpdateCookie(platform.key)"
+                  :loading="cookieLoading[platform.key]"
+                >
+                  保存手动输入的Cookie
+                </t-button>
+              </t-space>
             </div>
           </t-space>
         </t-card>
@@ -89,9 +123,9 @@ const statsVisible = ref(false)
 const currentStats = ref<any>(null)
 
 const platforms = [
-  { key: 'taobao', name: '淘宝拍卖' },
-  { key: 'jd', name: '京东拍卖' },
-  { key: 'gpai', name: '公拍网' },
+  { key: 'taobao', name: '淘宝拍卖', url: 'https://sf.taobao.com/', domain: '.taobao.com' },
+  { key: 'jd', name: '京东拍卖', url: 'https://auction.jd.com/', domain: '.jd.com' },
+  { key: 'gpai', name: '公拍网', url: 'https://www.gpai.net/', domain: '.gpai.net' },
 ]
 
 const cookiesStatus = ref<any>({})
@@ -105,6 +139,13 @@ const cookieLoading = ref<any>({
   jd: false,
   gpai: false,
 })
+const extractLoading = ref<any>({
+  taobao: false,
+  jd: false,
+  gpai: false,
+})
+
+let loginWindow: Window | null = null
 
 function showStats(row: any) {
   currentStats.value = row.stats_summary
@@ -152,6 +193,39 @@ async function loadCookiesStatus() {
   } catch (err) {
     console.error('加载Cookie状态失败:', err)
   }
+}
+
+function onOpenLoginPage(platform: any) {
+  const width = 1000
+  const height = 700
+  const left = (window.screen.width - width) / 2
+  const top = (window.screen.height - height) / 2
+
+  loginWindow = window.open(
+    platform.url,
+    `login_${platform.key}`,
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  )
+
+  if (loginWindow) {
+    MessagePlugin.info(`已打开${platform.name}登录页面，请在新窗口完成登录`)
+  } else {
+    MessagePlugin.error('无法打开新窗口，请检查浏览器是否阻止了弹窗')
+  }
+}
+
+async function onExtractCookie(platformKey: string) {
+  const platform = platforms.find(p => p.key === platformKey)
+  if (!platform) return
+
+  MessagePlugin.warning({
+    content: `由于浏览器安全限制，请手动获取Cookie：
+1. 在登录窗口按F12打开开发者工具
+2. 进入Application标签 > Cookies > ${platform.domain}
+3. 复制所有Cookie的键值对（格式：key1=value1; key2=value2）
+4. 粘贴到下方文本框中并点击保存`,
+    duration: 10000,
+  })
 }
 
 async function onUpdateCookie(platform: string) {
