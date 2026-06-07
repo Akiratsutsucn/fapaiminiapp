@@ -155,19 +155,19 @@
 .sort-icon {
   width: 0;
   height: 0;
-  margin-left: 4rpx;
+  margin-left: 8rpx;
 }
 
 .sort-icon.asc {
-  border-left: 6rpx solid transparent;
-  border-right: 6rpx solid transparent;
-  border-bottom: 8rpx solid currentColor;
+  border-left: 10rpx solid transparent;
+  border-right: 10rpx solid transparent;
+  border-bottom: 14rpx solid currentColor;
 }
 
 .sort-icon.desc {
-  border-left: 6rpx solid transparent;
-  border-right: 6rpx solid transparent;
-  border-top: 8rpx solid currentColor;
+  border-left: 10rpx solid transparent;
+  border-right: 10rpx solid transparent;
+  border-top: 14rpx solid currentColor;
 }
 
 /* ===== 筛选面板 ===== */

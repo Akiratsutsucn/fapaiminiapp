@@ -48,7 +48,7 @@ module.exports.has = function (arr, val) {
 
   <!-- 排序栏 -->
   <view class="sort-bar">
-    <view class="sort-item {{sortBy === 'default' ? 'active' : ''}}" bindtap="onSort" data-sort="default">默认</view>
+    <view class="sort-item {{sortBy === 'default' ? 'active' : ''}}" bindtap="onSort" data-sort="default">默认排序</view>
     <view class="sort-item {{sortBy === 'starting_price' ? 'active' : ''}}" bindtap="onSort" data-sort="starting_price">
       起拍价<view class="sort-icon {{sortBy === 'starting_price' ? sortOrder : ''}}"></view>
     </view>

@@ -1,24 +1,8 @@
 <view class="favorites-page">
-  <view class="tab-bar">
-    <view class="tab-item {{activeTab === 'property' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="property">房源收藏</view>
-    <view class="tab-item {{activeTab === 'article' ? 'active' : ''}}" bindtap="onTabSwitch" data-tab="article">文章收藏</view>
-  </view>
-
-  <view class="fav-list" wx:if="{{activeTab === 'property'}}">
+  <view class="fav-list">
     <house-card wx:for="{{propertyList}}" wx:key="id" property="{{item}}" wx:if="{{propertyList.length > 0}}" />
     <view class="empty-state" wx:if="{{propertyList.length === 0}}">
       <text>暂无收藏的房源</text>
     </view>
-  </view>
-
-  <view class="fav-list" wx:if="{{activeTab === 'article'}}">
-    <view class="fav-article" wx:for="{{articleList}}" wx:key="id" bindtap="onArticleTap" data-id="{{item.id}}" wx:if="{{articleList.length > 0}}">
-      <image class="fa-cover" src="{{item.cover_image || '/images/default-house.png'}}" mode="aspectFill" />
-      <view class="fa-info">
-        <text class="fa-title">{{item.title}}</text>
-        <text class="fa-date">{{item.publish_date || item.created_at}}</text>
-      </view>
-    </view>
-    <view class="empty-state" wx:if="{{articleList.length === 0}}"><text>暂无收藏的文章</text></view>
   </view>
 </view>

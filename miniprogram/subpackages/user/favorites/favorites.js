@@ -2,22 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const user_1 = require("../../../services/user");
 const property_1 = require("../../../services/property");
-const article_1 = require("../../../services/article");
 Page({
-    data: { activeTab: 'property', propertyList: [], articleList: [] },
+    data: { propertyList: [] },
     onShow() {
-        if (this.data.activeTab === 'property')
-            this.loadPropertyFavorites();
-        else
-            this.loadArticleFavorites();
-    },
-    onTabSwitch(e) {
-        const tab = e.currentTarget.dataset.tab;
-        this.setData({ activeTab: tab });
-        if (tab === 'property')
-            this.loadPropertyFavorites();
-        else
-            this.loadArticleFavorites();
+        this.loadPropertyFavorites();
     },
     async loadPropertyFavorites() {
         try {
@@ -38,20 +26,5 @@ Page({
         catch (e) {
             console.error('加载收藏失败:', e);
         }
-    },
-    async loadArticleFavorites() {
-        try {
-            const res = await (0, user_1.getFavorites)('article');
-            const ids = res.items.map((i) => i.target_id);
-            const details = await Promise.all(ids.map((id) => (0, article_1.getArticleDetail)(id).catch(() => null)));
-            this.setData({ articleList: details.filter(Boolean) });
-        }
-        catch (e) {
-            console.error('加载文章收藏失败:', e);
-        }
-    },
-    onArticleTap(e) {
-        const id = e.currentTarget.dataset.id;
-        wx.navigateTo({ url: `/pages/article/article?id=${id}` });
     },
 });
