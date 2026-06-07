@@ -45,8 +45,8 @@ Page({
         presetSoldDay: '',
         sortBy: 'default',
         sortOrder: 'asc',
-        searchHistory: [],
         showHistory: false,
+        searchHistory: [],
     },
     onLoad(options) {
         const init = {};
@@ -87,14 +87,24 @@ Page({
         }
         init.currentCityId = cityId;
         init.districtOptions = districtsForCity(cityId);
-        try {
-            init.searchHistory = wx.getStorageSync('search_history') || [];
-        }
-        catch (_) {
-            init.searchHistory = [];
-        }
         this.setData(init);
+        this.loadSearchHistory();
         this.loadList();
+    },
+    loadSearchHistory() {
+        const history = wx.getStorageSync('property_search_history') || [];
+        this.setData({ searchHistory: history.slice(0, 5) });
+    },
+    saveSearchHistory(keyword) {
+        if (!keyword || keyword.trim() === '')
+            return;
+        const trimmed = keyword.trim();
+        let history = wx.getStorageSync('property_search_history') || [];
+        history = history.filter(h => h !== trimmed);
+        history.unshift(trimmed);
+        history = history.slice(0, 5);
+        wx.setStorageSync('property_search_history', history);
+        this.setData({ searchHistory: history });
     },
     onShow() {
         const app = getApp();
@@ -172,10 +182,12 @@ Page({
                 });
             }
             else {
-                // 上拉加载只下发新增的一页（路径语法增量追加），避免把已渲染的
-                // 全量列表重复 setData。列表越长收益越大，显著缓解滚动/切换跳帧。
                 const start = this.data.list.length;
-                const patch = { total: result.total, hasMore: this.data.page < result.total_pages, loading: false };
+                const patch = {
+                    total: result.total,
+                    hasMore: this.data.page < result.total_pages,
+                    loading: false,
+                };
                 result.items.forEach((it, i) => { patch[`list[${start + i}]`] = it; });
                 this.setData(patch);
             }
@@ -194,53 +206,37 @@ Page({
         this.setData({ keyword: e.detail.value });
     },
     onSearch() {
-        this.saveHistory(this.data.keyword);
+        const keyword = this.data.keyword.trim();
+        if (keyword) {
+            this.saveSearchHistory(keyword);
+        }
         this.setData({ page: 1, list: [], showHistory: false });
-        this.loadList();
-    },
-    onClearKeyword() {
-        this.setData({ keyword: '', page: 1, list: [] });
         this.loadList();
     },
     onSearchFocus() {
         this.setData({ showHistory: true });
     },
     onSearchBlur() {
-        setTimeout(() => this.setData({ showHistory: false }), 200);
+        setTimeout(() => {
+            this.setData({ showHistory: false });
+        }, 200);
     },
     onTapHistory(e) {
         const kw = e.currentTarget.dataset.kw;
-        this.saveHistory(kw);
-        this.setData({ keyword: kw, page: 1, list: [], showHistory: false });
+        this.setData({ keyword: kw, showHistory: false, page: 1, list: [] });
         this.loadList();
     },
     onClearHistory() {
-        this.setData({ searchHistory: [] });
-        try {
-            wx.removeStorageSync('search_history');
-        }
-        catch (_) {
-        }
+        wx.removeStorageSync('property_search_history');
+        this.setData({ searchHistory: [], showHistory: false });
     },
-    saveHistory(kw) {
-        const word = (kw || '').trim();
-        if (!word)
-            return;
-        let history = this.data.searchHistory.filter((h) => h !== word);
-        history.unshift(word);
-        history = history.slice(0, 5);
-        this.setData({ searchHistory: history });
-        try {
-            wx.setStorageSync('search_history', history);
-        }
-        catch (_) {
-        }
+    onClearKeyword() {
+        this.setData({ keyword: '', page: 1, list: [] });
+        this.loadList();
     },
-    onContact() {
-        wx.navigateTo({ url: '/pages/customer-service/customer-service' });
-    },
-    onScrollTop() {
-        wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+    onClearKeyword() {
+        this.setData({ keyword: '', page: 1, list: [] });
+        this.loadList();
     },
     onTogglePanel(e) {
         const panel = e.currentTarget.dataset.panel;

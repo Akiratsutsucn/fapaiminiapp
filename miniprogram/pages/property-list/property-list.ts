@@ -51,6 +51,9 @@ Page({
     presetSoldDay: '',
     sortBy: 'default',
     sortOrder: 'asc',
+    // 搜索历史
+    showHistory: false,
+    searchHistory: [] as string[],
   },
 
   onLoad(options: any) {
@@ -90,7 +93,29 @@ Page({
     init.districtOptions = districtsForCity(cityId);
 
     this.setData(init);
+    this.loadSearchHistory();
     this.loadList();
+  },
+
+  // 加载搜索历史
+  loadSearchHistory() {
+    const history = wx.getStorageSync('property_search_history') || [];
+    this.setData({ searchHistory: history.slice(0, 5) });
+  },
+
+  // 保存搜索历史
+  saveSearchHistory(keyword: string) {
+    if (!keyword || keyword.trim() === '') return;
+    const trimmed = keyword.trim();
+    let history: string[] = wx.getStorageSync('property_search_history') || [];
+    // 去重：移除已存在的
+    history = history.filter(h => h !== trimmed);
+    // 添加到最前面
+    history.unshift(trimmed);
+    // 只保留最近 5 条
+    history = history.slice(0, 5);
+    wx.setStorageSync('property_search_history', history);
+    this.setData({ searchHistory: history });
   },
 
   onShow() {
@@ -194,7 +219,43 @@ Page({
   },
 
   onSearch() {
-    this.setData({ page: 1, list: [] });
+    const keyword = this.data.keyword.trim();
+    if (keyword) {
+      this.saveSearchHistory(keyword);
+    }
+    this.setData({ page: 1, list: [], showHistory: false });
+    this.loadList();
+  },
+
+  // 搜索框聚焦
+  onSearchFocus() {
+    this.setData({ showHistory: true });
+  },
+
+  // 搜索框失焦
+  onSearchBlur() {
+    // 延迟关闭，让点击历史标签的事件能触发
+    setTimeout(() => {
+      this.setData({ showHistory: false });
+    }, 200);
+  },
+
+  // 点击搜索历史
+  onTapHistory(e: any) {
+    const kw = e.currentTarget.dataset.kw;
+    this.setData({ keyword: kw, showHistory: false, page: 1, list: [] });
+    this.loadList();
+  },
+
+  // 清空搜索历史
+  onClearHistory() {
+    wx.removeStorageSync('property_search_history');
+    this.setData({ searchHistory: [], showHistory: false });
+  },
+
+  // 清空搜索关键词
+  onClearKeyword() {
+    this.setData({ keyword: '', page: 1, list: [] });
     this.loadList();
   },
 
