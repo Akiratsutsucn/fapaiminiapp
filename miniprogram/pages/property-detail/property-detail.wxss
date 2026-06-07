@@ -268,6 +268,15 @@
   font-weight: 500;
 }
 
+/* 详细地址：放宽字距，避免挤在一起；每行最多 16 个汉字(32 字节)，超出自动换行 */
+.info-v-address {
+  letter-spacing: 2rpx;
+  line-height: 1.6;
+  word-break: break-all;
+  white-space: normal;
+  max-width: 16em;
+}
+
 /* ===== 段落标题 ===== */
 .section-title {
   font-size: 28rpx;
