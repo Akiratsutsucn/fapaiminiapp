@@ -201,10 +201,20 @@ class CrawlEngine:
         except Exception as e:
             logger.error(f"CrawlEngine failed: {e}")
             if self.task_id:
-                await CrawlTaskRepository.update_status(
-                    db, self.task_id, "failed", error_message=str(e)
-                )
-                await db.commit()
+                try:
+                    # 主流程异常后 session 可能停在 invalid transaction（如 2013 Lost
+                    # connection 后未回滚），不先 rollback 连「标记 failed」的 commit 都会失败，
+                    # 导致任务永远卡在 running。先回滚重置 session 再写状态。
+                    await db.rollback()
+                except Exception:
+                    pass
+                try:
+                    await CrawlTaskRepository.update_status(
+                        db, self.task_id, "failed", error_message=str(e)
+                    )
+                    await db.commit()
+                except Exception as e2:
+                    logger.error(f"标记任务 failed 也失败了: {e2}")
             raise
         finally:
             await db.close()
@@ -675,6 +685,10 @@ class CrawlEngine:
                     logger.info(f"[{platform_name}] Enriched {enriched} properties with community data")
             except Exception as e:
                 logger.warning(f"[{platform_name}] Data enrichment failed: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
             # 给本批次新爬到的、缺坐标的房源补 lat/lng（高德 geocoding）
             try:
@@ -708,6 +722,10 @@ class CrawlEngine:
                         logger.info(f"[{platform_name}] Geocoded {geo_filled}/{len(missing_geo)} new properties")
             except Exception as e:
                 logger.warning(f"[{platform_name}] Geocoding step failed: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
             # 周边配套（高德 POI 预处理）：给新增 / 缓存过期的房源补 amenities_cache
             try:
@@ -757,6 +775,10 @@ class CrawlEngine:
                                 logger.info(f"[{platform_name}] POI 预处理 {done}/{len(targets)} 套")
             except Exception as e:
                 logger.warning(f"[{platform_name}] amenities step failed: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
             # 贝壳小区详情抓取：给本批次有 community_name 但 community_info 缺失/过期的房源补抓
             try:
@@ -792,6 +814,10 @@ class CrawlEngine:
                     logger.info(f"[{platform_name}] 状态自校正：按时间重算修正 {fixed} 条")
             except Exception as e:
                 logger.warning(f"[{platform_name}] 状态自校正失败: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
             # 智能字段补全：从 title/description 提取 layout/装修/户型/case_number 等
             try:
@@ -818,6 +844,10 @@ class CrawlEngine:
                     logger.info(f"[{platform_name}] 文本智能补全 {text_filled} 个字段")
             except Exception as e:
                 logger.warning(f"[{platform_name}] text_extractor 失败: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
             # 智能标签 + 爆款文案
             try:
@@ -843,6 +873,10 @@ class CrawlEngine:
                     logger.info(f"[{platform_name}] 智能标签/文案 {tagged} 套")
             except Exception as e:
                 logger.warning(f"[{platform_name}] smart_enrich 失败: {e}")
+                try:
+                    await db.rollback()  # 重置可能被污染的事务，避免拖垮后续步骤/平台
+                except Exception:
+                    pass
 
         finally:
             await crawler.close()

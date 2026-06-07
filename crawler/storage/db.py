@@ -19,6 +19,10 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=False,  # disabled: aiomysql ping() signature incompatible with SQLAlchemy
+    # 长任务(爬虫可连跑 10+ 小时)期间连接易被 MySQL wait_timeout 单方面断开，
+    # 再用就报 2013 Lost connection。pre_ping 因 aiomysql 兼容问题不可用，
+    # 改用 pool_recycle：连接存活超过 1 小时即回收重建，规避陈旧连接。
+    pool_recycle=3600,
     **(  # type: ignore[arg-type]
         {"connect_args": {"check_same_thread": False}} if settings.DB_TYPE == "sqlite" else {}
     ),
