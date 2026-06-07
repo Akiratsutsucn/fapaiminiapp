@@ -35,6 +35,30 @@ def _valid_unit_price(v) -> bool:
 
 AMAP_API_KEY = os.getenv("AMAP_API_KEY", "")
 
+# 列表封面图域名：thumb_url 历史数据多存为 http://<裸IP>/images/...，小程序强制
+# HTTPS+备案域名无法加载，统一重写到 https 域名（文件路径一致，仅换 scheme+host）。
+_PUBLIC_IMG_HOST = "https://xcxapi.fapaizhelianmeng.cn"
+
+
+def _normalize_img(url: str | None) -> str | None:
+    """把图片 URL 统一到对外可访问的 https 域名（修正裸 IP / http 缩略图地址）。"""
+    if not url:
+        return url
+    idx = url.find("/images/")
+    if idx >= 0 and (url.startswith("http://") or "122.51.156.252" in url):
+        return _PUBLIC_IMG_HOST + url[idx:]
+    return url
+
+
+def _list_cover(p) -> str | None:
+    """列表卡片封面：优先缩略图(thumb_url，约为原图 1/6 体积，缓解滚动跳帧)，
+    无缩略图再退回原图；并统一重写到 https 域名。"""
+    imgs = [img for img in (p.images or []) if not getattr(img, "hidden", 0)]
+    chosen = next((img for img in imgs if img.is_cover), None) or (imgs[0] if imgs else None)
+    if not chosen:
+        return None
+    return _normalize_img(chosen.thumb_url or chosen.image_url)
+
 AMAP_CATEGORIES = {
     "school": ("学校", "141200"),
     "hospital": ("医院", "090100"),
@@ -184,8 +208,7 @@ async def list_properties(
 
     items = []
     for p in rows:
-        cover = next((img.image_url for img in (p.images or []) if img.is_cover and not getattr(img, "hidden", 0)), None) \
-            or next((img.image_url for img in (p.images or []) if not getattr(img, "hidden", 0)), None)
+        cover = _list_cover(p)
         items.append(PropertyListItem(
             id=p.id,
             title=p.title,
@@ -239,8 +262,7 @@ async def recommend_properties(
 
     items = []
     for p in rows:
-        cover = next((img.image_url for img in (p.images or []) if img.is_cover and not getattr(img, "hidden", 0)), None) \
-            or next((img.image_url for img in (p.images or []) if not getattr(img, "hidden", 0)), None)
+        cover = _list_cover(p)
         items.append(PropertyListItem(
             id=p.id, title=p.title, district=p.district, community_name=p.community_name,
             area=p.area, layout=p.layout, starting_price=p.starting_price,
