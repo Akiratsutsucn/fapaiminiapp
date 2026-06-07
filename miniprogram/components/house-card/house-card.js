@@ -47,7 +47,7 @@ Component({
                 layout: p.layout || '',
                 title: p.title || '',
                 discount,
-                hotTag,
+                hotTag: '',
                 savingWan,
                 auctionTime: p.auction_start_time ? (0, format_1.formatDate)(p.auction_start_time, 'MM-DD HH:mm') : '',
                 platformLabel: p.auction_platform || '',

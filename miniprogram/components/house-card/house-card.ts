@@ -49,7 +49,7 @@ Component({
         layout: p.layout || '',
         title: p.title || '',
         discount,
-        hotTag,
+        hotTag: '', // 超人气角标已移除
         savingWan,
         auctionTime: p.auction_start_time ? formatDate(p.auction_start_time, 'MM-DD HH:mm') : '',
         platformLabel: p.auction_platform || '',
