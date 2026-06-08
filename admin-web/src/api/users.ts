@@ -57,3 +57,7 @@ export function updateUser(id: number, data: UserUpdate) {
 export function deleteUser(id: number) {
   return http.delete(`/users/${id}`).then(r => r.data)
 }
+
+export function updateUserRole(id: number, role: string) {
+  return http.put(`/users/${id}/role`, { role }).then(r => r.data)
+}

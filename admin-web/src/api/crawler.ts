@@ -38,3 +38,21 @@ export function getCookiesStatus() {
 export function updateCookie(platform: string, cookie: string) {
   return http.post('/crawler/cookies', { platform, cookie }).then(r => r.data)
 }
+
+export interface TaskDetailCell {
+  success_count: number
+  new_count: number
+  updated_count: number
+  failed_count: number
+  error_message?: string | null
+}
+
+export interface TaskDetailGrid {
+  [platform: string]: {
+    [city: string]: TaskDetailCell
+  }
+}
+
+export function getTaskDetails(taskId: number) {
+  return http.get<TaskDetailGrid>(`/crawler/tasks/${taskId}/details`).then(r => r.data)
+}

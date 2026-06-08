@@ -92,40 +92,92 @@
     </t-row>
 
     <t-card title="任务记录">
-      <t-table :data="tasks" :columns="taskColumns" :loading="taskLoading" row-key="id">
+      <div class="info-banner">
+        <t-icon name="info-circle" style="color:#0052d9;margin-right:8px" />
+        <span>详情功能已上线（2026-06-08），触发新的爬虫任务将显示完整的3×3详细统计（平台×城市）</span>
+      </div>
+      <t-table :data="tasks" :columns="taskColumns" :loading="taskLoading" row-key="id" :expanded-row-keys="expandedRowKeys">
         <template #status="{ row }">
           <t-tag :theme="row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : row.status === 'running' ? 'primary' : 'default'">
             {{ row.status }}
           </t-tag>
         </template>
         <template #op="{ row }">
-          <t-button v-if="row.stats_summary" variant="text" size="small" @click="showStats(row)">查看</t-button>
-          <span v-else style="color:#999">-</span>
+          <t-button variant="text" size="small" @click="toggleDetail(row.id)">
+            <template #icon><t-icon :name="expandedRowKeys.includes(row.id) ? 'chevron-up' : 'chevron-down'" /></template>
+            {{ expandedRowKeys.includes(row.id) ? '收起' : '详情' }}
+          </t-button>
+        </template>
+        <template #expanded-row="{ row }">
+          <div class="detail-grid-container">
+            <t-loading v-if="detailLoading[row.id]" size="small" />
+            <div v-else-if="taskDetails[row.id]" class="detail-grid">
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                    <th class="corner-cell">平台 / 城市</th>
+                    <th>上海</th>
+                    <th>宁波</th>
+                    <th>杭州</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="platform in platforms" :key="platform.key">
+                    <td class="platform-cell">{{ platform.name }}</td>
+                    <td v-for="city in cities" :key="city.id"
+                        :class="getCellClass(taskDetails[row.id][platform.name]?.[city.name])">
+                      <div v-if="taskDetails[row.id][platform.name]?.[city.name]" class="cell-content">
+                        <div class="cell-stats">
+                          <span class="stat-item success-stat">成功: {{ taskDetails[row.id][platform.name][city.name].success_count }}</span>
+                          <span class="stat-item new-stat">新增: {{ taskDetails[row.id][platform.name][city.name].new_count }}</span>
+                          <span class="stat-item update-stat">更新: {{ taskDetails[row.id][platform.name][city.name].updated_count }}</span>
+                          <span v-if="taskDetails[row.id][platform.name][city.name].failed_count > 0" class="stat-item fail-stat">
+                            失败: {{ taskDetails[row.id][platform.name][city.name].failed_count }}
+                          </span>
+                        </div>
+                        <div v-if="taskDetails[row.id][platform.name][city.name].error_message" class="error-msg">
+                          {{ taskDetails[row.id][platform.name][city.name].error_message }}
+                        </div>
+                      </div>
+                      <span v-else class="no-data">-</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="no-detail">
+              <t-icon name="file-search" style="font-size:36px;color:#ddd;margin-bottom:12px" />
+              <div class="no-detail-text">{{ getEmptyDetailMessage(row) }}</div>
+            </div>
+          </div>
         </template>
       </t-table>
     </t-card>
-
-    <t-dialog v-model:visible="statsVisible" header="本轮爬取详情" width="600px" :footer="false">
-      <pre v-if="currentStats" style="white-space:pre-wrap;font-size:12px">{{ JSON.stringify(currentStats, null, 2) }}</pre>
-    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie } from '@/api/crawler'
+import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie, getTaskDetails } from '@/api/crawler'
 
 const triggerLoading = ref(false)
 const taskLoading = ref(false)
 const tasks = ref<any[]>([])
-const statsVisible = ref(false)
-const currentStats = ref<any>(null)
+const expandedRowKeys = ref<number[]>([])
+const taskDetails = ref<Record<number, any>>({})
+const detailLoading = ref<Record<number, boolean>>({})
 
 const platforms = [
-  { key: 'taobao', name: '淘宝拍卖', url: 'https://sf.taobao.com/', domain: '.taobao.com' },
+  { key: 'taobao', name: '阿里拍卖', url: 'https://sf.taobao.com/', domain: '.taobao.com' },
   { key: 'jd', name: '京东拍卖', url: 'https://auction.jd.com/', domain: '.jd.com' },
   { key: 'gpai', name: '公拍网', url: 'https://www.gpai.net/', domain: '.gpai.net' },
+]
+
+const cities = [
+  { id: 310000, name: '上海' },
+  { id: 330200, name: '宁波' },
+  { id: 330100, name: '杭州' },
 ]
 
 const cookiesStatus = ref<any>({})
@@ -147,23 +199,16 @@ const extractLoading = ref<any>({
 
 let loginWindow: Window | null = null
 
-function showStats(row: any) {
-  currentStats.value = row.stats_summary
-  statsVisible.value = true
-}
 const statusItems = ref([{ label: '最近运行', value: '--' }, { label: '当前状态', value: '--' }])
 
 const taskColumns = [
   { colKey: 'id', title: 'ID', width: 70 },
-  { colKey: 'platform', title: '平台', width: 100 },
-  { colKey: 'city', title: '城市', width: 80 },
-  { colKey: 'status', title: '状态', width: 90 },
-  { colKey: 'total_count', title: '抓取数', width: 80 },
-  { colKey: 'new_count', title: '新增', width: 70 },
-  { colKey: 'updated_count', title: '更新', width: 70 },
-  { colKey: 'success_count', title: '成功', width: 80 },
-  { colKey: 'last_run_at', title: '运行时间', width: 180 },
-  { colKey: 'op', title: '详情', width: 80 },
+  { colKey: 'created_at', title: '创建时间', width: 180 },
+  { colKey: 'status', title: '状态', width: 100 },
+  { colKey: 'total_count', title: '总抓取数', width: 100 },
+  { colKey: 'new_count', title: '新增', width: 80 },
+  { colKey: 'updated_count', title: '更新', width: 80 },
+  { colKey: 'op', title: '操作', width: 100 },
 ]
 
 onMounted(() => { loadStatus(); loadTasks(); loadCookiesStatus() })
@@ -193,6 +238,47 @@ async function loadCookiesStatus() {
   } catch (err) {
     console.error('加载Cookie状态失败:', err)
   }
+}
+
+async function toggleDetail(taskId: number) {
+  const index = expandedRowKeys.value.indexOf(taskId)
+  if (index > -1) {
+    expandedRowKeys.value.splice(index, 1)
+  } else {
+    expandedRowKeys.value.push(taskId)
+    if (!taskDetails.value[taskId]) {
+      await loadTaskDetail(taskId)
+    }
+  }
+}
+
+async function loadTaskDetail(taskId: number) {
+  detailLoading.value[taskId] = true
+  try {
+    const data = await getTaskDetails(taskId)
+    taskDetails.value[taskId] = data
+  } catch (err) {
+    MessagePlugin.error('加载任务详情失败')
+  } finally {
+    detailLoading.value[taskId] = false
+  }
+}
+
+function getCellClass(cell: any) {
+  if (!cell) return ''
+  if (cell.failed_count > 0) return 'cell-error'
+  return ''
+}
+
+function getEmptyDetailMessage(task: any) {
+  const DETAIL_FEATURE_DATE = '2026-06-08'
+  const taskDate = task.created_at?.split(' ')[0] || ''
+
+  if (taskDate && taskDate < DETAIL_FEATURE_DATE) {
+    return '此任务运行于详情功能上线前，暂无详细统计'
+  }
+
+  return '暂无详细数据，请等待任务执行完成'
 }
 
 function onOpenLoginPage(platform: any) {
@@ -260,4 +346,121 @@ async function onTriggerPlatform(platform: string) {
 
 <style scoped>
 .page-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+
+.detail-grid-container {
+  padding: 20px;
+  background: #f8f8f8;
+}
+
+.detail-grid {
+  overflow-x: auto;
+}
+
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.grid-table th,
+.grid-table td {
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #e7e7e7;
+}
+
+.grid-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.corner-cell {
+  background: #e8e8e8;
+}
+
+.platform-cell {
+  background: #fafafa;
+  font-weight: 600;
+  text-align: left;
+}
+
+.cell-content {
+  text-align: left;
+}
+
+.cell-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.stat-item {
+  display: inline-block;
+}
+
+.success-stat {
+  color: #00a870;
+}
+
+.new-stat {
+  color: #0052d9;
+}
+
+.update-stat {
+  color: #029cd4;
+}
+
+.fail-stat {
+  color: #e34d59;
+  font-weight: 600;
+}
+
+.cell-error {
+  background: #fff1f0;
+}
+
+.error-msg {
+  margin-top: 8px;
+  padding: 6px;
+  background: #ffe9e9;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #d9001b;
+}
+
+.no-data {
+  color: #999;
+  font-size: 14px;
+}
+
+.no-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.no-detail-text {
+  color: #999;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.info-banner {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #f2f8ff;
+  border: 1px solid #d4e8ff;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333;
+}
 </style>

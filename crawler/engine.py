@@ -29,6 +29,7 @@ from .storage.repository import (
     PropertyImageRepository,
     CrawlRecordRepository,
     CrawlTaskRepository,
+    CrawlerTaskDetailRepository,
 )
 from .storage.deduplicator import Deduplicator
 from .utils.url_registry import SourceConfig, get_configs, group_configs_by_platform
@@ -267,6 +268,8 @@ class CrawlEngine:
             "ended": 0,
             "relisted": 0,
         }
+        # 按城市统计详情（用于保存到 crawler_task_details）
+        city_stats: dict[str, dict] = {}
         # 连续失败计数：达到阈值就 mark host bad（30 分钟冷却）
         consecutive_failures = {"count": 0, "last_url": ""}
         CONSECUTIVE_FAILURE_THRESHOLD = 10
@@ -275,12 +278,32 @@ class CrawlEngine:
             # Collect list items from all source URLs for this platform
             all_list_items = []
             for cfg in configs:
+                city_name = cfg.city
+                # 初始化该城市的统计数据
+                if city_name not in city_stats:
+                    city_stats[city_name] = {
+                        "start_time": time.time(),
+                        "total_fetched": 0,
+                        "new": 0,
+                        "updated": 0,
+                        "skipped": 0,
+                        "failed": 0,
+                        "error_messages": [],
+                    }
+
                 logger.info(f"[{platform_name}] Processing source: {cfg.label} ({cfg.source_url})")
                 try:
                     items = await crawler.collect_list_items(cfg.source_url, cfg.city, max_pages)
+                    # 为每个item设置城市信息
+                    for item in items:
+                        if not hasattr(item, 'city') or not item.city:
+                            item.city = city_name
                     all_list_items.extend(items)
+                    city_stats[city_name]["total_fetched"] += len(items)
                     logger.info(f"[{platform_name}] {cfg.label}: {len(items)} items")
                 except Exception as e:
+                    error_msg = f"{cfg.label}: {str(e)}"
+                    city_stats[city_name]["error_messages"].append(error_msg)
                     logger.error(f"[{platform_name}] Failed to collect from {cfg.label}: {e}")
                     continue
                 # 京东列表接口对高频访问敏感：城市间留足冷却时间，避免后一城市被限流返回 0
@@ -676,17 +699,31 @@ class CrawlEngine:
             tasks = [process_detail(item) for item in to_fetch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for result in results:
+            # 统计结果并按城市归类
+            for idx, result in enumerate(results):
+                # 获取该item对应的城市
+                item_city = to_fetch[idx].city if idx < len(to_fetch) and hasattr(to_fetch[idx], 'city') and to_fetch[idx].city else None
+
                 if isinstance(result, Exception):
                     platform_stats["failed"] += 1
+                    if item_city and item_city in city_stats:
+                        city_stats[item_city]["failed"] += 1
                 elif result[0] == "created":
                     platform_stats["new"] += 1
+                    if item_city and item_city in city_stats:
+                        city_stats[item_city]["new"] += 1
                 elif result[0] == "updated":
                     platform_stats["updated"] += 1
+                    if item_city and item_city in city_stats:
+                        city_stats[item_city]["updated"] += 1
                 elif result[0] == "failed":
                     platform_stats["failed"] += 1
-                elif result[0] == "skipped_city":
+                    if item_city and item_city in city_stats:
+                        city_stats[item_city]["failed"] += 1
+                elif result[0] in ("skipped_city", "skipped", "skipped_non_real_estate"):
                     platform_stats["skipped"] += 1
+                    if item_city and item_city in city_stats:
+                        city_stats[item_city]["skipped"] += 1
 
             # Enrich newly created/updated properties with community data
             try:
@@ -900,6 +937,35 @@ class CrawlEngine:
         self.result.total_updated += platform_stats["updated"]
         self.result.total_skipped += platform_stats["skipped"]
         self.result.total_failed += platform_stats["failed"]
+
+        # 保存每个城市的详细统计到 crawler_task_details
+        if self.task_id:
+            for city_name, stats in city_stats.items():
+                try:
+                    duration = int(time.time() - stats["start_time"])
+                    error_msg = "; ".join(stats["error_messages"]) if stats["error_messages"] else None
+
+                    await CrawlerTaskDetailRepository.create_or_update(
+                        db,
+                        task_id=self.task_id,
+                        platform=platform_name,
+                        city=city_name,
+                        total_fetched=stats["total_fetched"],
+                        new_count=stats["new"],
+                        updated_count=stats["updated"],
+                        failed_count=stats["failed"],
+                        skipped_count=stats["skipped"],
+                        error_messages=error_msg,
+                        duration_seconds=duration,
+                    )
+                    await db.commit()
+                    logger.info(
+                        f"[{platform_name}][{city_name}] 详情已保存: "
+                        f"抓取{stats['total_fetched']}, 新增{stats['new']}, "
+                        f"更新{stats['updated']}, 失败{stats['failed']}"
+                    )
+                except Exception as e:
+                    logger.error(f"保存任务详情失败 [{platform_name}][{city_name}]: {e}")
 
     async def _run_incremental_comparison(
         self, db, platform: str | None, city: str | None

@@ -16,7 +16,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.models.property import Property, PropertyImage  # noqa: E402
-from app.models.crawl import CrawlTask, CrawlRecord  # noqa: E402
+from app.models.crawl import CrawlTask, CrawlRecord, CrawlerTaskDetail  # noqa: E402
 
 
 class PropertyRepository:
@@ -274,3 +274,75 @@ class CrawlTaskRepository:
         await db.commit()
         await db.refresh(task)
         return task
+
+
+class CrawlerTaskDetailRepository:
+    """CRUD for crawler_task_details table."""
+
+    @staticmethod
+    async def create_or_update(
+        db: AsyncSession,
+        task_id: int,
+        platform: str,
+        city: str,
+        total_fetched: int = 0,
+        new_count: int = 0,
+        updated_count: int = 0,
+        failed_count: int = 0,
+        skipped_count: int = 0,
+        error_messages: str | None = None,
+        duration_seconds: int | None = None,
+    ) -> CrawlerTaskDetail:
+        """创建或更新任务详情记录"""
+        # 截断错误信息到1000字符
+        if error_messages and len(error_messages) > 1000:
+            error_messages = error_messages[:1000] + "..."
+
+        # 查找是否已存在
+        result = await db.execute(
+            select(CrawlerTaskDetail).where(
+                CrawlerTaskDetail.task_id == task_id,
+                CrawlerTaskDetail.platform == platform,
+                CrawlerTaskDetail.city == city,
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # 更新已有记录
+            existing.total_fetched = total_fetched
+            existing.new_count = new_count
+            existing.updated_count = updated_count
+            existing.failed_count = failed_count
+            existing.skipped_count = skipped_count
+            existing.error_messages = error_messages
+            existing.duration_seconds = duration_seconds
+            await db.flush()
+            return existing
+        else:
+            # 创建新记录
+            detail = CrawlerTaskDetail(
+                task_id=task_id,
+                platform=platform,
+                city=city,
+                total_fetched=total_fetched,
+                new_count=new_count,
+                updated_count=updated_count,
+                failed_count=failed_count,
+                skipped_count=skipped_count,
+                error_messages=error_messages,
+                duration_seconds=duration_seconds,
+            )
+            db.add(detail)
+            await db.flush()
+            return detail
+
+    @staticmethod
+    async def get_by_task_id(db: AsyncSession, task_id: int) -> list[CrawlerTaskDetail]:
+        """获取指定任务的所有详情记录"""
+        result = await db.execute(
+            select(CrawlerTaskDetail).where(
+                CrawlerTaskDetail.task_id == task_id
+            ).order_by(CrawlerTaskDetail.platform, CrawlerTaskDetail.city)
+        )
+        return list(result.scalars().all())

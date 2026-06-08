@@ -164,3 +164,34 @@ class AuditReport(Base):
     # 系统字段
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+
+
+class DataAuditExecution(Base):
+    """数据审核执行历史表"""
+    __tablename__ = "data_audit_executions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # 执行基本信息
+    execution_time = Column(DateTime, nullable=False, index=True, comment="执行时间")
+
+    # 应用的规则列表
+    rules_applied = Column(JSON, nullable=True, comment="应用的规则列表")
+    # 示例: [{"rule_id": 1, "rule_name": "清理非房产数据", "enabled": true}, ...]
+
+    # 执行统计
+    properties_checked = Column(Integer, nullable=False, default=0, comment="检查的房源数")
+    properties_deleted = Column(Integer, nullable=False, default=0, comment="删除的房源数")
+    properties_fixed = Column(Integer, nullable=False, default=0, comment="修复的房源数")
+
+    # 违规详情统计
+    violations_found = Column(JSON, nullable=True, comment="违规详情统计")
+    # 示例: {"非房产数据": 23, "缺少标题": 15, "缺少价格": 10}
+
+    # 执行结果
+    execution_duration = Column(Integer, nullable=True, comment="执行耗时（秒）")
+    status = Column(String(32), nullable=False, default="completed", comment="执行状态: completed/failed")
+    error_message = Column(Text, nullable=True, comment="错误信息")
+
+    # 系统字段
+    created_at = Column(DateTime, nullable=False, default=datetime.now, comment="创建时间")

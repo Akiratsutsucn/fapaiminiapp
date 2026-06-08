@@ -9,13 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.0",
-    "vue-router": "^4.4.0",
-    "pinia": "^2.2.0",
-    "tdesign-vue-next": "^1.10.0",
-    "tdesign-icons-vue-next": "^0.3.0",
+    "@vueuse/core": "^11.0.0",
     "axios": "^1.7.0",
-    "@vueuse/core": "^11.0.0"
+    "marked": "^18.0.5",
+    "pinia": "^2.2.0",
+    "tdesign-icons-vue-next": "^0.3.0",
+    "tdesign-vue-next": "^1.10.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.0",

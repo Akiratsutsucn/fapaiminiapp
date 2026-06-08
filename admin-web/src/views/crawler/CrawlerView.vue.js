@@ -1,16 +1,22 @@
 /// <reference types="../../../node_modules/.vue-global-types/vue_3.5_0_0_0.d.ts" />
 import { ref, onMounted } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
-import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie } from '@/api/crawler';
+import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie, getTaskDetails } from '@/api/crawler';
 const triggerLoading = ref(false);
 const taskLoading = ref(false);
 const tasks = ref([]);
-const statsVisible = ref(false);
-const currentStats = ref(null);
+const expandedRowKeys = ref([]);
+const taskDetails = ref({});
+const detailLoading = ref({});
 const platforms = [
-    { key: 'taobao', name: '淘宝拍卖', url: 'https://sf.taobao.com/', domain: '.taobao.com' },
+    { key: 'taobao', name: '阿里拍卖', url: 'https://sf.taobao.com/', domain: '.taobao.com' },
     { key: 'jd', name: '京东拍卖', url: 'https://auction.jd.com/', domain: '.jd.com' },
     { key: 'gpai', name: '公拍网', url: 'https://www.gpai.net/', domain: '.gpai.net' },
+];
+const cities = [
+    { id: 310000, name: '上海' },
+    { id: 330200, name: '宁波' },
+    { id: 330100, name: '杭州' },
 ];
 const cookiesStatus = ref({});
 const cookieInputs = ref({
@@ -29,22 +35,15 @@ const extractLoading = ref({
     gpai: false,
 });
 let loginWindow = null;
-function showStats(row) {
-    currentStats.value = row.stats_summary;
-    statsVisible.value = true;
-}
 const statusItems = ref([{ label: '最近运行', value: '--' }, { label: '当前状态', value: '--' }]);
 const taskColumns = [
     { colKey: 'id', title: 'ID', width: 70 },
-    { colKey: 'platform', title: '平台', width: 100 },
-    { colKey: 'city', title: '城市', width: 80 },
-    { colKey: 'status', title: '状态', width: 90 },
-    { colKey: 'total_count', title: '抓取数', width: 80 },
-    { colKey: 'new_count', title: '新增', width: 70 },
-    { colKey: 'updated_count', title: '更新', width: 70 },
-    { colKey: 'success_count', title: '成功', width: 80 },
-    { colKey: 'last_run_at', title: '运行时间', width: 180 },
-    { colKey: 'op', title: '详情', width: 80 },
+    { colKey: 'created_at', title: '创建时间', width: 180 },
+    { colKey: 'status', title: '状态', width: 100 },
+    { colKey: 'total_count', title: '总抓取数', width: 100 },
+    { colKey: 'new_count', title: '新增', width: 80 },
+    { colKey: 'updated_count', title: '更新', width: 80 },
+    { colKey: 'op', title: '操作', width: 100 },
 ];
 onMounted(() => { loadStatus(); loadTasks(); loadCookiesStatus(); });
 async function loadStatus() {
@@ -75,6 +74,46 @@ async function loadCookiesStatus() {
     catch (err) {
         console.error('加载Cookie状态失败:', err);
     }
+}
+async function toggleDetail(taskId) {
+    const index = expandedRowKeys.value.indexOf(taskId);
+    if (index > -1) {
+        expandedRowKeys.value.splice(index, 1);
+    }
+    else {
+        expandedRowKeys.value.push(taskId);
+        if (!taskDetails.value[taskId]) {
+            await loadTaskDetail(taskId);
+        }
+    }
+}
+async function loadTaskDetail(taskId) {
+    detailLoading.value[taskId] = true;
+    try {
+        const data = await getTaskDetails(taskId);
+        taskDetails.value[taskId] = data;
+    }
+    catch (err) {
+        MessagePlugin.error('加载任务详情失败');
+    }
+    finally {
+        detailLoading.value[taskId] = false;
+    }
+}
+function getCellClass(cell) {
+    if (!cell)
+        return '';
+    if (cell.failed_count > 0)
+        return 'cell-error';
+    return '';
+}
+function getEmptyDetailMessage(task) {
+    const DETAIL_FEATURE_DATE = '2026-06-08';
+    const taskDate = task.created_at?.split(' ')[0] || '';
+    if (taskDate && taskDate < DETAIL_FEATURE_DATE) {
+        return '此任务运行于详情功能上线前，暂无详细统计';
+    }
+    return '暂无详细数据，请等待任务执行完成';
 }
 function onOpenLoginPage(platform) {
     const width = 1000;
@@ -143,6 +182,9 @@ debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
 let __VLS_components;
 let __VLS_directives;
+/** @type {__VLS_StyleScopedClasses['grid-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['grid-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['grid-table']} */ ;
 // CSS variable injection 
 // CSS variable injection end 
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
@@ -576,101 +618,226 @@ const __VLS_138 = __VLS_137({
     title: "任务记录",
 }, ...__VLS_functionalComponentArgsRest(__VLS_137));
 __VLS_139.slots.default;
-const __VLS_140 = {}.TTable;
-/** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+    ...{ class: "info-banner" },
+});
+const __VLS_140 = {}.TIcon;
+/** @type {[typeof __VLS_components.TIcon, typeof __VLS_components.tIcon, ]} */ ;
 // @ts-ignore
 const __VLS_141 = __VLS_asFunctionalComponent(__VLS_140, new __VLS_140({
-    data: (__VLS_ctx.tasks),
-    columns: (__VLS_ctx.taskColumns),
-    loading: (__VLS_ctx.taskLoading),
-    rowKey: "id",
+    name: "info-circle",
+    ...{ style: {} },
 }));
 const __VLS_142 = __VLS_141({
+    name: "info-circle",
+    ...{ style: {} },
+}, ...__VLS_functionalComponentArgsRest(__VLS_141));
+__VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+const __VLS_144 = {}.TTable;
+/** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
+// @ts-ignore
+const __VLS_145 = __VLS_asFunctionalComponent(__VLS_144, new __VLS_144({
     data: (__VLS_ctx.tasks),
     columns: (__VLS_ctx.taskColumns),
     loading: (__VLS_ctx.taskLoading),
     rowKey: "id",
-}, ...__VLS_functionalComponentArgsRest(__VLS_141));
-__VLS_143.slots.default;
+    expandedRowKeys: (__VLS_ctx.expandedRowKeys),
+}));
+const __VLS_146 = __VLS_145({
+    data: (__VLS_ctx.tasks),
+    columns: (__VLS_ctx.taskColumns),
+    loading: (__VLS_ctx.taskLoading),
+    rowKey: "id",
+    expandedRowKeys: (__VLS_ctx.expandedRowKeys),
+}, ...__VLS_functionalComponentArgsRest(__VLS_145));
+__VLS_147.slots.default;
 {
-    const { status: __VLS_thisSlot } = __VLS_143.slots;
+    const { status: __VLS_thisSlot } = __VLS_147.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    const __VLS_144 = {}.TTag;
+    const __VLS_148 = {}.TTag;
     /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
     // @ts-ignore
-    const __VLS_145 = __VLS_asFunctionalComponent(__VLS_144, new __VLS_144({
+    const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
         theme: (row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : row.status === 'running' ? 'primary' : 'default'),
     }));
-    const __VLS_146 = __VLS_145({
+    const __VLS_150 = __VLS_149({
         theme: (row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : row.status === 'running' ? 'primary' : 'default'),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_145));
-    __VLS_147.slots.default;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_149));
+    __VLS_151.slots.default;
     (row.status);
-    var __VLS_147;
+    var __VLS_151;
 }
 {
-    const { op: __VLS_thisSlot } = __VLS_143.slots;
+    const { op: __VLS_thisSlot } = __VLS_147.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    if (row.stats_summary) {
-        const __VLS_148 = {}.TButton;
-        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    const __VLS_152 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_153 = __VLS_asFunctionalComponent(__VLS_152, new __VLS_152({
+        ...{ 'onClick': {} },
+        variant: "text",
+        size: "small",
+    }));
+    const __VLS_154 = __VLS_153({
+        ...{ 'onClick': {} },
+        variant: "text",
+        size: "small",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_153));
+    let __VLS_156;
+    let __VLS_157;
+    let __VLS_158;
+    const __VLS_159 = {
+        onClick: (...[$event]) => {
+            __VLS_ctx.toggleDetail(row.id);
+        }
+    };
+    __VLS_155.slots.default;
+    {
+        const { icon: __VLS_thisSlot } = __VLS_155.slots;
+        const __VLS_160 = {}.TIcon;
+        /** @type {[typeof __VLS_components.TIcon, typeof __VLS_components.tIcon, ]} */ ;
         // @ts-ignore
-        const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
-            ...{ 'onClick': {} },
-            variant: "text",
+        const __VLS_161 = __VLS_asFunctionalComponent(__VLS_160, new __VLS_160({
+            name: (__VLS_ctx.expandedRowKeys.includes(row.id) ? 'chevron-up' : 'chevron-down'),
+        }));
+        const __VLS_162 = __VLS_161({
+            name: (__VLS_ctx.expandedRowKeys.includes(row.id) ? 'chevron-up' : 'chevron-down'),
+        }, ...__VLS_functionalComponentArgsRest(__VLS_161));
+    }
+    (__VLS_ctx.expandedRowKeys.includes(row.id) ? '收起' : '详情');
+    var __VLS_155;
+}
+{
+    const { 'expanded-row': __VLS_thisSlot } = __VLS_147.slots;
+    const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "detail-grid-container" },
+    });
+    if (__VLS_ctx.detailLoading[row.id]) {
+        const __VLS_164 = {}.TLoading;
+        /** @type {[typeof __VLS_components.TLoading, typeof __VLS_components.tLoading, ]} */ ;
+        // @ts-ignore
+        const __VLS_165 = __VLS_asFunctionalComponent(__VLS_164, new __VLS_164({
             size: "small",
         }));
-        const __VLS_150 = __VLS_149({
-            ...{ 'onClick': {} },
-            variant: "text",
+        const __VLS_166 = __VLS_165({
             size: "small",
-        }, ...__VLS_functionalComponentArgsRest(__VLS_149));
-        let __VLS_152;
-        let __VLS_153;
-        let __VLS_154;
-        const __VLS_155 = {
-            onClick: (...[$event]) => {
-                if (!(row.stats_summary))
-                    return;
-                __VLS_ctx.showStats(row);
+        }, ...__VLS_functionalComponentArgsRest(__VLS_165));
+    }
+    else if (__VLS_ctx.taskDetails[row.id]) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "detail-grid" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.table, __VLS_intrinsicElements.table)({
+            ...{ class: "grid-table" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.thead, __VLS_intrinsicElements.thead)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+            ...{ class: "corner-cell" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.tbody, __VLS_intrinsicElements.tbody)({});
+        for (const [platform] of __VLS_getVForSourceType((__VLS_ctx.platforms))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({
+                key: (platform.key),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+                ...{ class: "platform-cell" },
+            });
+            (platform.name);
+            for (const [city] of __VLS_getVForSourceType((__VLS_ctx.cities))) {
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+                    key: (city.id),
+                    ...{ class: (__VLS_ctx.getCellClass(__VLS_ctx.taskDetails[row.id][platform.name]?.[city.name])) },
+                });
+                if (__VLS_ctx.taskDetails[row.id][platform.name]?.[city.name]) {
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                        ...{ class: "cell-content" },
+                    });
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                        ...{ class: "cell-stats" },
+                    });
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                        ...{ class: "stat-item success-stat" },
+                    });
+                    (__VLS_ctx.taskDetails[row.id][platform.name][city.name].success_count);
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                        ...{ class: "stat-item new-stat" },
+                    });
+                    (__VLS_ctx.taskDetails[row.id][platform.name][city.name].new_count);
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                        ...{ class: "stat-item update-stat" },
+                    });
+                    (__VLS_ctx.taskDetails[row.id][platform.name][city.name].updated_count);
+                    if (__VLS_ctx.taskDetails[row.id][platform.name][city.name].failed_count > 0) {
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                            ...{ class: "stat-item fail-stat" },
+                        });
+                        (__VLS_ctx.taskDetails[row.id][platform.name][city.name].failed_count);
+                    }
+                    if (__VLS_ctx.taskDetails[row.id][platform.name][city.name].error_message) {
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                            ...{ class: "error-msg" },
+                        });
+                        (__VLS_ctx.taskDetails[row.id][platform.name][city.name].error_message);
+                    }
+                }
+                else {
+                    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                        ...{ class: "no-data" },
+                    });
+                }
             }
-        };
-        __VLS_151.slots.default;
-        var __VLS_151;
+        }
     }
     else {
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ style: {} },
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "no-detail" },
         });
+        const __VLS_168 = {}.TIcon;
+        /** @type {[typeof __VLS_components.TIcon, typeof __VLS_components.tIcon, ]} */ ;
+        // @ts-ignore
+        const __VLS_169 = __VLS_asFunctionalComponent(__VLS_168, new __VLS_168({
+            name: "file-search",
+            ...{ style: {} },
+        }));
+        const __VLS_170 = __VLS_169({
+            name: "file-search",
+            ...{ style: {} },
+        }, ...__VLS_functionalComponentArgsRest(__VLS_169));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "no-detail-text" },
+        });
+        (__VLS_ctx.getEmptyDetailMessage(row));
     }
 }
-var __VLS_143;
+var __VLS_147;
 var __VLS_139;
-const __VLS_156 = {}.TDialog;
-/** @type {[typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, typeof __VLS_components.TDialog, typeof __VLS_components.tDialog, ]} */ ;
-// @ts-ignore
-const __VLS_157 = __VLS_asFunctionalComponent(__VLS_156, new __VLS_156({
-    visible: (__VLS_ctx.statsVisible),
-    header: "本轮爬取详情",
-    width: "600px",
-    footer: (false),
-}));
-const __VLS_158 = __VLS_157({
-    visible: (__VLS_ctx.statsVisible),
-    header: "本轮爬取详情",
-    width: "600px",
-    footer: (false),
-}, ...__VLS_functionalComponentArgsRest(__VLS_157));
-__VLS_159.slots.default;
-if (__VLS_ctx.currentStats) {
-    __VLS_asFunctionalElement(__VLS_intrinsicElements.pre, __VLS_intrinsicElements.pre)({
-        ...{ style: {} },
-    });
-    (JSON.stringify(__VLS_ctx.currentStats, null, 2));
-}
-var __VLS_159;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['info-banner']} */ ;
+/** @type {__VLS_StyleScopedClasses['detail-grid-container']} */ ;
+/** @type {__VLS_StyleScopedClasses['detail-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['grid-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['corner-cell']} */ ;
+/** @type {__VLS_StyleScopedClasses['platform-cell']} */ ;
+/** @type {__VLS_StyleScopedClasses['cell-content']} */ ;
+/** @type {__VLS_StyleScopedClasses['cell-stats']} */ ;
+/** @type {__VLS_StyleScopedClasses['stat-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['success-stat']} */ ;
+/** @type {__VLS_StyleScopedClasses['stat-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['new-stat']} */ ;
+/** @type {__VLS_StyleScopedClasses['stat-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['update-stat']} */ ;
+/** @type {__VLS_StyleScopedClasses['stat-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['fail-stat']} */ ;
+/** @type {__VLS_StyleScopedClasses['error-msg']} */ ;
+/** @type {__VLS_StyleScopedClasses['no-data']} */ ;
+/** @type {__VLS_StyleScopedClasses['no-detail']} */ ;
+/** @type {__VLS_StyleScopedClasses['no-detail-text']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
@@ -678,16 +845,20 @@ const __VLS_self = (await import('vue')).defineComponent({
             triggerLoading: triggerLoading,
             taskLoading: taskLoading,
             tasks: tasks,
-            statsVisible: statsVisible,
-            currentStats: currentStats,
+            expandedRowKeys: expandedRowKeys,
+            taskDetails: taskDetails,
+            detailLoading: detailLoading,
             platforms: platforms,
+            cities: cities,
             cookiesStatus: cookiesStatus,
             cookieInputs: cookieInputs,
             cookieLoading: cookieLoading,
             extractLoading: extractLoading,
-            showStats: showStats,
             statusItems: statusItems,
             taskColumns: taskColumns,
+            toggleDetail: toggleDetail,
+            getCellClass: getCellClass,
+            getEmptyDetailMessage: getEmptyDetailMessage,
             onOpenLoginPage: onOpenLoginPage,
             onExtractCookie: onExtractCookie,
             onUpdateCookie: onUpdateCookie,

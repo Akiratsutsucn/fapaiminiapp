@@ -5,7 +5,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
 from ...models.demand import Demand
 from ...schemas import PaginatedResponse, AdminDemandUpdate, RecommendRequest
 
@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("", response_model=PaginatedResponse)
 async def list_demands(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("demands")),
     phone: str | None = Query(None),
     target_district: str | None = Query(None),
     status: str | None = Query(None),
@@ -67,7 +67,7 @@ async def list_demands(
 async def create_demand(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     d = Demand(
         user_id=body.get("user_id", 0),
@@ -89,7 +89,7 @@ async def create_demand(
 async def delete_demand(
     demand_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Demand).where(Demand.id == demand_id))
     d = result.scalar_one_or_none()
@@ -105,7 +105,7 @@ async def update_demand(
     demand_id: int,
     body: AdminDemandUpdate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Demand).where(Demand.id == demand_id))
     d = result.scalar_one_or_none()
@@ -127,7 +127,7 @@ async def update_demand(
 @router.get("/assignable-users")
 async def list_assignable_users(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("demands")),
 ):
     """列出可分配的对接人：业务员(salesperson) + 代理商(agent)。"""
     from ...models.user import User
@@ -152,7 +152,7 @@ async def list_assignable_users(
 async def recommend_property(
     body: RecommendRequest,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """把房源定向推荐给指定用户，写入 property_recommendations。
 
@@ -212,7 +212,7 @@ async def recommend_property(
 @router.get("/recommend/list")
 async def list_recommendations(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("demands")),
     user_id: int | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),

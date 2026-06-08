@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, datetime
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
 from ...core.wechat import fetch_mp_published_articles, fetch_article_meta_from_url
 from ...models.article import Article
 from ...schemas import PaginatedResponse
@@ -59,7 +59,7 @@ async def sync_articles_from_mp(db: AsyncSession, limit: int = 40) -> dict:
 @router.get("", response_model=PaginatedResponse)
 async def list_articles(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("articles")),
     keyword: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -98,7 +98,7 @@ async def list_articles(
 async def sync_from_mp(
     body: dict | None = None,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """从公众号「拍来盟科技」同步已群发文章到文章管理。"""
     limit = int((body or {}).get("limit", 40))
@@ -160,7 +160,7 @@ async def _upsert_fetched_article(db: AsyncSession, art: dict) -> str:
 async def import_from_url(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """粘贴公众号文章永久链接导入（支持多条，换行/空格分隔）。
 
@@ -203,7 +203,7 @@ async def import_from_url(
 async def create_article(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     a = Article(
         title=body.get("title", ""),
@@ -226,7 +226,7 @@ async def update_article(
     article_id: int,
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Article).where(Article.id == article_id))
     a = result.scalar_one_or_none()
@@ -248,7 +248,7 @@ async def update_article(
 async def refetch_article_content(
     article_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """重新抓取该文章公众号原文正文（用于补全历史文章的全文内容）。"""
     a = (await db.execute(select(Article).where(Article.id == article_id))).scalar_one_or_none()
@@ -274,7 +274,7 @@ async def refetch_article_content(
 async def delete_article(
     article_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Article).where(Article.id == article_id))
     a = result.scalar_one_or_none()

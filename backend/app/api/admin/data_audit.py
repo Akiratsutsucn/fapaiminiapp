@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
-from ...models.data_audit import AuditRule, AuditTask, AuditViolation, AuditReport
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
+from ...models.data_audit import AuditRule, AuditTask, AuditViolation, AuditReport, DataAuditExecution
 from ...models.property import Property
 from ...services.data_audit_service import DataAuditService
 
@@ -61,7 +61,7 @@ async def list_rules(
     enabled: Optional[bool] = None,
     category: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取审核规则列表"""
     query = select(AuditRule).order_by(AuditRule.created_at.desc())
@@ -98,7 +98,7 @@ async def list_rules(
 async def get_rule(
     rule_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取单个规则详情"""
     rule = await db.get(AuditRule, rule_id)
@@ -128,7 +128,7 @@ async def get_rule(
 async def create_rule(
     req: AuditRuleCreate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """创建审核规则"""
     # 检查rule_code是否已存在
@@ -164,7 +164,7 @@ async def update_rule(
     rule_id: int,
     req: AuditRuleUpdate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """更新审核规则"""
     rule = await db.get(AuditRule, rule_id)
@@ -199,7 +199,7 @@ async def update_rule(
 async def delete_rule(
     rule_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """删除审核规则"""
     rule = await db.get(AuditRule, rule_id)
@@ -243,7 +243,7 @@ async def list_tasks(
     status: Optional[str] = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取审核任务列表"""
     query = select(AuditTask).order_by(desc(AuditTask.created_at)).limit(limit)
@@ -279,7 +279,7 @@ async def list_tasks(
 async def get_task(
     task_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取任务详情"""
     task = await db.get(AuditTask, task_id)
@@ -311,7 +311,7 @@ async def get_task(
 async def create_task(
     req: AuditTaskCreate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """创建并执行审核任务"""
     # 验证规则ID
@@ -362,7 +362,7 @@ async def list_violations(
     limit: int = 100,
     offset: int = 0,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取违规记录列表"""
     query = select(AuditViolation).order_by(desc(AuditViolation.created_at))
@@ -412,7 +412,7 @@ async def update_violation(
     violation_id: int,
     req: ViolationUpdate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """更新违规记录状态"""
     violation = await db.get(AuditViolation, violation_id)
@@ -440,7 +440,7 @@ async def update_violation(
 async def list_reports(
     limit: int = 20,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取审核报告列表"""
     query = select(AuditReport).order_by(desc(AuditReport.report_date)).limit(limit)
@@ -461,7 +461,7 @@ async def list_reports(
 async def get_report(
     report_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取报告详情"""
     report = await db.get(AuditReport, report_id)
@@ -486,7 +486,7 @@ async def get_report(
 async def get_report_by_task(
     task_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """根据任务ID获取报告"""
     result = await db.execute(
@@ -516,7 +516,7 @@ async def get_report_by_task(
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("data-audit")),
 ):
     """获取仪表板统计数据"""
     # 规则统计
@@ -563,4 +563,205 @@ async def get_dashboard_stats(
             "completed_at": str(latest_task.completed_at) if latest_task.completed_at else None,
         } if latest_task else None,
         "latest_quality_score": latest_report.quality_score if latest_report else None,
+    }
+
+
+# ==================== 审核执行历史 ====================
+
+@router.get("/executions")
+async def list_executions(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+    days: Optional[int] = None,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_module_permission("data-audit")),
+):
+    """获取审核执行历史列表（增强版）"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import and_
+
+    query = select(DataAuditExecution).order_by(desc(DataAuditExecution.execution_time))
+
+    # 日期范围过滤
+    filters = []
+
+    # 如果指定了days参数，优先使用
+    if days:
+        days_ago = datetime.now() - timedelta(days=days)
+        filters.append(DataAuditExecution.execution_time >= days_ago)
+    else:
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+                filters.append(DataAuditExecution.execution_time >= start_dt)
+            except ValueError:
+                pass
+
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+                # 包含当天全部时间
+                end_dt = end_dt.replace(hour=23, minute=59, second=59)
+                filters.append(DataAuditExecution.execution_time <= end_dt)
+            except ValueError:
+                pass
+
+        # 如果没有指定日期范围，默认最近30天
+        if not start_date and not end_date:
+            thirty_days_ago = datetime.now() - timedelta(days=30)
+            filters.append(DataAuditExecution.execution_time >= thirty_days_ago)
+
+    # 状态过滤
+    if status:
+        filters.append(DataAuditExecution.status == status)
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    # 获取总数
+    count_query = select(func.count()).select_from(query.subquery())
+    count_result = await db.execute(count_query)
+    total = count_result.scalar()
+
+    # 分页
+    offset = (page - 1) * page_size
+    query = query.limit(page_size).offset(offset)
+    result = await db.execute(query)
+    executions = result.scalars().all()
+
+    items = []
+    for e in executions:
+        violations_found = e.violations_found or {}
+
+        # 计算总违规数
+        summary = violations_found.get("summary", {})
+        total_violations = sum(summary.values()) if summary else 0
+
+        # 获取规则数量
+        rules_applied = e.rules_applied or []
+        total_rules = len(rules_applied)
+
+        items.append({
+            "id": e.id,
+            "execution_time": str(e.execution_time),
+            "total_rules": total_rules,
+            "total_violations": total_violations,
+            "cleaned_count": e.properties_deleted,
+            "fixed_count": e.properties_fixed,
+            "properties_checked": e.properties_checked,
+            "execution_duration": e.execution_duration,
+            "status": e.status,
+            "error_message": e.error_message,
+        })
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if total > 0 else 0,
+        "items": items
+    }
+
+
+@router.get("/executions/{execution_id}")
+async def get_execution(
+    execution_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_module_permission("data-audit")),
+):
+    """获取单次审核执行的详细信息（增强版）"""
+    execution = await db.get(DataAuditExecution, execution_id)
+    if not execution:
+        raise HTTPException(status_code=404, detail="执行记录不存在")
+
+    # 解析violations_found结构
+    violations_found = execution.violations_found or {}
+
+    # 提取详细操作列表
+    detailed_actions = violations_found.get("detailed_actions", [])
+
+    # 提取操作统计
+    action_stats = violations_found.get("action_statistics", {
+        "deleted_count": execution.properties_deleted,
+        "fixed_count": execution.properties_fixed,
+        "flagged_count": 0
+    })
+
+    # 提取规则统计摘要
+    summary = violations_found.get("summary", {})
+
+    return {
+        "id": execution.id,
+        "execution_time": str(execution.execution_time),
+        "rules_applied": execution.rules_applied or [],
+        "properties_checked": execution.properties_checked,
+        "properties_deleted": execution.properties_deleted,
+        "properties_fixed": execution.properties_fixed,
+        "violations_found": summary,  # 按规则分组的违规统计
+        "detailed_actions": detailed_actions,  # 详细操作描述
+        "action_statistics": action_stats,  # 操作统计
+        "execution_duration": execution.execution_duration,
+        "status": execution.status,
+        "error_message": execution.error_message,
+        "created_at": str(execution.created_at),
+    }
+
+
+@router.get("/executions/stats/summary")
+async def get_executions_summary(
+    days: int = 30,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_module_permission("data-audit")),
+):
+    """获取审核执行历史统计摘要（增强版）"""
+    from datetime import datetime, timedelta
+
+    # 计算日期范围
+    end_date = datetime.now()
+    start_date_7 = end_date - timedelta(days=7)
+    start_date_30 = end_date - timedelta(days=30)
+
+    # 查询最近7天的执行记录
+    result_7 = await db.execute(
+        select(DataAuditExecution).where(
+            DataAuditExecution.execution_time >= start_date_7
+        ).order_by(DataAuditExecution.execution_time)
+    )
+    executions_7 = result_7.scalars().all()
+
+    # 查询最近30天的执行记录
+    result_30 = await db.execute(
+        select(DataAuditExecution).where(
+            DataAuditExecution.execution_time >= start_date_30
+        ).order_by(DataAuditExecution.execution_time)
+    )
+    executions_30 = result_30.scalars().all()
+
+    def calculate_stats(executions):
+        """计算统计数据"""
+        if not executions:
+            return []
+
+        items = []
+        for e in executions:
+            violations_found = e.violations_found or {}
+            summary = violations_found.get("summary", {})
+            total_violations = sum(summary.values()) if summary else 0
+
+            items.append({
+                "id": e.id,
+                "execution_time": str(e.execution_time),
+                "total_violations": total_violations,
+                "cleaned_count": e.properties_deleted,
+                "fixed_count": e.properties_fixed,
+            })
+
+        return items
+
+    return {
+        "recent_7_days": calculate_stats(executions_7),
+        "recent_30_days": calculate_stats(executions_30),
     }

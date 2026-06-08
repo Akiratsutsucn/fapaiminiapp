@@ -5,7 +5,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_write_permission, check_module_permission
 from ...models.user import User
 from ...schemas import PaginatedResponse
 
@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("", response_model=PaginatedResponse)
 async def list_users(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("users")),
     phone: str | None = Query(None),
     role: str | None = Query(None),
     keyword: str | None = Query(None),
@@ -59,14 +59,28 @@ async def list_users(
 async def create_user(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     from ...core.security import pwd_context
+
+    # 验证角色是否合法
+    valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+    role = body.get("role", "customer")
+    if role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
+
+    # 检查手机号是否已存在
+    phone = body.get("phone")
+    if phone:
+        result = await db.execute(select(User).where(User.phone == phone))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="手机号已存在")
+
     u = User(
         openid=f"admin_created_{body.get('phone', 'no_phone')}",
         nickname=body.get("nickname", "新用户"),
-        phone=body.get("phone"),
-        role=body.get("role", "customer"),
+        phone=phone,
+        role=role,
         city_id=body.get("city_id", 310000),
         region=body.get("region", "") or "",
         inviter_id=body.get("inviter_id"),
@@ -82,7 +96,7 @@ async def create_user(
 async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
     u = result.scalar_one_or_none()
@@ -97,7 +111,7 @@ async def delete_user(
 async def get_user(
     user_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("users")),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
     u = result.scalar_one_or_none()
@@ -118,7 +132,7 @@ async def update_user(
     user_id: int,
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
     u = result.scalar_one_or_none()
@@ -128,6 +142,74 @@ async def update_user(
     allowed = {"nickname", "phone", "gender", "role", "city_id", "region", "inviter_id"}
     for k, v in body.items():
         if k in allowed:
+            # 验证角色
+            if k == "role":
+                valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+                if v not in valid_roles:
+                    raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
             setattr(u, k, v)
     await db.commit()
     return {"message": "更新成功"}
+
+
+@router.put("/{user_id}/role")
+async def update_user_role(
+    user_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_write_permission()),
+):
+    """单独的角色修改接口"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    u = result.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    role = body.get("role")
+    if not role:
+        raise HTTPException(status_code=400, detail="缺少role参数")
+
+    valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+    if role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
+
+    u.role = role
+    await db.commit()
+    return {"message": "角色更新成功", "role": role}
+
+
+@router.get("/me/permissions")
+async def get_current_user_permissions(
+    admin: dict = Depends(get_admin_user),
+):
+    """获取当前用户的权限列表和可访问模块"""
+    from ...core.security import ROLE_PERMISSIONS
+
+    role = admin.get("role", "")
+    permissions = ROLE_PERMISSIONS.get(role, [])
+
+    # 是否是只读角色
+    is_readonly = role == "leader"
+
+    return {
+        "role": role,
+        "permissions": permissions,
+        "is_readonly": is_readonly,
+        "can_access_all": "*" in permissions,
+    }
+
+
+@router.get("/roles/list")
+async def get_role_list(
+    admin: dict = Depends(get_admin_user),
+):
+    """获取所有可用角色列表，供前端下拉选择"""
+    roles = [
+        {"value": "admin", "label": "管理员", "description": "最高管理员，全部权限"},
+        {"value": "leader", "label": "领导", "description": "全局可见但只读"},
+        {"value": "content_manager", "label": "内容管理员", "description": "仅能访问文章、横幅、爬虫模块"},
+        {"value": "agent", "label": "代理商", "description": "可登录后台，部分权限"},
+        {"value": "salesman", "label": "业务员", "description": "不能登录后台"},
+        {"value": "customer", "label": "客户", "description": "普通用户，不能登录后台"},
+    ]
+    return {"roles": roles}

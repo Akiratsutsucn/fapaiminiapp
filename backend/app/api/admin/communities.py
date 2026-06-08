@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
 from ...models.community import CommunityInfo
 
 router = APIRouter()
@@ -57,7 +57,7 @@ class CommunityBatchImport(BaseModel):
 @router.get("")
 async def list_communities(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("communities")),
     city_id: int | None = None,
     keyword: str | None = None,
     limit: int = 100,
@@ -89,7 +89,7 @@ async def list_communities(
 async def get_community(
     community_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("communities")),
 ):
     r = (await db.execute(
         select(CommunityInfo).where(CommunityInfo.id == community_id)
@@ -113,7 +113,7 @@ async def get_community(
 async def create_community(
     body: CommunityCreate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     existing = (await db.execute(
         select(CommunityInfo).where(CommunityInfo.name == body.name)
@@ -133,7 +133,7 @@ async def update_community(
     community_id: int,
     body: CommunityUpdate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     c = (await db.execute(
         select(CommunityInfo).where(CommunityInfo.id == community_id)
@@ -156,7 +156,7 @@ async def update_community(
 async def delete_community(
     community_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     c = (await db.execute(
         select(CommunityInfo).where(CommunityInfo.id == community_id)
@@ -173,7 +173,7 @@ async def delete_community(
 async def batch_import_communities(
     body: CommunityBatchImport,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     added = 0
     skipped = 0
@@ -194,7 +194,7 @@ async def batch_import_communities(
 @router.post("/refresh-prices")
 async def refresh_community_prices(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """Attempt to refresh community prices from external sources (placeholder)."""
     return {

@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission
 from ...core.auction_status import (
     effective_status_sql, BARGAIN_DISCOUNT_MIN, BARGAIN_DISCOUNT_MAX,
     MOBILE_VISIBLE_STATUSES,
@@ -24,7 +24,7 @@ router = APIRouter()
 async def get_dashboard(
     city_id: Optional[int] = Query(None, description="筛选城市：310000=上海, 330200=宁波, 330100=杭州, 不传=全部"),
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("dashboard")),
 ):
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -84,21 +84,75 @@ async def get_dashboard(
 
     total_articles = (await db.execute(select(func.count(Article.id)))).scalar() or 0
 
+    # 三城分项数据
+    CITIES = {"shanghai": 310000, "ningbo": 330200, "hangzhou": 330100}
+
+    async def _city_breakdown(base_conditions):
+        """计算城市分项数据"""
+        result = {}
+        for city_key, city_code in CITIES.items():
+            city_conditions = base_conditions + [Property.city_id == city_code]
+            count = (await db.execute(
+                select(func.count(Property.id)).where(*city_conditions)
+            )).scalar() or 0
+            result[city_key] = count
+        return result
+
+    # 房源相关指标的城市分项
+    total_by_city = await _city_breakdown([])
+    today_new_by_city = await _city_breakdown([func.date(Property.created_at) == today])
+    upcoming_by_city = await _city_breakdown([effective_status_sql() == "即将开拍"])
+    sold_by_city = await _city_breakdown([effective_status_sql() == "已成交"])
+    bargain_by_city = await _city_breakdown([
+        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+        Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
+        Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
+    ])
+    yesterday_listed_by_city = await _city_breakdown([
+        func.date(func.coalesce(Property.publish_date, Property.created_at)) == yesterday
+    ])
+    yesterday_sold_by_city = await _city_breakdown([
+        effective_status_sql().in_(["已成交", "已结束"]),
+        func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == yesterday,
+    ])
+
     return {
-        # 总览指标
-        "total_properties": total_properties,
-        "today_new": today_new,
-        "upcoming": upcoming,
-        "sold": sold,
+        # 总览指标（带城市分项）
+        "total_properties": {
+            "total": total_properties,
+            "by_city": total_by_city,
+        },
+        "today_new": {
+            "total": today_new,
+            "by_city": today_new_by_city,
+        },
+        "upcoming": {
+            "total": upcoming,
+            "by_city": upcoming_by_city,
+        },
+        "sold": {
+            "total": sold,
+            "by_city": sold_by_city,
+        },
+        # 用户、需求、文章（无城市分项）
         "total_users": total_users,
         "agent_count": agent_count,
         "pending_demands": pending_demands,
         "pending_messages": pending_messages,
         "total_articles": total_articles,
-        # 与小程序首页 market-stats 对齐的市场指标
-        "bargain_count": bargain_count,
-        "yesterday_listed": yesterday_listed,
-        "yesterday_sold": yesterday_sold,
+        # 与小程序首页 market-stats 对齐的市场指标（带城市分项）
+        "bargain_count": {
+            "total": bargain_count,
+            "by_city": bargain_by_city,
+        },
+        "yesterday_listed": {
+            "total": yesterday_listed,
+            "by_city": yesterday_listed_by_city,
+        },
+        "yesterday_sold": {
+            "total": yesterday_sold,
+            "by_city": yesterday_sold_by_city,
+        },
         # 当前过滤
         "city_id": city_id,
     }

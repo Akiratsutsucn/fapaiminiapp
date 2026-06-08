@@ -14,3 +14,6 @@ export function getCookiesStatus() {
 export function updateCookie(platform, cookie) {
     return http.post('/crawler/cookies', { platform, cookie }).then(r => r.data);
 }
+export function getTaskDetails(taskId) {
+    return http.get(`/crawler/tasks/${taskId}/details`).then(r => r.data);
+}

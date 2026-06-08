@@ -8,7 +8,9 @@
           <t-option value="customer" label="客户" />
           <t-option value="salesperson" label="业务员" />
           <t-option value="agent" label="代理商" />
-          <t-option value="admin" label="管理员" />
+          <t-option value="content_manager" label="内容管理员" />
+          <t-option value="leader" label="领导" />
+          <t-option value="admin" label="最高管理员" />
         </t-select>
         <t-button theme="primary" @click="loadData">查询</t-button>
         <t-button theme="primary" variant="outline" @click="onCreate">新增用户</t-button>
@@ -16,6 +18,15 @@
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #role="{ row }">
           <t-tag :theme="roleTheme(row.role)">{{ roleLabel(row.role) }}</t-tag>
+          <t-button
+            v-if="row.role !== 'admin'"
+            variant="text"
+            size="small"
+            style="margin-left: 8px"
+            @click="onChangeRole(row)"
+          >
+            <template #icon><t-icon name="edit" /></template>
+          </t-button>
         </template>
         <template #region="{ row }">
           <span v-if="row.role === 'agent' || row.role === 'salesperson'">{{ row.region || '--' }}</span>
@@ -73,7 +84,9 @@
             <t-option value="customer" label="客户" />
             <t-option value="salesperson" label="业务员" />
             <t-option value="agent" label="代理商" />
-            <t-option value="admin" label="管理员" />
+            <t-option value="content_manager" label="内容管理员" />
+            <t-option value="leader" label="领导" />
+            <t-option value="admin" label="最高管理员" />
           </t-select>
         </t-form-item>
         <t-form-item label="负责地区" v-if="createForm.role === 'agent' || createForm.role === 'salesperson'">
@@ -82,7 +95,24 @@
         <t-form-item label="邀请人ID" v-if="createForm.role === 'customer'">
           <t-input-number v-model="createForm.inviter_id" placeholder="邀请该客户的代理商 ID" :min="0" />
         </t-form-item>
-        <t-form-item label="密码"><t-input v-model="createForm.password" type="password" placeholder="默认 123456" /></t-form-item>
+        <t-form-item label="初始密码"><t-input v-model="createForm.password" type="password" placeholder="留空则默认 123456" /></t-form-item>
+      </t-form>
+    </t-dialog>
+
+    <t-dialog v-model:visible="roleChangeVisible" header="修改角色" width="400px" @confirm="onSaveRoleChange">
+      <t-form label-width="80px">
+        <t-form-item label="当前用户">{{ roleChangeForm.nickname }}</t-form-item>
+        <t-form-item label="当前角色">{{ roleLabel(roleChangeForm.currentRole) }}</t-form-item>
+        <t-form-item label="新角色">
+          <t-select v-model="roleChangeForm.newRole">
+            <t-option value="customer" label="客户" />
+            <t-option value="salesperson" label="业务员" />
+            <t-option value="agent" label="代理商" />
+            <t-option value="content_manager" label="内容管理员" />
+            <t-option value="leader" label="领导" />
+            <t-option value="admin" label="最高管理员" />
+          </t-select>
+        </t-form-item>
       </t-form>
     </t-dialog>
   </div>
@@ -91,7 +121,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { listUsers, createUser, updateUser, deleteUser } from '@/api/users'
+import { listUsers, createUser, updateUser, deleteUser, updateUserRole } from '@/api/users'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -99,17 +129,31 @@ const filters = reactive({ keyword: '', role: '' })
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 
 function roleLabel(r: string) {
-  return { admin: '管理员', agent: '代理商', salesperson: '业务员', customer: '客户' }[r] || '客户'
+  const labels: Record<string, string> = {
+    admin: '最高管理员',
+    leader: '领导',
+    content_manager: '内容管理员',
+    agent: '代理商',
+    salesperson: '业务员',
+    customer: '客户'
+  }
+  return labels[r] || '客户'
 }
+
 function roleTheme(r: string) {
-  return r === 'admin' ? 'primary' : r === 'agent' ? 'warning' : r === 'salesperson' ? 'success' : 'default'
+  if (r === 'admin') return 'primary'
+  if (r === 'leader') return 'warning'
+  if (r === 'content_manager') return 'success'
+  if (r === 'agent') return 'warning'
+  if (r === 'salesperson') return 'success'
+  return 'default'
 }
 
 const columns = [
   { colKey: 'id', title: 'ID', width: 80 },
   { colKey: 'nickname', title: '昵称', width: 120 },
   { colKey: 'phone', title: '手机号', width: 130 },
-  { colKey: 'role', title: '角色', width: 100 },
+  { colKey: 'role', title: '角色', width: 180 },
   { colKey: 'region', title: '负责地区', width: 160 },
   { colKey: 'inviter_id', title: '邀请人ID', width: 100 },
   { colKey: 'created_at', title: '注册时间', width: 180 },
@@ -121,6 +165,9 @@ const editForm = reactive({ id: 0, nickname: '', phone: '', role: 'customer', ci
 
 const createVisible = ref(false)
 const createForm = reactive({ nickname: '', phone: '', role: 'customer', password: '', region: '', inviter_id: 0 as number | null })
+
+const roleChangeVisible = ref(false)
+const roleChangeForm = reactive({ userId: 0, nickname: '', currentRole: '', newRole: '' })
 
 onMounted(() => loadData())
 
@@ -150,6 +197,7 @@ async function onSaveCreate() {
     const body: any = { ...createForm }
     if (!body.region) delete body.region
     if (!body.inviter_id) delete body.inviter_id
+    if (!body.password) delete body.password
     await createUser(body)
     MessagePlugin.success('创建成功')
     createVisible.value = false
@@ -180,6 +228,27 @@ async function onSaveEdit() {
     await updateUser(editForm.id, body)
     MessagePlugin.success('更新成功')
     editVisible.value = false
+    loadData()
+  } catch { /* skip */ }
+}
+
+function onChangeRole(row: any) {
+  roleChangeForm.userId = row.id
+  roleChangeForm.nickname = row.nickname
+  roleChangeForm.currentRole = row.role
+  roleChangeForm.newRole = row.role
+  roleChangeVisible.value = true
+}
+
+async function onSaveRoleChange() {
+  if (roleChangeForm.newRole === roleChangeForm.currentRole) {
+    MessagePlugin.warning('新角色与当前角色相同')
+    return
+  }
+  try {
+    await updateUserRole(roleChangeForm.userId, roleChangeForm.newRole)
+    MessagePlugin.success('角色修改成功')
+    roleChangeVisible.value = false
     loadData()
   } catch { /* skip */ }
 }

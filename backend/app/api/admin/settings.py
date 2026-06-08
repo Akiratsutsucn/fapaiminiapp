@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.config import settings as app_settings
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_write_permission
 from ...models.system_setting import SystemSetting
 from ...models.property import Property
 
@@ -84,7 +84,7 @@ async def get_settings(
 async def update_settings(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     for key, value in body.items():
         result = await db.execute(
@@ -107,7 +107,7 @@ async def list_cities(admin: dict = Depends(get_admin_user)):
 @router.post("/cities")
 async def add_city(
     body: dict,
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     city_id = body.get("city_id")
     city_name = body.get("city_name", "")
@@ -191,7 +191,7 @@ def _generate_xlsx_bytes(rows) -> bytes:
 @router.post("/archive/export")
 async def manual_archive_export(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
     format: str = "xlsx",
 ):
     """手动导出当前全量房源数据为归档文件（xlsx 默认，可选 csv）。"""

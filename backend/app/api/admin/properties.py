@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import io
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
 from ...core.auction_status import effective_status, effective_status_sql
 from ...models.property import Property
 from ...schemas import PaginatedResponse, AdminPropertyCreate, PropertyDetail
@@ -20,7 +20,7 @@ ALLOWED_STATUS_SORT = ("starting_price", "appraisal_price", "area", "created_at"
 @router.get("", response_model=PaginatedResponse)
 async def list_properties_admin(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("properties")),
     city_id: int | None = Query(None),
     district: str | None = Query(None),
     price_min: int | None = Query(None),
@@ -120,7 +120,7 @@ async def list_properties_admin(
 @router.get("/export")
 async def export_properties(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("properties")),
     city_id: int | None = Query(None),
     auction_status: str | None = Query(None),
     format: str = Query("csv", regex="^(csv|xlsx)$"),
@@ -300,7 +300,7 @@ def _export_xlsx(rows, FIELDS):
 async def get_property_admin(
     property_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("properties")),
 ):
     result = await db.execute(select(Property).where(Property.id == property_id))
     p = result.scalar_one_or_none()
@@ -313,7 +313,7 @@ async def get_property_admin(
 async def create_property(
     body: AdminPropertyCreate,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     p = Property(**body.model_dump(), auction_platform="人工录入", source_url=f"manual://{body.title}")
     db.add(p)
@@ -327,7 +327,7 @@ async def update_property(
     property_id: int,
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Property).where(Property.id == property_id))
     p = result.scalar_one_or_none()
@@ -380,7 +380,7 @@ async def update_property(
 async def toggle_image_hidden(
     image_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """切换单张图片的隐藏状态（管理员恢复误判图 / 手动隐藏垃圾图）。"""
     from ...models.property import PropertyImage
@@ -402,7 +402,7 @@ async def toggle_image_hidden(
 async def delete_property(
     property_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Property).where(Property.id == property_id))
     p = result.scalar_one_or_none()
@@ -417,7 +417,7 @@ async def delete_property(
 async def refresh_community(
     property_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """触发该房源对应小区的贝壳数据重新抓取（同步）。"""
     result = await db.execute(select(Property).where(Property.id == property_id))
@@ -460,7 +460,7 @@ async def refresh_community(
 async def get_property_community(
     property_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("properties")),
 ):
     """读取该房源对应的小区详情（admin 后台用）。"""
     from ...models.community import CommunityInfo

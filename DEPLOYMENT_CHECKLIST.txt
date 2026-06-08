@@ -1,0 +1,49 @@
+"""爬虫任务详细化功能 - 验证清单
+
+## 代码修改验证
+
+✓ 1. 数据库模型层
+  - backend/app/models/crawl.py: 新增 CrawlerTaskDetail 类
+  - backend/app/models/__init__.py: 导出 CrawlerTaskDetail
+
+✓ 2. 数据库迁移
+  - backend/alembic/versions/d1e2f3a4b5c6_add_crawler_task_details.py: 创建迁移脚本
+
+✓ 3. 数据访问层
+  - crawler/storage/repository.py: 新增 CrawlerTaskDetailRepository 类
+
+✓ 4. 爬虫引擎
+  - crawler/engine.py: 导入 CrawlerTaskDetailRepository
+  - 新增 city_stats 字典跟踪城市统计
+  - 在列表抓取时初始化城市统计
+  - 在详情处理时按城市归类统计
+  - 处理完成后保存详情到数据库
+
+✓ 5. ListItem 数据结构
+  - crawler/platforms/base.py: ListItem 新增 city 字段
+
+✓ 6. API 接口
+  - backend/app/api/admin/crawler.py: 新增 GET /tasks/{task_id}/details 端点
+
+✓ 7. 测试脚本
+  - backend/test_crawler_details.py: 创建测试脚本
+
+✓ 8. 文档
+  - IMPLEMENTATION_SUMMARY.md: 实现说明文档
+
+## 部署步骤
+
+1. 备份数据库
+2. 运行数据库迁移: alembic upgrade head
+3. 重启后端服务
+4. 触发测试爬虫任务
+5. 验证数据写入
+6. 测试 API 接口
+
+## 预期结果
+
+- crawler_task_details 表成功创建
+- 爬虫运行后自动记录详细统计
+- 可通过 API 查询任务的详细统计信息
+- 按平台×城市显示统计数据
+"""

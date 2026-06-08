@@ -46,3 +46,25 @@ class CrawlRecord(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     task = relationship("CrawlTask", back_populates="records")
+
+
+class CrawlerTaskDetail(Base):
+    """爬虫任务详细记录 - 按平台和城市统计"""
+    __tablename__ = "crawler_task_details"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(
+        Integer, ForeignKey("crawl_tasks.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    platform = Column(String(32), nullable=False, comment="平台名称：阿里拍卖/京东拍卖/公拍网")
+    city = Column(String(32), nullable=False, comment="城市名称：上海/宁波/杭州")
+    total_fetched = Column(Integer, nullable=False, default=0, comment="抓取总数")
+    new_count = Column(Integer, nullable=False, default=0, comment="新增数量")
+    updated_count = Column(Integer, nullable=False, default=0, comment="更新数量")
+    failed_count = Column(Integer, nullable=False, default=0, comment="失败数量")
+    skipped_count = Column(Integer, nullable=False, default=0, comment="跳过数量")
+    error_messages = Column(Text, nullable=True, comment="错误信息（截断至1000字符）")
+    duration_seconds = Column(Integer, nullable=True, comment="耗时（秒）")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    task = relationship("CrawlTask")

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
 from ...models.banner import Banner
 
 router = APIRouter()
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("")
 async def list_banners(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("banners")),
 ):
     rows = (await db.execute(
         select(Banner).order_by(Banner.sort_order.asc())
@@ -31,7 +31,7 @@ async def list_banners(
 async def create_banner(
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     b = Banner(
         title=body.get("title", ""),
@@ -53,7 +53,7 @@ async def update_banner(
     banner_id: int,
     body: dict,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Banner).where(Banner.id == banner_id))
     b = result.scalar_one_or_none()
@@ -72,7 +72,7 @@ async def update_banner(
 async def delete_banner(
     banner_id: int,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     result = await db.execute(select(Banner).where(Banner.id == banner_id))
     b = result.scalar_one_or_none()

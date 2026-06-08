@@ -1,5 +1,5 @@
 from .property import Property, PropertyImage
-from .crawl import CrawlTask, CrawlRecord
+from .crawl import CrawlTask, CrawlRecord, CrawlerTaskDetail
 from .user import User
 from .demand import Demand
 from .article import Article
@@ -13,7 +13,7 @@ from .data_audit import AuditRule, AuditTask, AuditViolation, AuditReport
 
 __all__ = [
     "Property", "PropertyImage",
-    "CrawlTask", "CrawlRecord",
+    "CrawlTask", "CrawlRecord", "CrawlerTaskDetail",
     "User",
     "Demand",
     "Article",

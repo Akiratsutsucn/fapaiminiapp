@@ -37,7 +37,7 @@
     </view>
     <view class="form-group">
       <text class="form-label">留言内容 <text class="required">*</text></text>
-      <textarea class="form-textarea" placeholder="请描述您的问题或购房需求，客服将尽快与您联系" value="{{form.remark}}" bindinput="onInput" data-field="remark" maxlength="500" auto-height />
+      <textarea class="form-textarea" placeholder="请描述您在小程序上遇到的问题、或对我们的建议。" value="{{form.remark}}" bindinput="onInput" data-field="remark" maxlength="500" auto-height />
       <text class="form-tip">{{form.remark.length}} / 500</text>
     </view>
     <button class="cs-submit-btn btn-primary" bindtap="onSubmitMessage" loading="{{submitting}}">提交留言</button>

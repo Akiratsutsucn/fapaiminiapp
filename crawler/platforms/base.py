@@ -12,6 +12,7 @@ class ListItem:
     """Lightweight item extracted from a list/search page."""
     source_url: str
     title: str = ""
+    city: str = ""  # 城市名称，用于统计
     publish_date: datetime | None = None
     auction_status: str = ""
     starting_price_text: str = ""  # raw text, parsed later on detail page

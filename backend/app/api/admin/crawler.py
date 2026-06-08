@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
 from ...core.database import get_session
-from ...core.security import get_admin_user
-from ...models.crawl import CrawlTask
+from ...core.security import get_admin_user, check_module_permission, check_write_permission
+from ...models.crawl import CrawlTask, CrawlerTaskDetail
 
 router = APIRouter()
 
@@ -72,7 +72,7 @@ def _run_crawl_task_sync(task_id: int, platform: str | None, city: str | None) -
 @router.get("/tasks")
 async def list_tasks(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("crawler")),
 ):
     rows = (await db.execute(
         select(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(50)
@@ -93,7 +93,7 @@ async def list_tasks(
 async def trigger_crawl(
     body: dict | None = None,
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     platform = body.get("platform") if body else None
     city = body.get("city") if body else None
@@ -119,7 +119,7 @@ async def trigger_crawl(
 @router.get("/status")
 async def crawler_status(
     db: AsyncSession = Depends(get_session),
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("crawler")),
 ):
     latest = (await db.execute(
         select(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(1)
@@ -138,7 +138,7 @@ async def crawler_status(
 
 @router.get("/cookies")
 async def get_cookies_status(
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_module_permission("crawler")),
 ):
     """获取三个平台的cookie配置状态。"""
     env_files = [
@@ -188,7 +188,7 @@ async def get_cookies_status(
 @router.post("/cookies")
 async def update_cookie(
     req: CookieUpdateRequest,
-    admin: dict = Depends(get_admin_user),
+    admin: dict = Depends(check_write_permission()),
 ):
     """更新指定平台的cookie到.env文件。"""
     platform_map = {
@@ -242,4 +242,49 @@ async def update_cookie(
     return {
         "message": f"{req.platform} Cookie已更新",
         "updated_files": updated_files,
+    }
+
+
+@router.get("/tasks/{task_id}/details")
+async def get_task_details(
+    task_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_module_permission("crawler")),
+):
+    """获取指定任务的详细统计信息（按平台和城市分组）"""
+    # 检查任务是否存在
+    task_result = await db.execute(
+        select(CrawlTask).where(CrawlTask.id == task_id)
+    )
+    task = task_result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 获取任务详情
+    details_result = await db.execute(
+        select(CrawlerTaskDetail)
+        .where(CrawlerTaskDetail.task_id == task_id)
+        .order_by(CrawlerTaskDetail.platform, CrawlerTaskDetail.city)
+    )
+    details = details_result.scalars().all()
+
+    return {
+        "task_id": task_id,
+        "task_status": task.status,
+        "task_created_at": str(task.created_at),
+        "details": [
+            {
+                "platform": d.platform,
+                "city": d.city,
+                "total_fetched": d.total_fetched,
+                "new_count": d.new_count,
+                "updated_count": d.updated_count,
+                "failed_count": d.failed_count,
+                "skipped_count": d.skipped_count,
+                "error_messages": d.error_messages,
+                "duration_seconds": d.duration_seconds,
+                "created_at": str(d.created_at),
+            }
+            for d in details
+        ],
     }

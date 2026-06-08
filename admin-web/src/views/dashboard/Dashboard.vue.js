@@ -1,69 +1,70 @@
 /// <reference types="../../../node_modules/.vue-global-types/vue_3.5_0_0_0.d.ts" />
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { MessagePlugin } from 'tdesign-vue-next';
 import { getDashboard } from '@/api/dashboard';
-import { getCrawlerStatus, triggerCrawler } from '@/api/crawler';
-const router = useRouter();
-const triggerLoading = ref(false);
 const cityId = ref(0); // 0=全部, 310000=上海, 330200=宁波
 const cards = ref([
-    { label: '总房源数', value: 0 },
-    { label: '今日新增', value: 0 },
-    { label: '即将开拍', value: 0 },
-    { label: '捡漏房源', value: 0 },
-    { label: '昨日上架', value: 0 },
-    { label: '昨日成交', value: 0 },
-    { label: '注册用户', value: 0 },
-    { label: '代理商', value: 0 },
-    { label: '待处理需求', value: 0 },
-    { label: '待处理留言', value: 0 },
-    { label: '已成交', value: 0 },
-    { label: '总文章数', value: 0 },
-]);
-const crawlerItems = ref([
-    { label: '最近运行', value: '--' },
-    { label: '运行状态', value: '--' },
+    { label: '总房源数', value: 0, cityBreakdown: [] },
+    { label: '今日新增', value: 0, cityBreakdown: [] },
+    { label: '即将开拍', value: 0, cityBreakdown: [] },
+    { label: '捡漏房源', value: 0, cityBreakdown: [] },
+    { label: '昨日上架', value: 0, cityBreakdown: [] },
+    { label: '昨日成交', value: 0, cityBreakdown: [] },
+    { label: '注册用户', value: 0, cityBreakdown: [] },
+    { label: '代理商', value: 0, cityBreakdown: [] },
+    { label: '待处理需求', value: 0, cityBreakdown: [] },
+    { label: '待处理留言', value: 0, cityBreakdown: [] },
+    { label: '已成交', value: 0, cityBreakdown: [] },
+    { label: '总文章数', value: 0, cityBreakdown: [] },
 ]);
 async function loadDashboard() {
     try {
         const data = await getDashboard(cityId.value || undefined);
-        cards.value[0].value = data.total_properties || 0;
-        cards.value[1].value = data.today_new || 0;
-        cards.value[2].value = data.upcoming || 0;
-        cards.value[3].value = data.bargain_count || 0;
-        cards.value[4].value = data.yesterday_listed || 0;
-        cards.value[5].value = data.yesterday_sold || 0;
-        cards.value[6].value = data.total_users || 0;
-        cards.value[7].value = data.agent_count || 0;
-        cards.value[8].value = data.pending_demands || 0;
-        cards.value[9].value = data.pending_messages || 0;
-        cards.value[10].value = data.sold || 0;
-        cards.value[11].value = data.total_articles || 0;
+        // 城市key映射
+        const cityKeyNames = {
+            shanghai: '上海',
+            ningbo: '宁波',
+            hangzhou: '杭州'
+        };
+        // 辅助函数：从后端返回的数据中提取值和城市分项
+        function parseMetric(metricData) {
+            if (typeof metricData === 'object' && metricData.total !== undefined) {
+                // 带 by_city 的指标：{ total: xxx, by_city: { shanghai: xxx, ningbo: xxx, hangzhou: xxx } }
+                const cityBreakdown = metricData.by_city ? Object.keys(metricData.by_city).map(cityKey => ({
+                    name: cityKeyNames[cityKey] || cityKey,
+                    value: metricData.by_city[cityKey]
+                })) : [];
+                return { value: metricData.total, cityBreakdown };
+            }
+            else {
+                // 不带 by_city 的指标：直接是数字
+                return { value: metricData || 0, cityBreakdown: [] };
+            }
+        }
+        // 更新卡片数据
+        const metrics = [
+            parseMetric(data.total_properties), // 总房源数
+            parseMetric(data.today_new), // 今日新增
+            parseMetric(data.upcoming), // 即将开拍
+            parseMetric(data.bargain_count), // 捡漏房源
+            parseMetric(data.yesterday_listed), // 昨日上架
+            parseMetric(data.yesterday_sold), // 昨日成交
+            parseMetric(data.total_users), // 注册用户
+            parseMetric(data.agent_count), // 代理商
+            parseMetric(data.pending_demands), // 待处理需求
+            parseMetric(data.pending_messages), // 待处理留言
+            parseMetric(data.sold), // 已成交
+            parseMetric(data.total_articles), // 总文章数
+        ];
+        metrics.forEach((metric, index) => {
+            cards.value[index].value = metric.value;
+            cards.value[index].cityBreakdown = metric.cityBreakdown;
+        });
     }
     catch { /* skip */ }
 }
 onMounted(async () => {
     loadDashboard();
-    try {
-        const status = await getCrawlerStatus();
-        crawlerItems.value = [
-            { label: '最近运行', value: status.last_run_at || '--' },
-            { label: '运行状态', value: status.is_running ? '运行中' : (status.last_status || '--') },
-        ];
-    }
-    catch { /* skip */ }
 });
-async function onTriggerCrawl() {
-    triggerLoading.value = true;
-    try {
-        await triggerCrawler();
-        MessagePlugin.success('爬取任务已创建');
-    }
-    finally {
-        triggerLoading.value = false;
-    }
-}
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
 let __VLS_components;
@@ -185,199 +186,67 @@ for (const [card] of __VLS_getVForSourceType((__VLS_ctx.cards))) {
         ...{ class: "stat-value" },
     });
     (card.value);
+    if (card.cityBreakdown && card.cityBreakdown.length > 0 && __VLS_ctx.cityId === 0) {
+        const __VLS_36 = {}.TCollapse;
+        /** @type {[typeof __VLS_components.TCollapse, typeof __VLS_components.tCollapse, typeof __VLS_components.TCollapse, typeof __VLS_components.tCollapse, ]} */ ;
+        // @ts-ignore
+        const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
+            ...{ style: {} },
+        }));
+        const __VLS_38 = __VLS_37({
+            ...{ style: {} },
+        }, ...__VLS_functionalComponentArgsRest(__VLS_37));
+        __VLS_39.slots.default;
+        const __VLS_40 = {}.TCollapsePanel;
+        /** @type {[typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, ]} */ ;
+        // @ts-ignore
+        const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
+            header: "城市明细",
+        }));
+        const __VLS_42 = __VLS_41({
+            header: "城市明细",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_41));
+        __VLS_43.slots.default;
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "city-breakdown" },
+        });
+        for (const [city] of __VLS_getVForSourceType((card.cityBreakdown))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                key: (city.name),
+                ...{ class: "city-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "city-name" },
+            });
+            (city.name);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "city-value" },
+            });
+            (city.value);
+        }
+        var __VLS_43;
+        var __VLS_39;
+    }
     var __VLS_35;
     var __VLS_31;
 }
 var __VLS_27;
-const __VLS_36 = {}.TRow;
-/** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
-// @ts-ignore
-const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
-    gutter: (16),
-    ...{ style: {} },
-}));
-const __VLS_38 = __VLS_37({
-    gutter: (16),
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_37));
-__VLS_39.slots.default;
-const __VLS_40 = {}.TCol;
-/** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
-// @ts-ignore
-const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
-    span: (6),
-}));
-const __VLS_42 = __VLS_41({
-    span: (6),
-}, ...__VLS_functionalComponentArgsRest(__VLS_41));
-__VLS_43.slots.default;
-const __VLS_44 = {}.TCard;
-/** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
-// @ts-ignore
-const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
-    title: "爬虫运行状态",
-}));
-const __VLS_46 = __VLS_45({
-    title: "爬虫运行状态",
-}, ...__VLS_functionalComponentArgsRest(__VLS_45));
-__VLS_47.slots.default;
-const __VLS_48 = {}.TDescriptions;
-/** @type {[typeof __VLS_components.TDescriptions, typeof __VLS_components.tDescriptions, ]} */ ;
-// @ts-ignore
-const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
-    items: (__VLS_ctx.crawlerItems),
-}));
-const __VLS_50 = __VLS_49({
-    items: (__VLS_ctx.crawlerItems),
-}, ...__VLS_functionalComponentArgsRest(__VLS_49));
-const __VLS_52 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_53 = __VLS_asFunctionalComponent(__VLS_52, new __VLS_52({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "small",
-    loading: (__VLS_ctx.triggerLoading),
-    ...{ style: {} },
-}));
-const __VLS_54 = __VLS_53({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    size: "small",
-    loading: (__VLS_ctx.triggerLoading),
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_53));
-let __VLS_56;
-let __VLS_57;
-let __VLS_58;
-const __VLS_59 = {
-    onClick: (__VLS_ctx.onTriggerCrawl)
-};
-__VLS_55.slots.default;
-var __VLS_55;
-var __VLS_47;
-var __VLS_43;
-const __VLS_60 = {}.TCol;
-/** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
-// @ts-ignore
-const __VLS_61 = __VLS_asFunctionalComponent(__VLS_60, new __VLS_60({
-    span: (6),
-}));
-const __VLS_62 = __VLS_61({
-    span: (6),
-}, ...__VLS_functionalComponentArgsRest(__VLS_61));
-__VLS_63.slots.default;
-const __VLS_64 = {}.TCard;
-/** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
-// @ts-ignore
-const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
-    title: "快速入口",
-}));
-const __VLS_66 = __VLS_65({
-    title: "快速入口",
-}, ...__VLS_functionalComponentArgsRest(__VLS_65));
-__VLS_67.slots.default;
-const __VLS_68 = {}.TSpace;
-/** @type {[typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, typeof __VLS_components.TSpace, typeof __VLS_components.tSpace, ]} */ ;
-// @ts-ignore
-const __VLS_69 = __VLS_asFunctionalComponent(__VLS_68, new __VLS_68({
-    direction: "vertical",
-    ...{ style: {} },
-}));
-const __VLS_70 = __VLS_69({
-    direction: "vertical",
-    ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_69));
-__VLS_71.slots.default;
-const __VLS_72 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}));
-const __VLS_74 = __VLS_73({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_73));
-let __VLS_76;
-let __VLS_77;
-let __VLS_78;
-const __VLS_79 = {
-    onClick: (...[$event]) => {
-        __VLS_ctx.router.push('/properties');
-    }
-};
-__VLS_75.slots.default;
-var __VLS_75;
-const __VLS_80 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}));
-const __VLS_82 = __VLS_81({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_81));
-let __VLS_84;
-let __VLS_85;
-let __VLS_86;
-const __VLS_87 = {
-    onClick: (...[$event]) => {
-        __VLS_ctx.router.push('/demands');
-    }
-};
-__VLS_83.slots.default;
-var __VLS_83;
-const __VLS_88 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}));
-const __VLS_90 = __VLS_89({
-    ...{ 'onClick': {} },
-    variant: "outline",
-    block: true,
-}, ...__VLS_functionalComponentArgsRest(__VLS_89));
-let __VLS_92;
-let __VLS_93;
-let __VLS_94;
-const __VLS_95 = {
-    onClick: (...[$event]) => {
-        __VLS_ctx.router.push('/articles');
-    }
-};
-__VLS_91.slots.default;
-var __VLS_91;
-var __VLS_71;
-var __VLS_67;
-var __VLS_63;
-var __VLS_39;
 /** @type {__VLS_StyleScopedClasses['dashboard']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-header']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['stat-cards']} */ ;
 /** @type {__VLS_StyleScopedClasses['stat-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['city-breakdown']} */ ;
+/** @type {__VLS_StyleScopedClasses['city-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['city-name']} */ ;
+/** @type {__VLS_StyleScopedClasses['city-value']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
-            router: router,
-            triggerLoading: triggerLoading,
             cityId: cityId,
             cards: cards,
-            crawlerItems: crawlerItems,
             loadDashboard: loadDashboard,
-            onTriggerCrawl: onTriggerCrawl,
         };
     },
 });
