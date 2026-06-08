@@ -173,6 +173,28 @@ async def init_default_rules():
                 enabled=True,
                 auto_fix=False,
             ),
+
+            # 7. 标题关键词过滤（识别非房产）
+            AuditRule(
+                rule_name="非房产标题关键词过滤",
+                rule_code="NON_PROPERTY_TITLE_FILTER",
+                category="title_keyword_filter",
+                description="通过标题关键词识别并过滤明显的非房产数据（如门票、会员卡、设备等）",
+                config={
+                    "blacklist_keywords": [
+                        "门票", "乐园", "会员", "会籍", "旅游", "温泉", "酒店",
+                        "电器", "家具", "设备", "车辆", "机械", "原材料",
+                        "债权", "股权", "专利", "商标", "版权",
+                        "黄金", "珠宝", "玉器", "古董", "字画",
+                        "手机", "电脑", "电视", "冰箱", "洗衣机",
+                        "船舶", "飞机", "游艇"
+                    ]
+                },
+                action="delete",
+                severity="critical",
+                enabled=True,
+                auto_fix=False,
+            ),
         ]
 
         # 添加所有规则

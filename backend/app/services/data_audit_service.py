@@ -194,6 +194,10 @@ class DataAuditService:
             # 房产类型过滤
             violation = self._check_property_type(property_obj, config)
 
+        elif category == "title_keyword_filter":
+            # 标题关键词过滤
+            violation = self._check_title_keywords(property_obj, config)
+
         if violation:
             return {
                 "rule_id": rule.id,
@@ -303,6 +307,31 @@ class DataAuditService:
 
         return None
 
+    def _check_title_keywords(self, property_obj: Property, config: Dict) -> Optional[Dict]:
+        """检查标题关键词（识别非房产）"""
+        blacklist_keywords = config.get("blacklist_keywords", [])
+
+        if not property_obj.title:
+            return None
+
+        title = property_obj.title
+        matched_keywords = []
+
+        # 检查标题中是否包含黑名单关键词
+        for keyword in blacklist_keywords:
+            if keyword in title:
+                matched_keywords.append(keyword)
+
+        if matched_keywords:
+            return {
+                "type": "non_property_title",
+                "title": title,
+                "matched_keywords": matched_keywords,
+                "message": f"标题包含非房产关键词: {', '.join(matched_keywords)}"
+            }
+
+        return None
+
     async def _execute_action(
         self,
         property_obj: Property,
@@ -313,6 +342,20 @@ class DataAuditService:
         action = rule.action
 
         if action == "delete":
+            # 删除房源前先删除相关的推荐记录（避免外键约束错误）
+            from app.models.recommendation import PropertyRecommendation
+            await self.db.execute(
+                select(PropertyRecommendation).where(
+                    PropertyRecommendation.property_id == property_obj.id
+                )
+            )
+            # 删除所有相关推荐
+            from sqlalchemy import delete as sql_delete
+            await self.db.execute(
+                sql_delete(PropertyRecommendation).where(
+                    PropertyRecommendation.property_id == property_obj.id
+                )
+            )
             # 删除房源
             await self.db.delete(property_obj)
             return "deleted"

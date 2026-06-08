@@ -33,8 +33,16 @@ Component({
             const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
             const rate = p.court_discount_rate || 0;
             const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
+            // 从images数组提取封面图（兼容详情接口未返回cover_image的情况）
+            let coverImage = p.cover_image;
+            if (!coverImage && p.images && p.images.length > 0) {
+                const coverImg = p.images.find(img => img.is_cover) || p.images[0];
+                coverImage = coverImg.thumb_url || coverImg.image_url;
+            }
+            // 使用绝对路径确保默认图片在所有页面都能正确显示
+            const defaultImage = 'https://xcxapi.fapaizhelianmeng.cn/images/properties/default-placeholder.webp';
             this.setData({
-                coverImage: p.cover_image || '/images/default-house.png',
+                coverImage: coverImage || defaultImage,
                 statusLabel: (0, format_1.statusLabel)(p.auction_status),
                 statusTagClass: (0, format_1.statusTagClass)(p.auction_status),
                 startingPriceWan: startingNum,

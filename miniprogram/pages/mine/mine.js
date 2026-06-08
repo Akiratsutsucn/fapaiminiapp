@@ -81,22 +81,25 @@ Page({
                 this.setData({ stats });
             }
             const role = (userInfo && userInfo.role) || '';
-            Promise.all([
+            // 延迟加载非关键数据，避免并发请求触发限流
+            setTimeout(() => {
                 (0, user_1.getRecommendationUnread)()
                     .then((r) => this.setData({ recUnread: (r && r.unread) || 0 }))
                     .catch(err => {
                     console.error('获取推荐未读数失败:', err);
                     this.setData({ recUnread: 0 });
-                }),
-                (role === 'agent' || role === 'salesperson')
-                    ? (0, user_1.getMyDemandsUnread)()
+                });
+            }, 300);
+            if (role === 'agent' || role === 'salesperson') {
+                setTimeout(() => {
+                    (0, user_1.getMyDemandsUnread)()
                         .then((r) => this.setData({ demandUnread: (r && r.unread) || 0 }))
                         .catch(err => {
                         console.error('获取需求未读数失败:', err);
                         this.setData({ demandUnread: 0 });
-                    })
-                    : Promise.resolve(),
-            ]);
+                    });
+                }, 600);
+            }
         }
         catch (e) {
             console.error('加载用户数据失败:', e);

@@ -60,13 +60,13 @@ class AuditScheduler:
                 logger.error(f"每日审核任务执行失败: {e}", exc_info=True)
 
     async def run_scheduler(self):
-        """运行调度器（每天凌晨2点执行）"""
+        """运行调度器（每天凌晨5点执行）"""
         logger.info("数据审核调度器已启动")
 
         while True:
             now = datetime.now()
-            # 计算到凌晨2点的时间差
-            target_time = datetime.combine(now.date(), time(hour=2, minute=0))
+            # 计算到凌晨5点的时间差
+            target_time = datetime.combine(now.date(), time(hour=5, minute=0))
             if now >= target_time:
                 # 如果已过今天的2点，计算到明天2点
                 from datetime import timedelta
