@@ -1,154 +1,122 @@
 <!-- 数据审核管理 - 概览页 -->
 <template>
   <div class="data-audit-dashboard">
-    <el-card class="stats-card">
-      <template #header>
-        <div class="card-header">
-          <span>数据审核概览</span>
-          <el-button type="primary" size="small" @click="handleCreateTask">
-            立即审核
-          </el-button>
-        </div>
-      </template>
+    <div class="page-header">
+      <h2 class="page-title">数据审核概览</h2>
+      <t-button theme="primary" @click="handleCreateTask">立即审核</t-button>
+    </div>
 
-      <!-- 统计卡片 -->
-      <el-row :gutter="20" class="stats-row">
-        <el-col :span="6">
+    <!-- 统计卡片 -->
+    <t-row :gutter="16" class="stats-row">
+      <t-col :span="3">
+        <t-card hover-shadow>
           <div class="stat-item">
             <div class="stat-value">{{ stats.total_rules || 0 }}</div>
             <div class="stat-label">审核规则总数</div>
             <div class="stat-meta">启用: {{ stats.enabled_rules || 0 }}</div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </t-card>
+      </t-col>
+      <t-col :span="3">
+        <t-card hover-shadow>
           <div class="stat-item">
             <div class="stat-value">{{ stats.total_tasks || 0 }}</div>
             <div class="stat-label">执行任务总数</div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </t-card>
+      </t-col>
+      <t-col :span="3">
+        <t-card hover-shadow>
           <div class="stat-item">
             <div class="stat-value" :class="getScoreClass(stats.latest_quality_score)">
               {{ stats.latest_quality_score !== null ? stats.latest_quality_score.toFixed(1) : '-' }}
             </div>
             <div class="stat-label">最新数据质量评分</div>
           </div>
-        </el-col>
-        <el-col :span="6">
+        </t-card>
+      </t-col>
+      <t-col :span="3">
+        <t-card hover-shadow>
           <div class="stat-item">
             <div class="stat-value text-warning">{{ stats.open_violations || 0 }}</div>
             <div class="stat-label">待处理违规</div>
           </div>
-        </el-col>
-      </el-row>
-    </el-card>
+        </t-card>
+      </t-col>
+    </t-row>
 
     <!-- 最新任务 -->
-    <el-card class="latest-task-card" v-if="stats.latest_task">
-      <template #header>
-        <span>最新审核任务</span>
-      </template>
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="任务名称">
-          {{ stats.latest_task.task_name }}
-        </el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="getTaskStatusType(stats.latest_task.status)">
-            {{ getTaskStatusText(stats.latest_task.status) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="质量评分">
-          <span :class="getScoreClass(stats.latest_task.quality_score)">
-            {{ stats.latest_task.quality_score !== null ? stats.latest_task.quality_score.toFixed(1) : '-' }}
-          </span>
-        </el-descriptions-item>
-        <el-descriptions-item label="完成时间" :span="3">
-          {{ stats.latest_task.completed_at || '-' }}
-        </el-descriptions-item>
-      </el-descriptions>
+    <t-card title="最新审核任务" style="margin-top: 16px" v-if="stats.latest_task">
+      <t-descriptions :items="taskDescItems" />
       <div style="margin-top: 15px;">
-        <el-button size="small" @click="viewTaskDetail(stats.latest_task.id)">
-          查看详情
-        </el-button>
-        <el-button size="small" @click="viewTaskReport(stats.latest_task.id)">
-          查看报告
-        </el-button>
+        <t-button size="small" @click="navigateTo('tasks')">查看详情</t-button>
+        <t-button size="small" @click="navigateTo('tasks')" style="margin-left: 8px">查看报告</t-button>
       </div>
-    </el-card>
+    </t-card>
 
     <!-- 功能入口 -->
-    <el-row :gutter="20" class="function-cards">
-      <el-col :span="8">
-        <el-card class="function-card" shadow="hover" @click="navigateTo('rules')">
-          <div class="function-icon">
-            <el-icon :size="40"><Setting /></el-icon>
+    <t-row :gutter="16" class="function-cards">
+      <t-col :span="4">
+        <t-card hover-shadow class="function-card" @click="navigateTo('rules')">
+          <div class="function-content">
+            <div class="function-title">审核规则管理</div>
+            <div class="function-desc">配置和管理数据审核规则</div>
           </div>
-          <div class="function-title">审核规则管理</div>
-          <div class="function-desc">配置和管理数据审核规则</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card class="function-card" shadow="hover" @click="navigateTo('tasks')">
-          <div class="function-icon">
-            <el-icon :size="40"><List /></el-icon>
+        </t-card>
+      </t-col>
+      <t-col :span="4">
+        <t-card hover-shadow class="function-card" @click="navigateTo('tasks')">
+          <div class="function-content">
+            <div class="function-title">审核任务管理</div>
+            <div class="function-desc">查看和管理审核任务执行记录</div>
           </div>
-          <div class="function-title">审核任务管理</div>
-          <div class="function-desc">查看和管理审核任务执行记录</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card class="function-card" shadow="hover" @click="navigateTo('violations')">
-          <div class="function-icon">
-            <el-icon :size="40"><Warning /></el-icon>
+        </t-card>
+      </t-col>
+      <t-col :span="4">
+        <t-card hover-shadow class="function-card" @click="navigateTo('violations')">
+          <div class="function-content">
+            <div class="function-title">违规记录管理</div>
+            <div class="function-desc">查看和处理数据违规记录</div>
           </div>
-          <div class="function-title">违规记录管理</div>
-          <div class="function-desc">查看和处理数据违规记录</div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </t-card>
+      </t-col>
+    </t-row>
 
     <!-- 创建任务对话框 -->
-    <el-dialog v-model="createTaskVisible" title="创建审核任务" width="600px">
-      <el-form :model="taskForm" label-width="100px">
-        <el-form-item label="任务名称">
-          <el-input v-model="taskForm.task_name" placeholder="请输入任务名称" />
-        </el-form-item>
-        <el-form-item label="选择规则">
-          <el-checkbox-group v-model="taskForm.rule_ids">
-            <el-checkbox v-for="rule in enabledRules" :key="rule.id" :label="rule.id">
+    <t-dialog v-model:visible="createTaskVisible" header="创建审核任务" width="600px" @confirm="submitCreateTask">
+      <t-form :data="taskForm" label-width="100px">
+        <t-form-item label="任务名称">
+          <t-input v-model="taskForm.task_name" placeholder="请输入任务名称" />
+        </t-form-item>
+        <t-form-item label="选择规则">
+          <t-checkbox-group v-model="taskForm.rule_ids">
+            <t-checkbox v-for="rule in enabledRules" :key="rule.id" :value="rule.id">
               {{ rule.rule_name }}
-            </el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item label="审核范围">
-          <el-radio-group v-model="scopeType">
-            <el-radio label="all">全部数据</el-radio>
-            <el-radio label="custom">自定义范围</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="scopeType === 'custom'" label="平台">
-          <el-checkbox-group v-model="taskForm.scope.platforms">
-            <el-checkbox label="阿里拍卖">阿里拍卖</el-checkbox>
-            <el-checkbox label="京东拍卖">京东拍卖</el-checkbox>
-            <el-checkbox label="公拍网">公拍网</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createTaskVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCreateTask" :loading="submitting">
-          创建并执行
-        </el-button>
-      </template>
-    </el-dialog>
+            </t-checkbox>
+          </t-checkbox-group>
+        </t-form-item>
+        <t-form-item label="审核范围">
+          <t-radio-group v-model="scopeType">
+            <t-radio value="all">全部数据</t-radio>
+            <t-radio value="custom">自定义范围</t-radio>
+          </t-radio-group>
+        </t-form-item>
+        <t-form-item v-if="scopeType === 'custom'" label="平台">
+          <t-checkbox-group v-model="taskForm.scope.platforms">
+            <t-checkbox value="阿里拍卖">阿里拍卖</t-checkbox>
+            <t-checkbox value="京东拍卖">京东拍卖</t-checkbox>
+            <t-checkbox value="公拍网">公拍网</t-checkbox>
+          </t-checkbox-group>
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Setting, List, Warning } from '@element-plus/icons-vue'
+import { MessagePlugin } from 'tdesign-vue-next'
 import { getDashboardStats, getRuleList, createTask } from '@/api/dataAudit'
 
 const router = useRouter()
@@ -173,7 +141,17 @@ const taskForm = ref({
   }
 })
 const scopeType = ref('all')
-const submitting = ref(false)
+
+// 最新任务描述项
+const taskDescItems = computed(() => {
+  if (!stats.value.latest_task) return []
+  return [
+    { label: '任务名称', content: stats.value.latest_task.task_name },
+    { label: '状态', content: getTaskStatusText(stats.value.latest_task.status) },
+    { label: '质量评分', content: stats.value.latest_task.quality_score !== null ? stats.value.latest_task.quality_score.toFixed(1) : '-' },
+    { label: '完成时间', content: stats.value.latest_task.completed_at || '-' }
+  ]
+})
 
 // 加载统计数据
 const loadStats = async () => {
@@ -181,7 +159,7 @@ const loadStats = async () => {
     const res = await getDashboardStats()
     stats.value = res
   } catch (error) {
-    ElMessage.error('加载统计数据失败')
+    MessagePlugin.error('加载统计数据失败')
   }
 }
 
@@ -191,7 +169,7 @@ const loadEnabledRules = async () => {
     const res = await getRuleList({ enabled: true })
     enabledRules.value = res
   } catch (error) {
-    ElMessage.error('加载规则列表失败')
+    MessagePlugin.error('加载规则列表失败')
   }
 }
 
@@ -213,15 +191,14 @@ const handleCreateTask = () => {
 // 提交创建任务
 const submitCreateTask = async () => {
   if (!taskForm.value.task_name) {
-    ElMessage.warning('请输入任务名称')
+    MessagePlugin.warning('请输入任务名称')
     return
   }
   if (taskForm.value.rule_ids.length === 0) {
-    ElMessage.warning('请至少选择一个规则')
+    MessagePlugin.warning('请至少选择一个规则')
     return
   }
 
-  submitting.value = true
   try {
     const data = {
       task_name: taskForm.value.task_name,
@@ -230,41 +207,17 @@ const submitCreateTask = async () => {
       scope: scopeType.value === 'all' ? null : taskForm.value.scope
     }
     await createTask(data)
-    ElMessage.success('审核任务已创建，正在后台执行')
+    MessagePlugin.success('审核任务已创建，正在后台执行')
     createTaskVisible.value = false
-    // 1秒后刷新统计
     setTimeout(loadStats, 1000)
   } catch (error) {
-    ElMessage.error('创建任务失败')
-  } finally {
-    submitting.value = false
+    MessagePlugin.error('创建任务失败')
   }
 }
 
 // 导航到子页面
 const navigateTo = (page) => {
   router.push(`/data-audit/${page}`)
-}
-
-// 查看任务详情
-const viewTaskDetail = (taskId) => {
-  router.push(`/data-audit/tasks/${taskId}`)
-}
-
-// 查看任务报告
-const viewTaskReport = (taskId) => {
-  router.push(`/data-audit/reports/${taskId}`)
-}
-
-// 获取任务状态类型
-const getTaskStatusType = (status) => {
-  const map = {
-    pending: 'info',
-    running: 'warning',
-    completed: 'success',
-    failed: 'danger'
-  }
-  return map[status] || 'info'
 }
 
 // 获取任务状态文本
@@ -291,49 +244,50 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .data-audit-dashboard {
   padding: 20px;
 }
 
-.card-header {
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.stats-card {
   margin-bottom: 20px;
 }
 
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
 .stats-row {
-  margin-top: 10px;
+  margin-bottom: 16px;
 }
 
 .stat-item {
   text-align: center;
-  padding: 20px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  padding: 20px 10px;
 }
 
 .stat-value {
   font-size: 32px;
   font-weight: bold;
-  color: #409eff;
+  color: #0052d9;
   margin-bottom: 8px;
+}
 
-  &.text-success {
-    color: #67c23a;
-  }
+.stat-value.text-success {
+  color: #00a870;
+}
 
-  &.text-warning {
-    color: #e6a23c;
-  }
+.stat-value.text-warning {
+  color: #e37318;
+}
 
-  &.text-danger {
-    color: #f56c6c;
-  }
+.stat-value.text-danger {
+  color: #d54941;
 }
 
 .stat-label {
@@ -347,39 +301,33 @@ onMounted(() => {
   color: #909399;
 }
 
-.latest-task-card {
-  margin-bottom: 20px;
-}
-
 .function-cards {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .function-card {
   cursor: pointer;
-  text-align: center;
-  padding: 30px 20px;
   transition: all 0.3s;
-
-  &:hover {
-    transform: translateY(-5px);
-  }
 }
 
-.function-icon {
-  color: #409eff;
-  margin-bottom: 15px;
+.function-card:hover {
+  transform: translateY(-3px);
+}
+
+.function-content {
+  text-align: center;
+  padding: 30px 20px;
 }
 
 .function-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   margin-bottom: 10px;
   color: #303133;
 }
 
 .function-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
 }
 </style>
