@@ -136,9 +136,9 @@
   <!-- 推广位 -->
   <view class="promo-card" bindtap="onNav" data-url="/subpackages/user/demand-form/demand-form">
     <view class="promo-text">
-      <view class="promo-tag">免费</view>
-      <view class="promo-title">专业顾问为您精选房源</view>
-      <view class="promo-sub">提交需求后，客服人工筛选推荐</view>
+      <view class="promo-tag">1对1专属顾问</view>
+      <view class="promo-title">专业选房 · 代理拍卖 · 融资贷款</view>
+      <view class="promo-sub">电话微信几乎24小时在线，真实联系方式让服务更及时</view>
     </view>
     <view class="promo-arrow">›</view>
   </view>
