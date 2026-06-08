@@ -1,4 +1,17 @@
 <view class="mine-page">
+  <!-- 加载中遮罩 -->
+  <view class="loading-mask" wx:if="{{loading && isLoggedIn}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 加载失败提示 -->
+  <view class="error-tip" wx:if="{{loadError && isLoggedIn}}">
+    <text class="error-icon">!</text>
+    <text class="error-text">加载失败</text>
+    <button class="retry-btn" bindtap="onRetryLoad">重试</button>
+  </view>
+
   <!-- 头部 -->
   <view class="mine-header">
     <view class="header-bg"></view>
@@ -91,7 +104,7 @@
     </view>
     <view class="service-item" bindtap="onNav" data-url="/subpackages/user/demand-form/demand-form">
       <view class="service-icon demand-icon"></view>
-      <text class="service-name">选房需求</text>
+      <text class="service-name">填写需求</text>
     </view>
     <view class="service-item" bindtap="onNav" data-url="/subpackages/user/history/history">
       <view class="service-icon history-icon"></view>
@@ -124,8 +137,8 @@
   <view class="promo-card" bindtap="onNav" data-url="/subpackages/user/demand-form/demand-form">
     <view class="promo-text">
       <view class="promo-tag">免费</view>
-      <view class="promo-title">告诉我们你想要什么样的法拍房</view>
-      <view class="promo-sub">客服人工筛选并 1 对 1 推荐</view>
+      <view class="promo-title">专业顾问为您精选房源</view>
+      <view class="promo-sub">提交需求后，客服人工筛选推荐</view>
     </view>
     <view class="promo-arrow">›</view>
   </view>

@@ -1,7 +1,9 @@
 """FastAPI application entry point."""
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
 from .core.config import settings
 from .core.database import init_db
@@ -10,7 +12,23 @@ from .core.database import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+
+    # 启动数据审核调度器（后台任务）
+    audit_task = None
+    if settings.ENABLE_AUDIT_SCHEDULER:
+        from .services.audit_scheduler import start_audit_scheduler
+        audit_task = asyncio.create_task(start_audit_scheduler())
+        logger.info("数据审核调度器已启动")
+
     yield
+
+    # 关闭调度器
+    if audit_task:
+        audit_task.cancel()
+        try:
+            await audit_task
+        except asyncio.CancelledError:
+            logger.info("数据审核调度器已停止")
 
 
 app = FastAPI(

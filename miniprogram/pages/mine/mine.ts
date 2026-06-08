@@ -18,6 +18,9 @@ Page({
     recUnread: 0,
     demandUnread: 0,
     defaultAvatar: DEFAULT_AVATAR,
+    loading: false,
+    loadError: false,
+    retryCount: 0,
   },
 
   onShow() {
@@ -67,16 +70,17 @@ Page({
   },
 
   async loadUserData() {
+    // 显示加载状态
+    this.setData({ loading: true, loadError: false });
+
     try {
-      // 第一批：核心数据（用户信息+统计），并发加载
+      // 第一批：核心数据（用户信息+统计），并发加载，带重试
       const [userInfo, stats] = await Promise.all([
-        getUserProfile().catch(err => {
-          console.error('获取用户信息失败:', err);
-          return null;
-        }),
-        getUserStats().catch(err => {
-          console.error('获取统计数据失败:', err);
-          return { favorite_count: 0, participated_count: 0, won_count: 0 };
+        this.fetchWithRetry(() => getUserProfile(), '获取用户信息'),
+        this.fetchWithRetry(() => getUserStats(), '获取统计数据', {
+          favorite_count: 0,
+          participated_count: 0,
+          won_count: 0
         }),
       ]);
 
@@ -105,10 +109,70 @@ Page({
               })
           : Promise.resolve(),
       ]);
+
+      // 加载成功，重置重试计数
+      this.setData({ loading: false, loadError: false, retryCount: 0 });
     } catch (e) {
       console.error('加载用户数据失败:', e);
-      wx.showToast({ title: '加载失败，请稍后重试', icon: 'none', duration: 2000 });
+      this.setData({ loading: false, loadError: true });
+
+      // 只在第一次失败时显示toast，避免重复提示
+      if (this.data.retryCount === 0) {
+        wx.showToast({
+          title: '加载失败，请下拉重试',
+          icon: 'none',
+          duration: 2000
+        });
+      }
     }
+  },
+
+  // 带重试机制的请求封装
+  async fetchWithRetry<T>(
+    fetchFn: () => Promise<T>,
+    errorMsg: string,
+    defaultValue?: T,
+    maxRetries: number = 2
+  ): Promise<T | null> {
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        const result = await fetchFn();
+        return result;
+      } catch (err) {
+        console.error(`${errorMsg}失败 (尝试 ${i + 1}/${maxRetries + 1}):`, err);
+
+        // 如果还有重试次数，等待后重试
+        if (i < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        } else {
+          // 最后一次重试失败，返回默认值
+          if (defaultValue !== undefined) {
+            return defaultValue;
+          }
+          throw err;
+        }
+      }
+    }
+    return defaultValue !== undefined ? defaultValue : null;
+  },
+
+  // 下拉刷新
+  onPullDownRefresh() {
+    if (!this.data.isLoggedIn) {
+      wx.stopPullDownRefresh();
+      return;
+    }
+
+    this.setData({ retryCount: this.data.retryCount + 1 });
+    this.loadUserData().finally(() => {
+      wx.stopPullDownRefresh();
+    });
+  },
+
+  // 手动重试按钮
+  onRetryLoad() {
+    this.setData({ retryCount: this.data.retryCount + 1 });
+    this.loadUserData();
   },
 
   onGoLogin() {

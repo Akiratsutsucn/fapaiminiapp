@@ -9,6 +9,7 @@ from .browse_history import BrowseHistory
 from .system_setting import SystemSetting
 from .community import CommunityInfo
 from .recommendation import PropertyRecommendation
+from .data_audit import AuditRule, AuditTask, AuditViolation, AuditReport
 
 __all__ = [
     "Property", "PropertyImage",
@@ -22,4 +23,5 @@ __all__ = [
     "SystemSetting",
     "CommunityInfo",
     "PropertyRecommendation",
+    "AuditRule", "AuditTask", "AuditViolation", "AuditReport",
 ]

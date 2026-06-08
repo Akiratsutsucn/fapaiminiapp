@@ -8,3 +8,9 @@ export function listCrawlerTasks() {
 export function triggerCrawler(body = {}) {
     return http.post('/crawler/trigger', body).then(r => r.data);
 }
+export function getCookiesStatus() {
+    return http.get('/crawler/cookies').then(r => r.data);
+}
+export function updateCookie(platform, cookie) {
+    return http.post('/crawler/cookies', { platform, cookie }).then(r => r.data);
+}

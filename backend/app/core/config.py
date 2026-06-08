@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "法拍者联盟"
     DEBUG: bool = False
 
+    # ===== data audit scheduler =====
+    ENABLE_AUDIT_SCHEDULER: bool = True
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
