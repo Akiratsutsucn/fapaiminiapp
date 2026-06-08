@@ -1,4 +1,52 @@
 <view class="form-page">
+  <!-- 服务介绍区 -->
+  <view class="service-intro">
+    <view class="intro-header">
+      <view class="intro-icon">💎</view>
+      <view class="intro-title">专业顾问为您精选房源</view>
+    </view>
+
+    <view class="intro-services">
+      <view class="intro-subtitle">我们提供的服务</view>
+      <view class="service-list">
+        <view class="service-item">
+          <view class="service-dot"></view>
+          <text class="service-text">1对1专属顾问，全程贴心陪伴</text>
+        </view>
+        <view class="service-item">
+          <view class="service-dot"></view>
+          <text class="service-text">定向房源推荐，精准匹配需求</text>
+        </view>
+        <view class="service-item">
+          <view class="service-dot"></view>
+          <text class="service-text">专业选房指导，规避投资风险</text>
+        </view>
+        <view class="service-item">
+          <view class="service-dot"></view>
+          <text class="service-text">专人拍卖代理，省心省力</text>
+        </view>
+        <view class="service-item">
+          <view class="service-dot"></view>
+          <text class="service-text">融资贷款支持，资金无忧</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="intro-promise">
+      <view class="intro-subtitle">服务承诺</view>
+      <view class="promise-text">📞 电话微信几乎24小时在线响应</view>
+      <view class="promise-text">🏆 业内领先的服务能力与服务态度</view>
+      <view class="promise-text">🤝 真诚服务每一位客户，让您的法拍之路更顺畅</view>
+    </view>
+
+    <view class="intro-tip">
+      <view class="tip-icon">💡</view>
+      <view class="tip-text">请尽可能留下真实联系方式，以便我们为您提供更及时周到的服务</view>
+    </view>
+  </view>
+
+  <view class="form-divider"></view>
+
   <view class="form-group">
     <text class="form-label">姓名 <text class="required">*</text></text>
     <input class="form-input" placeholder="请输入真实姓名（用于客服 1 对 1 联系）" value="{{form.name}}" bindinput="onFieldInput" data-field="name" />
