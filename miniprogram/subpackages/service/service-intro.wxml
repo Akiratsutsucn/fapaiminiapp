@@ -1,0 +1,109 @@
+<view class="service-page">
+  <!-- 头部标题 -->
+  <view class="page-header">
+    <view class="header-icon">💎</view>
+    <view class="header-title">专业顾问为您精选房源</view>
+    <view class="header-subtitle">一站式法拍房服务，让您的购房之路更安心</view>
+  </view>
+
+  <!-- 服务列表 -->
+  <view class="service-section">
+    <view class="section-title">
+      <view class="title-dot"></view>
+      <text>我们提供的服务</text>
+    </view>
+
+    <view class="service-card">
+      <view class="service-number">01</view>
+      <view class="service-content">
+        <view class="service-name">1对1专属顾问</view>
+        <view class="service-desc">全程贴心陪伴，专业解答您的疑问，制定个性化购房方案</view>
+      </view>
+    </view>
+
+    <view class="service-card">
+      <view class="service-number">02</view>
+      <view class="service-content">
+        <view class="service-name">定向房源推荐</view>
+        <view class="service-desc">根据您的需求精准匹配房源，节省时间，提高效率</view>
+      </view>
+    </view>
+
+    <view class="service-card">
+      <view class="service-number">03</view>
+      <view class="service-content">
+        <view class="service-name">专业选房指导</view>
+        <view class="service-desc">实地看房陪同，房屋瑕疵分析，规避投资风险</view>
+      </view>
+    </view>
+
+    <view class="service-card">
+      <view class="service-number">04</view>
+      <view class="service-content">
+        <view class="service-name">专人拍卖代理</view>
+        <view class="service-desc">竞拍流程全托管，保证金代缴，省心省力</view>
+      </view>
+    </view>
+
+    <view class="service-card">
+      <view class="service-number">05</view>
+      <view class="service-content">
+        <view class="service-name">融资贷款支持</view>
+        <view class="service-desc">协助办理按揭贷款，对接优质金融机构，资金无忧</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 服务承诺 -->
+  <view class="promise-section">
+    <view class="section-title">
+      <view class="title-dot"></view>
+      <text>服务承诺</text>
+    </view>
+
+    <view class="promise-card">
+      <view class="promise-icon">📞</view>
+      <view class="promise-content">
+        <view class="promise-title">几乎24小时在线</view>
+        <view class="promise-text">电话微信随时响应，第一时间解决您的问题</view>
+      </view>
+    </view>
+
+    <view class="promise-card">
+      <view class="promise-icon">🏆</view>
+      <view class="promise-content">
+        <view class="promise-title">业内领先服务</view>
+        <view class="promise-text">专业能力强，服务态度好，客户满意度高</view>
+      </view>
+    </view>
+
+    <view class="promise-card">
+      <view class="promise-icon">🤝</view>
+      <view class="promise-content">
+        <view class="promise-title">真诚服务每一位客户</view>
+        <view class="promise-text">用心对待每一次咨询，让您的法拍之路更顺畅</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 温馨提示 -->
+  <view class="tip-section">
+    <view class="tip-icon">💡</view>
+    <view class="tip-content">
+      <view class="tip-title">温馨提示</view>
+      <view class="tip-text">请尽可能留下真实联系方式，以便我们为您提供更及时周到的服务。您的信息将严格保密，仅用于为您提供专业咨询。</view>
+    </view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-actions">
+    <button class="btn-secondary" bindtap="onContactService">
+      <view class="btn-icon">📱</view>
+      <text>联系客服</text>
+    </button>
+    <button class="btn-primary" bindtap="onFillDemand">
+      <view class="btn-icon">✍️</view>
+      <text>填写需求</text>
+    </button>
+  </view>
+</view>

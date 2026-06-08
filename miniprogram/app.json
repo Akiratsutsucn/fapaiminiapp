@@ -35,6 +35,13 @@
         "invite-list/invite-list",
         "invite-poster/invite-poster"
       ]
+    },
+    {
+      "root": "subpackages/service",
+      "name": "service",
+      "pages": [
+        "service-intro"
+      ]
     }
   ],
   "preloadRule": {
