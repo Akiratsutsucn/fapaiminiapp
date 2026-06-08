@@ -17,6 +17,7 @@ const ALL_MENUS = [
     { path: '/banners', label: '横幅管理', icon: 'image', roles: ['admin'] },
     { path: '/crawler', label: '爬虫管理', icon: 'cloud-download', roles: ['admin'] },
     { path: '/communities', label: '小区管理', icon: 'shop', roles: ['admin'] },
+    { path: '/data-audit', label: '数据审核', icon: 'check-circle', roles: ['admin'] },
     { path: '/settings', label: '系统设置', icon: 'setting', roles: ['admin'] },
 ];
 const visibleMenus = computed(() => ALL_MENUS.filter(m => auth.hasRole(m.roles)));

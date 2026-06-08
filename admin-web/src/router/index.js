@@ -31,11 +31,6 @@ const routes = [
             { path: 'crawler', name: 'Crawler', component: () => import('@/views/crawler/CrawlerView.vue'), meta: { title: '爬虫管理', roles: ADMIN_ONLY } },
             { path: 'communities', name: 'Communities', component: () => import('@/views/community/CommunityList.vue'), meta: { title: '小区管理', roles: ADMIN_ONLY } },
             { path: 'settings', name: 'Settings', component: () => import('@/views/settings/SettingsView.vue'), meta: { title: '系统设置', roles: ADMIN_ONLY } },
-            { path: 'data-audit', name: 'DataAuditDashboard', component: () => import('@/views/data-audit/DashboardView.vue'), meta: { title: '数据审核', roles: ADMIN_ONLY } },
-            { path: 'data-audit/rules', name: 'DataAuditRules', component: () => import('@/views/data-audit/RulesView.vue'), meta: { title: '审核规则', roles: ADMIN_ONLY } },
-            { path: 'data-audit/tasks', name: 'DataAuditTasks', component: () => import('@/views/data-audit/TasksView.vue'), meta: { title: '审核任务', roles: ADMIN_ONLY } },
-            { path: 'data-audit/violations', name: 'DataAuditViolations', component: () => import('@/views/data-audit/ViolationsView.vue'), meta: { title: '违规记录', roles: ADMIN_ONLY } },
-            { path: 'data-audit/reports/:taskId', name: 'DataAuditReport', component: () => import('@/views/data-audit/ReportView.vue'), meta: { title: '审核报告', roles: ADMIN_ONLY } },
         ],
     },
 ];
