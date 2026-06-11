@@ -8,9 +8,9 @@ from loguru import logger
 
 from ...core.database import get_session
 from ...core.auction_status import (
-    effective_status, effective_status_sql,
-    MOBILE_VISIBLE_STATUSES, MOBILE_FALLBACK_STATUSES, MOBILE_DETAIL_STATUSES,
-    listed_on_sql,
+    effective_status, effective_status_sql, mobile_listable_sql,
+    MOBILE_VISIBLE_STATUSES,
+    listed_on_sql, sold_on_sql,
 )
 from ...core.district_priority import tier_sql_expr
 from ...models.property import Property, PropertyImage
@@ -70,28 +70,16 @@ AMAP_CATEGORIES = {
 
 router = APIRouter()
 
-# 可参拍/兜底/详情可访问的状态集合统一来自 core.auction_status：
-# MOBILE_VISIBLE_STATUSES（即将开拍/进行中）、MOBILE_FALLBACK_STATUSES（已成交）、
-# MOBILE_DETAIL_STATUSES（前两者并集）。
-# 关键：所有状态判断都走 effective_status_sql()——按 auction_start_time/end_time +
-# 当前时间实时计算，不信任库里可能过期/抓错的 auction_status 文本，确保「进行中/即将开拍」
-# 房源不会因存储状态错误而被筛掉。
+# 小程序可见性的单一事实源 = core.auction_status.mobile_listable_sql()：
+# 可参拍(即将开拍/进行中) OR auction_end_time 落在过去 72h 内（含所有结束态）。
+# 所有状态判断都走 effective_status_sql()/mobile_listable_sql()——按 auction_start_time/
+# end_time + 当前时间实时计算，不信任库里可能过期/抓错的 auction_status 文本。
 
 
 def _mobile_filter():
-    """详情/地图等：允许访问可参拍 + 已成交兜底房源（按实时状态判断）。"""
-    return effective_status_sql().in_(MOBILE_DETAIL_STATUSES)
-
-
-async def _pick_listing_statuses(db, base_conditions) -> tuple:
-    """决定列表展示哪组状态：有即将开拍/进行中就用它们，
-    否则（该城市/筛选下没有可参拍房源）回退到已成交，避免首页空白。
-    注意：按实时计算状态统计，而非库存状态。"""
-    primary_q = select(func.count(Property.id)).where(
-        and_(*base_conditions, effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
-    )
-    primary_count = (await db.execute(primary_q)).scalar() or 0
-    return MOBILE_VISIBLE_STATUSES if primary_count > 0 else MOBILE_FALLBACK_STATUSES
+    """详情/分析/周边等：可见性跟随「全部房源」列表 = 可参拍 + 近 72h 内结束，
+    保证列表里能看到的房源都能点开详情。"""
+    return mobile_listable_sql()
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -156,29 +144,32 @@ async def list_properties(
 
     # 状态过滤（口径须与首页 market-stats 各计数一一对应，保证首页数字 == 列表「共xxx套」）：
     # - sold_day=yesterday：昨日成交入口，仅「已成交」+ 真实结束日期==昨天
-    # - listed_day=yesterday：昨日上架入口，只按真实上架日期过滤（上方 listed_on_sql 已加），
-    #   不再套可参拍状态，与 market-stats.yesterday_listed（同样只用 listed_on_sql）一致
+    # - listed_day=yesterday：昨日上架入口，真实上架日期==昨天 + 仍为可参拍状态
+    #   （即将开拍/进行中）。约定：小程序不展示已结束/已成交房源，与 market-stats 同口径。
     # - 否则按用户选的状态(支持多选)，再否则自动决定可参拍/兜底
     statuses = _multi(auction_status)
     if sold_day == "yesterday":
+        # 昨日成交：复用 sold_on_sql（成交日期优先取成交确认书内「网拍结束时间」
+        # online_auction_end_time，空则回退 auction_end_time），口径与首页 market-stats
+        # / dashboard 的 yesterday_sold 完全一致。
         _y = _date.today() - _timedelta(days=1)
-        conditions.append(effective_status_sql() == "已成交")
-        conditions.append(
-            func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == _y
-        )
+        conditions.append(sold_on_sql(_y))
     elif listed_day == "yesterday":
-        # 昨日上架：状态不限，仅靠上方的上架日期条件过滤
-        pass
+        # 昨日上架：除真实上架日期外，仍须套小程序可参拍状态（即将开拍/进行中）——
+        # 约定：小程序只展示可参拍房源，昨天上架但已结束/已成交的不再露出。
+        # 口径须与 market-stats.yesterday_listed 一致（同样叠加 MOBILE_VISIBLE_STATUSES），
+        # 保证「首页数字 == 列表共xxx套」。
+        conditions.append(effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
     elif statuses:
         valid = [s for s in statuses if s in MOBILE_VISIBLE_STATUSES]
         if valid:
             conditions.append(effective_status_sql().in_(valid))
         else:
-            listing_statuses = await _pick_listing_statuses(db, conditions)
-            conditions.append(effective_status_sql().in_(listing_statuses))
+            # 无有效可参拍状态筛选 → 回落到默认窗口口径（可参拍 + 近72h结束）
+            conditions.append(mobile_listable_sql())
     else:
-        listing_statuses = await _pick_listing_statuses(db, conditions)
-        conditions.append(effective_status_sql().in_(listing_statuses))
+        # 默认：可参拍 + 近72h内结束的房源（取消「无可参拍时兜底已成交」）
+        conditions.append(mobile_listable_sql())
 
     # Count
     count_q = select(func.count(Property.id)).where(and_(*conditions))
@@ -209,6 +200,10 @@ async def list_properties(
     items = []
     for p in rows:
         cover = _list_cover(p)
+        # 成交折扣率 = 成交价 / 评估价（成交价远低于评估价是「昨日成交」的核心冲击力）
+        deal_rate = 0.0
+        if p.final_deal_price and p.appraisal_price and p.appraisal_price > 0:
+            deal_rate = round(p.final_deal_price / p.appraisal_price, 4)
         items.append(PropertyListItem(
             id=p.id,
             title=p.title,
@@ -221,12 +216,15 @@ async def list_properties(
             appraisal_price=p.appraisal_price,
             court_discount_rate=p.court_discount_rate,
             auction_round=p.auction_round,
-            auction_status=effective_status(p.auction_status, p.auction_start_time, p.auction_end_time),
+            auction_status=effective_status(p.auction_status, p.auction_start_time, p.auction_end_time, deal_confirmed=p.deal_confirmed),
             auction_start_time=p.auction_start_time,
             auction_end_time=p.auction_end_time,
             cover_image=cover,
             property_type=p.property_type,
             auction_platform=p.auction_platform,
+            final_deal_price=p.final_deal_price or 0,
+            deal_discount_rate=deal_rate,
+            online_auction_end_time=p.online_auction_end_time,
         ))
 
     return PaginatedResponse(
@@ -476,7 +474,10 @@ async def get_property(property_id: int, db: AsyncSession = Depends(get_session)
     detail = PropertyDetail.model_validate(p)
 
     # 拍卖状态按实时计算（与列表/筛选口径一致），避免详情页显示过期/抓错的库存状态
-    detail.auction_status = effective_status(p.auction_status, p.auction_start_time, p.auction_end_time)
+    detail.auction_status = effective_status(p.auction_status, p.auction_start_time, p.auction_end_time, deal_confirmed=p.deal_confirmed)
+    # 成交折扣率 = 成交价 / 评估价（已成交房源展示「远低于评估价」的冲击力）
+    if p.final_deal_price and p.appraisal_price and p.appraisal_price > 0:
+        detail.deal_discount_rate = round(p.final_deal_price / p.appraisal_price, 4)
 
     # 过滤垃圾图(广告/二维码/logo)：前台只展示未隐藏的图片
     if detail.images:
