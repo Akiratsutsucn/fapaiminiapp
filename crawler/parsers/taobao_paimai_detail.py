@@ -19,6 +19,11 @@ from ..cleaners.price import parse_price_to_yuan, parse_area_sqm
 from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.status import normalize_status as _normalize_status
+from ..cleaners import field_miner as _field_miner
+from ..utils.deal_confirm import (
+    parse_deal_confirm_end_time as _parse_deal_confirm_end_time,
+    parse_deal_confirm as _parse_deal_confirm,
+)
 
 
 # Category mapping
@@ -99,13 +104,47 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
         self._extract_tags(data, item)
         self._extract_dates(data, item)
         self._extract_description(data, item)
+
+        # 缺字段兜底 + 附件 + 成交确认书（用户 2026-06-10 要求）：
+        # 阿里主源是结构化 initData，但 initData 缺失/SSR 失败时五字段会留空；
+        # 用聚合全文（标题 + description，已含拍卖须知/标的物介绍正文）兜底再挖。
+        # 附件来自 initData 的 attachmentList；命中「成交确认书」则下载 PDF 解析网拍结束时间。
+        full_text = _field_miner.normalize_text(item.title, item.description)
+        raw_atts = (data.get("attachmentList") or data.get("attachments")
+                    or data.get("annexList") or [])
+        confirm_att = _field_miner.apply_text_fallbacks(item, full_text, raw_atts)
+        if confirm_att:
+            try:
+                info = await _parse_deal_confirm(confirm_att["url"])
+                if info.get("end_time"):
+                    item.online_auction_end_time = info["end_time"]
+                if info.get("deal_price"):
+                    item.final_deal_price = info["deal_price"]
+            except Exception as e:
+                logger.debug(f"[阿里] 成交确认书 PDF 解析失败: {e}")
+
+        # 成交识别（阿里）：bidStatus==5(已成交) 或 列表 status=sold → 已成交。
+        # 成交价 = currentPriceLong(成交后即落槌价，已存入 latest_total_price)；
+        # 成交确认书 PDF 给出更精确值时优先用 PDF（上面已覆盖）。
+        bid_status = int(data.get("bidStatus", 0) or 0)
+        is_sold = (bid_status == 5) or item.deal_confirmed
+        if is_sold:
+            item.deal_confirmed = True
+            if not item.final_deal_price and item.latest_total_price > 0:
+                item.final_deal_price = item.latest_total_price
+        # 正文出现成交确认书字样也置 deal_confirmed（已由 apply_text_fallbacks 处理）
+
         self._compute_derived_fields(item)
 
         # 状态归一：bidStatus 是 API 抓取快照，可能滞后。按 start/end + 当前时间重算时序态，
         # 保留结果态（已成交/已撤回）。与后端读取层 / 引擎自校正 / 其它平台同一口径。
-        item.auction_status = _normalize_status(
-            item.auction_status, item.auction_start_time, item.auction_end_time
-        )
+        # 成交确认书是已成交铁证：deal_confirmed 时强制「已成交」，不被时间窗覆盖。
+        if item.deal_confirmed:
+            item.auction_status = "已成交"
+        else:
+            item.auction_status = _normalize_status(
+                item.auction_status, item.auction_start_time, item.auction_end_time
+            )
 
         return item
 
@@ -424,6 +463,19 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
                            "usage", "realEstateType")
             if pt:
                 item.property_type = pt
+
+        # 标题关键词兜底：catId/auction_house 未给出明确类型，或仅落到「其他」时，
+        # 从标题精确识别办公/工业/商业/住宅（阿里 CATEGORY_MAP 无「办公」id，靠此补全）。
+        if not item.property_type or item.property_type == "其他":
+            t = item.title or ""
+            if any(k in t for k in ("写字楼", "办公楼", "办公用房", "办公室", "办公")):
+                item.property_type = "办公"
+            elif any(k in t for k in ("厂房", "工业", "仓库", "车间")):
+                item.property_type = "工业"
+            elif any(k in t for k in ("商铺", "店铺", "商业", "商服", "门面")):
+                item.property_type = "商业"
+            elif any(k in t for k in ("住宅", "公寓", "别墅", "排屋", "复式")):
+                item.property_type = "住宅"
 
         # --- Area ---
         if extra:
