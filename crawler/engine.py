@@ -33,6 +33,7 @@ from .storage.repository import (
 )
 from .storage.deduplicator import Deduplicator
 from .utils.url_registry import SourceConfig, get_configs, group_configs_by_platform
+from .utils.failure_type import classify_error, LOGIN_COOKIE, IP_BLOCKED, PARSE_LOGIC
 from .pipelines.image_processor import ImageProcessor
 from .pipelines.local_storage import LocalStorage
 from .pipelines.data_enricher import DataEnricher
@@ -289,6 +290,7 @@ class CrawlEngine:
                         "skipped": 0,
                         "failed": 0,
                         "error_messages": [],
+                        "failure_type": None,
                     }
 
                 logger.info(f"[{platform_name}] Processing source: {cfg.label} ({cfg.source_url})")
@@ -301,10 +303,24 @@ class CrawlEngine:
                     all_list_items.extend(items)
                     city_stats[city_name]["total_fetched"] += len(items)
                     logger.info(f"[{platform_name}] {cfg.label}: {len(items)} items")
+                    # 列表返回空 + 爬虫检测到登录墙 → 标记为登录/cookie失效
+                    if not items and getattr(crawler, "_login_wall_detected", False):
+                        if city_stats[city_name]["failure_type"] is None:
+                            city_stats[city_name]["failure_type"] = LOGIN_COOKIE
+                        city_stats[city_name]["error_messages"].append(
+                            f"{cfg.label}: 检测到登录墙，cookie 可能已失效"
+                        )
+                        logger.error(
+                            f"[{platform_name}][{city_name}] 登录墙：列表返回空，标记 failure_type=LOGIN_COOKIE"
+                        )
                 except Exception as e:
                     error_msg = f"{cfg.label}: {str(e)}"
                     city_stats[city_name]["error_messages"].append(error_msg)
-                    logger.error(f"[{platform_name}] Failed to collect from {cfg.label}: {e}")
+                    # 归类失败原因：登录墙优先于异常文本分类
+                    ftype = LOGIN_COOKIE if getattr(crawler, "_login_wall_detected", False) else classify_error(e)
+                    if city_stats[city_name]["failure_type"] is None:
+                        city_stats[city_name]["failure_type"] = ftype
+                    logger.error(f"[{platform_name}] Failed to collect from {cfg.label}: {e} (failure_type={ftype})")
                     continue
                 # 京东列表接口对高频访问敏感：城市间留足冷却时间，避免后一城市被限流返回 0
                 if platform_name == "京东拍卖":
@@ -490,9 +506,21 @@ class CrawlEngine:
                         elif "上海" in pc or "上海" in addr:
                             auction_item.city_id = 310000
                             auction_item.province_city = "上海"
-                        # province_city 仅到省级（如「浙江省」），用本次抓取的目标城市兜底：
-                        # 阿里列表用 keyword=城市名 搜出，city_id 即对应城市，地址未能细分时按其归属。
+                        # province_city 仅到省级（如「浙江省」）：用本次抓取的目标城市兜底。
+                        # 但京东用省级 provinceId 搜索,会混入浙江其他市(嘉兴/衢州等),故对京东
+                        # 收紧:仅当解析出的 district 属于目标城市辖区白名单才放行,否则跳过。
+                        # 阿里/公拍按 keyword=城市名 精确搜索,混入外市概率低,维持宽松兜底
+                        # (避免误杀 district 解析失败的真实杭甬房源)。
                         elif pc in ("浙江省", "浙江") and city_id in (330200, 330100):
+                            _d = (auction_item.district or "").strip()
+                            if "京东" in platform_name and not (
+                                _d and _d in VALID_DISTRICTS.get(city_id, set())
+                            ):
+                                logger.debug(
+                                    f"[{platform_name}] Skipping 京东浙江省级兜底未命中辖区: "
+                                    f"district={_d!r} city_id={city_id} — {item.source_url}"
+                                )
+                                return "skipped_city", None
                             auction_item.city_id = city_id
                             auction_item.province_city = "宁波" if city_id == 330200 else "杭州"
                         else:
@@ -667,6 +695,14 @@ class CrawlEngine:
 
                     except Exception as e:
                         logger.error(f"[{platform_name}] Failed {item.source_url}: {e}")
+                        # 归类失败原因并记入对应城市统计（不覆盖列表阶段已确定的登录/风控分类）
+                        try:
+                            detail_city = getattr(item, "city", None)
+                            if detail_city and detail_city in city_stats:
+                                if city_stats[detail_city]["failure_type"] is None:
+                                    city_stats[detail_city]["failure_type"] = classify_error(e)
+                        except Exception:
+                            pass
                         try:
                             await CrawlRecordRepository.create(
                                 task_db,
@@ -957,6 +993,7 @@ class CrawlEngine:
                         skipped_count=stats["skipped"],
                         error_messages=error_msg,
                         duration_seconds=duration,
+                        failure_type=stats.get("failure_type"),
                     )
                     await db.commit()
                     logger.info(
