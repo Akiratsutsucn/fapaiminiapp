@@ -12,6 +12,8 @@
 
   <!-- ============ Hero 大字报 ============ -->
   <view class="hero">
+    <!-- 美加墨世界杯氛围装饰（原创元素，非官方资产）：右上角彩旗串 -->
+    <view class="wc-bunting-hero"></view>
     <view class="hero-tagline">FAPAI · 立足长三角地区，辐射全国法拍市场</view>
     <view class="hero-title">捡漏<text class="accent">7折</text> 是常态</view>
     <view class="hero-gild"></view>

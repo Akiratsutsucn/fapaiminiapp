@@ -5,6 +5,10 @@
     <view class="bg-circle circle-1"></view>
     <view class="bg-circle circle-2"></view>
     <view class="bg-circle circle-3"></view>
+    <!-- 美加墨世界杯氛围装饰（原创元素，非官方资产）：右上彩旗串 + 右下足球 + 底部球场弧线 -->
+    <view class="wc-bunting"></view>
+    <view class="wc-ball"></view>
+    <view class="wc-pitch"></view>
   </view>
 
   <!-- 顶部品牌 -->

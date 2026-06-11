@@ -54,6 +54,47 @@
   right: 60rpx;
 }
 
+/* ===== 美加墨世界杯氛围装饰（原创 SVG，非 FIFA 官方资产） ===== */
+/* 右上角彩旗串：美/加/墨三国旗色三角旗，微旋斜挂，避开左侧品牌名 */
+.wc-bunting {
+  position: absolute;
+  top: 96rpx;
+  right: -40rpx;
+  width: 58%;
+  height: 128rpx;
+  transform: rotate(6deg);
+  opacity: 0.9;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%2060%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2C10%20Q150%2C22%20300%2C10%22%20stroke%3D%22rgba%28255%2C255%2C255%2C.45%29%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%2F%3E%3Cpolygon%20points%3D%220%2C10%2025%2C10%2013%2C32%22%20fill%3D%22%23B22234%22%2F%3E%3Cpolygon%20points%3D%2225%2C12%2050%2C12%2038%2C34%22%20fill%3D%22%23ffffff%22%2F%3E%3Cpolygon%20points%3D%2250%2C14%2075%2C14%2063%2C36%22%20fill%3D%22%233C3B6E%22%2F%3E%3Cpolygon%20points%3D%2275%2C16%20100%2C16%2088%2C38%22%20fill%3D%22%23006847%22%2F%3E%3Cpolygon%20points%3D%22100%2C17%20125%2C17%20113%2C39%22%20fill%3D%22%23ffffff%22%2F%3E%3Cpolygon%20points%3D%22125%2C18%20150%2C18%20138%2C40%22%20fill%3D%22%23CE1126%22%2F%3E%3Cpolygon%20points%3D%22150%2C18%20175%2C18%20163%2C40%22%20fill%3D%22%23FF0000%22%2F%3E%3Cpolygon%20points%3D%22175%2C18%20200%2C18%20188%2C40%22%20fill%3D%22%23ffffff%22%2F%3E%3Cpolygon%20points%3D%22200%2C17%20225%2C17%20213%2C39%22%20fill%3D%22%23B22234%22%2F%3E%3Cpolygon%20points%3D%22225%2C16%20250%2C16%20238%2C38%22%20fill%3D%22%23ffffff%22%2F%3E%3Cpolygon%20points%3D%22250%2C14%20275%2C14%20263%2C36%22%20fill%3D%22%233C3B6E%22%2F%3E%3Cpolygon%20points%3D%22275%2C12%20300%2C12%20288%2C34%22%20fill%3D%22%23006847%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* 右下角足球：经典黑白，低透明度融入蓝底 */
+.wc-ball {
+  position: absolute;
+  width: 320rpx;
+  height: 320rpx;
+  bottom: 60rpx;
+  right: -60rpx;
+  opacity: 0.2;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23fff%22%20stroke%3D%22%231a2f52%22%20stroke-width%3D%221.5%22%2F%3E%3Cpolygon%20points%3D%2250%2C26%2068%2C40%2061%2C62%2039%2C62%2032%2C40%22%20fill%3D%22%231a2f52%22%2F%3E%3Cpolygon%20points%3D%2250%2C4%2060%2C12%2050%2C22%2040%2C14%22%20fill%3D%22%231a2f52%22%2F%3E%3Cpolygon%20points%3D%2290%2C38%2092%2C52%2078%2C52%2080%2C40%22%20fill%3D%22%231a2f52%22%2F%3E%3Cpolygon%20points%3D%2274%2C86%2062%2C80%2070%2C68%2082%2C74%22%20fill%3D%22%231a2f52%22%2F%3E%3Cpolygon%20points%3D%2226%2C86%2038%2C80%2030%2C68%2018%2C74%22%20fill%3D%22%231a2f52%22%2F%3E%3Cpolygon%20points%3D%2210%2C38%208%2C52%2022%2C52%2020%2C40%22%20fill%3D%22%231a2f52%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* 底部球场弧线：极低透明度铺底，暗示绿茵场 */
+.wc-pitch {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 400rpx;
+  opacity: 0.1;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%20200%22%20preserveAspectRatio%3D%22none%22%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22240%22%20r%3D%22120%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222%22%20fill%3D%22none%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%22120%22%20x2%3D%22300%22%20y2%3D%22120%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%22150%22%20cy%3D%22120%22%20r%3D%223%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
 /* ===== 品牌 ===== */
 .login-brand {
   display: flex;
