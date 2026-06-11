@@ -20,15 +20,25 @@
           >
             <div class="session-title">{{ session.title || '新对话' }}</div>
             <div class="session-time">{{ formatTime(session.updated_at) }}</div>
-            <t-button
-              variant="text"
-              size="small"
-              theme="danger"
-              class="delete-btn"
-              @click.stop="onDeleteSession(session.id)"
-            >
-              <template #icon><t-icon name="delete" /></template>
-            </t-button>
+            <div class="session-actions">
+              <t-button
+                variant="text"
+                size="small"
+                class="rename-btn"
+                @click.stop="onRenameSession(session)"
+              >
+                <template #icon><t-icon name="edit" /></template>
+              </t-button>
+              <t-button
+                variant="text"
+                size="small"
+                theme="danger"
+                class="delete-btn"
+                @click.stop="onDeleteSession(session.id)"
+              >
+                <template #icon><t-icon name="delete" /></template>
+              </t-button>
+            </div>
           </div>
         </div>
       </div>
@@ -77,13 +87,14 @@
 
         <!-- 输入区域 -->
         <div class="input-area">
-          <t-textarea
+          <textarea
             v-model="inputMessage"
+            class="custom-textarea"
             placeholder="输入您的问题..."
-            :autosize="{ minRows: 2, maxRows: 6 }"
-            @keydown.enter.ctrl="onSendMessage"
+            rows="3"
+            @keydown.enter.ctrl.prevent="onSendMessage"
             :disabled="streaming"
-          />
+          ></textarea>
           <t-button
             theme="primary"
             @click="onSendMessage"
@@ -102,11 +113,11 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { listAiSessions, createAiSession, deleteAiSession, getSessionMessages, chatStream } from '@/api/ai'
+import { listAiSessions, createAiSession, deleteAiSession, getSessionMessages, chatStream, renameAiSession } from '@/api/ai'
 import { marked } from 'marked'
 
 const sessions = ref<any[]>([])
-const currentSessionId = ref<number | null>(null)
+const currentSessionId = ref<string | number | null>(null)
 const messages = ref<any[]>([])
 const inputMessage = ref('')
 const streaming = ref(false)
@@ -126,10 +137,30 @@ onMounted(() => {
 
 async function loadSessions() {
   try {
-    const data = await listAiSessions()
+    const res = await listAiSessions()
+    // 兼容后端可能返回数组或 {sessions:[...]} / {data:[...]} 等结构
+    let data: any[] = []
+    if (Array.isArray(res)) {
+      data = res
+    } else if (res && Array.isArray((res as any).sessions)) {
+      data = (res as any).sessions
+    } else if (res && Array.isArray((res as any).data)) {
+      data = (res as any).data
+    }
+
+    // 过滤掉无效的会话（id为空或undefined），并统一字段名
     sessions.value = data
-    if (data.length > 0 && !currentSessionId.value) {
-      onSelectSession(data[0].id)
+      .filter(s => s && (s.id || s.session_id))
+      .map(s => ({
+        ...s,
+        id: s.id || s.session_id  // 统一使用id字段
+      }))
+
+    if (sessions.value.length > 0 && !currentSessionId.value) {
+      onSelectSession(sessions.value[0].id)
+    } else if (sessions.value.length === 0) {
+      // 如果没有会话，自动创建一个
+      await onCreateSession()
     }
   } catch (err) {
     console.error('加载会话列表失败:', err)
@@ -139,19 +170,59 @@ async function loadSessions() {
 async function onCreateSession() {
   try {
     const session = await createAiSession()
-    sessions.value.unshift(session)
-    onSelectSession(session.id)
+    console.log('创建会话成功:', session)
+
+    // 处理后端返回字段名不匹配：session_id vs id
+    const sessionId = session.id || session.session_id
+    if (!session || !sessionId) {
+      console.error('创建的会话无效:', session)
+      MessagePlugin.error('创建对话失败：返回数据无效')
+      return
+    }
+
+    // 统一使用id字段
+    const normalizedSession = {
+      ...session,
+      id: sessionId
+    }
+
+    sessions.value.unshift(normalizedSession)
+    onSelectSession(sessionId)
     MessagePlugin.success('已创建新对话')
   } catch (err) {
+    console.error('创建对话失败:', err)
     MessagePlugin.error('创建对话失败')
   }
 }
 
-async function onSelectSession(sessionId: number) {
+async function onSelectSession(sessionId: string | number) {
+  if (!sessionId) {
+    console.warn('会话ID无效，跳过加载')
+    return
+  }
   currentSessionId.value = sessionId
   try {
     const data = await getSessionMessages(sessionId)
-    messages.value = data
+    // 兼容后端可能返回数组或 {messages:[...]} / {data:[...]} 等结构
+    let rawList: any[] = []
+    if (Array.isArray(data)) {
+      rawList = data
+    } else if (data && Array.isArray((data as any).messages)) {
+      rawList = (data as any).messages
+    } else if (data && Array.isArray((data as any).data)) {
+      rawList = (data as any).data
+    }
+
+    // 规范化每条消息字段：后端用 timestamp，前端用 created_at；补充 id
+    messages.value = rawList
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
+      .map((m, idx) => ({
+        id: m.id ?? idx,
+        session_id: sessionId,
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+        created_at: m.created_at || m.timestamp || '',
+      }))
     scrollToBottom()
   } catch (err) {
     console.error('加载消息失败:', err)
@@ -159,22 +230,56 @@ async function onSelectSession(sessionId: number) {
   }
 }
 
-async function onDeleteSession(sessionId: number) {
+async function onDeleteSession(sessionId: string | number) {
+  if (!sessionId) {
+    console.error('删除会话失败：会话ID无效', sessionId)
+    MessagePlugin.error('会话ID无效')
+    return
+  }
+
   try {
     await deleteAiSession(sessionId)
     sessions.value = sessions.value.filter(s => s.id !== sessionId)
     if (currentSessionId.value === sessionId) {
-      currentSessionId.value = sessions.value.length > 0 ? sessions.value[0].id : null
-      if (currentSessionId.value) {
-        onSelectSession(currentSessionId.value)
+      if (sessions.value.length > 0) {
+        onSelectSession(sessions.value[0].id)
       } else {
+        // 删除最后一个会话后，创建新会话
+        currentSessionId.value = null
         messages.value = []
+        await onCreateSession()
       }
     }
     MessagePlugin.success('已删除对话')
   } catch (err) {
+    console.error('删除对话失败:', err)
     MessagePlugin.error('删除对话失败')
   }
+}
+
+function onRenameSession(session: any) {
+  const sessionId = session.id
+  if (!sessionId) {
+    MessagePlugin.error('会话ID无效')
+    return
+  }
+  const input = window.prompt('重命名对话', session.title || '')
+  if (input === null) return  // 用户取消
+  const newTitle = input.trim()
+  if (!newTitle) {
+    MessagePlugin.error('标题不能为空')
+    return
+  }
+  renameAiSession(sessionId, newTitle)
+    .then(() => {
+      const s = sessions.value.find(x => x.id === sessionId)
+      if (s) s.title = newTitle
+      MessagePlugin.success('已重命名')
+    })
+    .catch((err) => {
+      console.error('重命名失败:', err)
+      MessagePlugin.error('重命名失败')
+    })
 }
 
 function onUseTemplate(template: any) {
@@ -189,6 +294,7 @@ async function onSendMessage() {
   inputMessage.value = ''
 
   // 添加用户消息到界面
+  if (!Array.isArray(messages.value)) messages.value = []
   messages.value.push({
     id: Date.now(),
     session_id: currentSessionId.value,
@@ -211,14 +317,17 @@ async function onSendMessage() {
       scrollToBottom()
     },
     () => {
-      // 流式结束，将完整消息添加到消息列表
-      messages.value.push({
-        id: Date.now(),
-        session_id: currentSessionId.value!,
-        role: 'assistant',
-        content: streamContent.value,
-        created_at: new Date().toISOString(),
-      })
+      // 流式结束，将完整消息添加到消息列表（仅在有内容时）
+      if (streamContent.value) {
+        if (!Array.isArray(messages.value)) messages.value = []
+        messages.value.push({
+          id: Date.now(),
+          session_id: currentSessionId.value!,
+          role: 'assistant',
+          content: streamContent.value,
+          created_at: new Date().toISOString(),
+        })
+      }
       streaming.value = false
       streamContent.value = ''
       scrollToBottom()
@@ -233,11 +342,19 @@ async function onSendMessage() {
 }
 
 function renderMarkdown(content: string) {
-  return marked(content, { breaks: true })
+  if (!content) return ''
+  try {
+    return marked(content, { breaks: true })
+  } catch (err) {
+    console.error('Markdown渲染失败:', err)
+    return content
+  }
 }
 
 function formatTime(isoTime: string) {
+  if (!isoTime) return ''
   const date = new Date(isoTime)
+  if (isNaN(date.getTime())) return ''
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
@@ -335,16 +452,18 @@ function scrollToBottom() {
   color: #999;
 }
 
-.delete-btn {
+.session-actions {
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.session-item:hover .delete-btn {
+.session-item:hover .session-actions {
   opacity: 1;
 }
 
@@ -506,5 +625,33 @@ function scrollToBottom() {
 
 .input-area :deep(.t-textarea) {
   flex: 1;
+}
+
+.custom-textarea {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 3px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 60px;
+  max-height: 200px;
+  transition: border-color 0.2s;
+}
+
+.custom-textarea:focus {
+  outline: none;
+  border-color: #0052d9;
+}
+
+.custom-textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.custom-textarea::placeholder {
+  color: #999;
 }
 </style>

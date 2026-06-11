@@ -44,20 +44,7 @@ Page({
     this.setData({
       districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000]
     });
-    this.getLocation();
-  },
-
-  getLocation() {
-    wx.getLocation({
-      type: 'gcj02',
-      success: (res) => {
-        this.setData({ latitude: res.latitude, longitude: res.longitude });
-        this.loadMarkers();
-      },
-      fail: () => {
-        this.loadMarkers();
-      },
-    });
+    this.loadMarkers();
   },
 
   async loadMarkers() {
@@ -67,9 +54,9 @@ Page({
       const cityId = app.globalData.currentCityId || 310000;
       const items = await getMapMarkers(cityId);
 
-      // Fall back to city center if no user location
+      // 不再获取用户定位，地图始终居中到当前所选城市中心
       const center = CITY_CENTERS[cityId];
-      if (center && !this.data.latitude) {
+      if (center) {
         this.setData({ latitude: center.lat, longitude: center.lng });
       }
 

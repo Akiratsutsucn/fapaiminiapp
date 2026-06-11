@@ -874,7 +874,9 @@ async def crawl_one(
     summary = await search_community(client, city_en, community_name)
     if not summary:
         logger.info(f"[beike] 未找到匹配小区：{community_name}")
-        return None
+        # 贝壳完全没命中：尝试用补充源（中原等）兜底。默认关闭，开启后才工作，
+        # 不影响现有贝壳逻辑。
+        return await _try_supplement_only(db, community_name, district, city_id)
 
     info: dict = {
         "avg_price": summary.get("avg_price"),
@@ -887,9 +889,61 @@ async def crawl_one(
             if v is not None:
                 info[k] = v
 
-    return await upsert_community(
+    c = await upsert_community(
         db, community_name, district, city_id, info, found_name=summary.get("found_name")
     )
+    # 贝壳已命中：若仍有字段缺失，用补充源（中原等）补齐。默认关闭。
+    await _apply_supplement(db, c)
+    return c
+
+
+async def _apply_supplement(db, community) -> None:
+    """对一条已存在的 CommunityInfo 调用多源补充框架补齐缺失字段并提交。
+
+    全程 try/except 包裹：补充源（含 Playwright/瑞数/代理）任何异常都不得
+    影响贝壳主流程已写入的数据。"""
+    if community is None:
+        return
+    try:
+        from .community_sources import supplement_fields
+        applied = await supplement_fields(community)
+        if applied:
+            await db.commit()
+            await db.refresh(community)
+            logger.info(f"[supplement] {community.name} 补充字段已落库: {list(applied.keys())}")
+    except Exception as e:
+        logger.warning(f"[supplement] {getattr(community, 'name', '?')} 补充失败（不影响贝壳数据）: {e}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+
+async def _try_supplement_only(
+    db, community_name: str, district: str, city_id: int
+) -> CommunityInfo | None:
+    """贝壳完全未命中时，仅靠补充源建档。默认关闭时返回 None（与原行为一致）。"""
+    try:
+        from .config import settings
+        if not getattr(settings, "COMMUNITY_SUPPLEMENT_ENABLED", False):
+            return None
+        from .community_sources import supplement_fields
+        # 先 upsert 一条最小记录（仅名字/区/城市），再让补充源填充
+        c = await upsert_community(db, community_name, district, city_id, {})
+        applied = await supplement_fields(c)
+        if applied:
+            await db.commit()
+            await db.refresh(c)
+            logger.info(f"[supplement] (贝壳未命中) {community_name} 由补充源建档: {list(applied.keys())}")
+            return c
+        return c
+    except Exception as e:
+        logger.warning(f"[supplement] (贝壳未命中) {community_name} 补充失败: {e}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        return None
 
 
 async def crawl_for_property(property_id: int) -> CommunityInfo | None:

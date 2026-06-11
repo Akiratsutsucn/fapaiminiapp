@@ -91,10 +91,10 @@ async def get_stats(
     db: AsyncSession = Depends(get_session),
 ):
     uid = int(user_data["sub"])
-    # 关注房源计数需与「关注房源」列表口径一致：仅统计仍在架（可参拍/可访问详情）的房源。
-    # 房源下架（已结束/已撤回/流拍等，详情接口走 _mobile_filter 返回 404）后，
-    # 列表页会过滤掉它，计数也必须同步排除，否则数字与列表对不上、不会随下架减少。
-    from ...core.auction_status import effective_status_sql, MOBILE_DETAIL_STATUSES
+    # 关注房源计数须与「关注房源/房源收藏」列表口径一致：
+    # 约定——小程序只展示「即将开拍/进行中」可参拍房源，已结束/已成交/流拍等不再露出。
+    # 房源下架后列表会过滤掉它，计数也必须同步排除，否则数字与列表对不上、不随下架减少。
+    from ...core.auction_status import effective_status_sql, MOBILE_VISIBLE_STATUSES
     from ...models.property import Property
     fav_count = (await db.execute(
         select(func.count(UserFavorite.id))
@@ -102,7 +102,7 @@ async def get_stats(
         .where(
             UserFavorite.user_id == uid,
             UserFavorite.favorite_type == "property",
-            effective_status_sql().in_(MOBILE_DETAIL_STATUSES),
+            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
         )
     )).scalar() or 0
     return UserStats(favorite_count=fav_count)
@@ -121,15 +121,35 @@ async def list_favorites(
     if favorite_type:
         conditions.append(UserFavorite.favorite_type == favorite_type)
 
+    # 房源收藏/关注房源：约定小程序只展示「即将开拍/进行中」可参拍房源。
+    # 在列表源头按实时状态过滤，已结束/已成交/流拍等收藏不再返回（与 /stats 计数同口径），
+    # 避免依赖详情接口的兜底状态导致已结束房源漏出。文章收藏(article)不受影响。
+    if favorite_type == "property":
+        from ...core.auction_status import effective_status_sql, MOBILE_VISIBLE_STATUSES
+        from ...models.property import Property
+
+        base = (
+            select(UserFavorite)
+            .join(Property, Property.id == UserFavorite.target_id)
+            .where(*conditions, effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
+        )
+        count_q = (
+            select(func.count(UserFavorite.id))
+            .join(Property, Property.id == UserFavorite.target_id)
+            .where(*conditions, effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
+        )
+    else:
+        base = select(UserFavorite).where(*conditions)
+        count_q = select(func.count(UserFavorite.id)).where(*conditions)
+
     q = (
-        select(UserFavorite)
-        .where(*conditions)
+        base
         .order_by(UserFavorite.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
     rows = (await db.execute(q)).scalars().all()
-    total = (await db.execute(select(func.count(UserFavorite.id)).where(*conditions))).scalar() or 0
+    total = (await db.execute(count_q)).scalar() or 0
     return {"items": [{"id": r.id, "type": r.favorite_type, "target_id": r.target_id, "created_at": str(r.created_at)} for r in rows], "total": total}
 
 

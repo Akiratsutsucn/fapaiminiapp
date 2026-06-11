@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_session
 from ...core.auction_status import (
     effective_status_sql, BARGAIN_DISCOUNT_MIN, BARGAIN_DISCOUNT_MAX,
-    MOBILE_VISIBLE_STATUSES, listed_on_sql,
+    upcoming_cond, bargain_cond, yesterday_listed_cond, yesterday_sold_cond,
 )
 from ...models.banner import Banner
 from ...models.property import Property
@@ -47,39 +47,16 @@ async def market_stats(
     if city_id:
         conditions.append(Property.city_id == city_id)
 
-    def _apply(q):
-        return q.where(and_(*conditions)) if conditions else q
-
-    upcoming = (await db.execute(
-        _apply(select(func.count(Property.id))).where(effective_status_sql() == "即将开拍")
-    )).scalar() or 0
-
-    # 捡漏：可参拍（即将开拍/进行中）且折扣 1折~6.5折
-    bargain = (await db.execute(
-        _apply(select(func.count(Property.id))).where(
-            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
-            Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
-            Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
-        )
-    )).scalar() or 0
+    def _count(extra_conds):
+        # 共用计数条件 + 本接口的城市过滤，保证与数据看板四个同步卡片口径一致。
+        return select(func.count(Property.id)).where(and_(*conditions, *extra_conds))
 
     yesterday = date.today() - timedelta(days=1)
-    # 昨日上架：用平台真实上架日期 publish_date（公拍网/阿里），不再回退入库时间 created_at。
-    # 口径封装在 listed_on_sql，与列表页 listed_day=yesterday 入口完全一致。
-    yesterday_listed = (await db.execute(
-        _apply(select(func.count(Property.id))).where(listed_on_sql(yesterday))
-    )).scalar() or 0
 
-    # 昨日成交：仅「已成交」状态，用平台真实结束时间 auction_end_time（拍卖结束=成交时点），
-    # 缺失时回退 updated_at。口径须与 properties.py 的 sold_day 列表入口完全一致，
-    # 保证首页数字 == 列表「共xxx套」。
-    sold_date = func.coalesce(Property.auction_end_time, Property.updated_at)
-    yesterday_sold = (await db.execute(
-        _apply(select(func.count(Property.id))).where(
-            effective_status_sql() == "已成交",
-            func.date(sold_date) == yesterday,
-        )
-    )).scalar() or 0
+    upcoming = (await db.execute(_count(upcoming_cond()))).scalar() or 0
+    bargain = (await db.execute(_count(bargain_cond()))).scalar() or 0
+    yesterday_listed = (await db.execute(_count(yesterday_listed_cond(yesterday)))).scalar() or 0
+    yesterday_sold = (await db.execute(_count(yesterday_sold_cond(yesterday)))).scalar() or 0
 
     return MarketStatsOut(
         bargain_count=bargain,

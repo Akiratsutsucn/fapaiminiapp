@@ -37,6 +37,33 @@ JD_CITY_MAP = {
     "杭州市": 330100, "杭州": 330100,
 }
 
+# 列表级动产粗筛（用户 2026-06-10）：京东搜索改全类目(publishSource=7)后会混入大量
+# 动产标的(玉石/首饰/车辆/机械/股权…)，逐个渲染详情再判「非房产」极慢(ID61 因此空转
+# 20 小时)。故在列表阶段先按标题排除明显动产，不进入详情渲染。
+# 策略：标题含房产地址要素 → 一定保留；否则若含动产特征词 → 丢弃；都不含 → 保留(交详情判)。
+_JD_REALTY_FEATURE = re.compile(
+    r"室|号楼|幢|栋|弄|座|路\d+|街道|[一-鿿]镇|[一-鿿]乡|[一-鿿]村|小区|花园|花苑|"
+    r"公寓|别墅|商铺|店铺|厂房|车位|车库|储藏室|土地|地块|房产|房地产|不动产|宗地|"
+    r"楼盘|商业用房|工业用房|名苑|嘉园|新村|公馆|广场|家园|号房|地下室|商住|住宅|"
+    r"公租房|安置房|经济适用房|银座|大厦|商厦|写字楼"
+)
+_JD_MOVABLE_KEYWORD = re.compile(
+    r"玉石|首饰|钻石|黄金|铂金|翡翠|珠宝|手表|腕表|名表|包包|箱包|奢侈品|"
+    r"车辆|汽车|轿车|客车|货车|机动车|摩托|电动车|挖掘机|装载机|叉车|机械|"
+    r"设备|机床|钻床|加工中心|生产线|流水线|股权|股份|债权|应收|存货|库存|"
+    r"原料|材料|钢材|酒|茅台|红酒|字画|古董|文玩|手机|电脑|空调|家电|船舶|"
+    r"游艇|商标|专利|线缆|电缆|纺织|服装"
+)
+
+
+def _jd_is_likely_movable(title: str) -> bool:
+    """标题粗判是否为动产(非不动产)：含房产要素→否；否则含动产词→是。"""
+    if not title:
+        return False
+    if _JD_REALTY_FEATURE.search(title):
+        return False
+    return bool(_JD_MOVABLE_KEYWORD.search(title))
+
 
 def _is_auction_detail_url(href: str) -> bool:
     """Check if an href is a JD auction detail link (not notice/help/nav)."""
@@ -50,7 +77,10 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
 
     platform = "京东拍卖"
 
-    BASE_SEARCH_URL = "https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728"
+    # 去掉 childrenCateId（原 12728=住宅用房，会漏掉商业/工业/办公），
+    # 只保留 publishSource=7=司法拍卖，返回该城市全部类目的司法标的，
+    # 物业类型交由 JDDetailParser._guess_property_type 按标题归类。
+    BASE_SEARCH_URL = "https://pmsearch.jd.com/?publishSource=7"
 
     def __init__(self):
         self._page: Page | None = None
@@ -174,7 +204,14 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         except Exception:
             pass
 
-        logger.info(f"[JD] {city}: 收集到 {len(rows)} 套（接口直取）")
+        # 列表级动产粗筛：标题明显是动产的直接剔除，不进入详情渲染（大幅提速）。
+        kept = [(pid, row) for pid, row in rows.items()
+                if not _jd_is_likely_movable(row.get("title", ""))]
+        dropped = len(rows) - len(kept)
+        logger.info(
+            f"[JD] {city}: 收集到 {len(rows)} 套，剔除疑似动产 {dropped} 套，"
+            f"保留 {len(kept)} 套（接口直取）"
+        )
         return [
             ListItem(
                 source_url=f"https://paimai.jd.com/{pid}?itemId={pid}",
@@ -182,7 +219,7 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
                 district=(row.get("city") or "").replace("市", ""),
                 address=row.get("productAddress", ""),
             )
-            for pid, row in rows.items()
+            for pid, row in kept
         ]
 
     @staticmethod
@@ -211,6 +248,7 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         paimai_id = str(paimai_id)
         row = dict(self._row_cache.get(paimai_id) or {})
         detail = {}
+        realtime = {}
         try:
             import httpx
             headers = {
@@ -229,6 +267,22 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
                     },
                 )
                 detail = (resp.json() or {}).get("data", {}) or {}
+                # 实时数据接口（无需 h5st，直连）：取成交状态/成交价/成交确认书 URL。
+                # 这是京东「成交价 + 成交确认书」的唯一可靠来源（getProductBasicInfo 无此字段）。
+                # auctionStatus==2 → 已成交；currentPrice → 成交价；confirmationUrl → 成交确认书 PDF。
+                try:
+                    rt = await client.get(
+                        "https://api.m.jd.com/api",
+                        params={
+                            "appid": "paimai",
+                            "functionId": "getPaimaiRealTimeData",
+                            "body": json.dumps({"paimaiId": int(paimai_id)}),
+                            "loginType": "3",
+                        },
+                    )
+                    realtime = (rt.json() or {}).get("data", {}) or {}
+                except Exception as e:
+                    logger.debug(f"[JD] getPaimaiRealTimeData failed for {paimai_id}: {e}")
         except Exception as e:
             logger.debug(f"[JD] getProductBasicInfo failed for {paimai_id}: {e}")
 
@@ -253,24 +307,86 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         merged["_images"] = images
         merged["_paimai_id"] = paimai_id
         merged["_city_id"] = row.get("_city_id")
+        # 实时成交数据（成交状态/成交价/成交确认书 URL）原样带回供解析器判定。
+        merged["_realtime"] = realtime
 
         # 面积：主接口无此字段，只存在于「标的物详情」tab 正文，需渲染详情页提取。
         # 用户已确认接受京东额外渲染的耗时成本。渲染失败不致命（面积留 0）。
+        # 同时把渲染后的「详情页全文」和「附件清单」带回，供解析器做缺字段兜底
+        # 与「成交确认书」识别（用户 2026-06-10 要求）。
         try:
             detail_url = f"https://paimai.jd.com/{paimai_id}?itemId={paimai_id}"
             html = await self.fetch_detail(detail_url)
             merged["_area"] = self._extract_area_from_html(html)
+            merged["_detail_text"] = self._html_to_text(html)
+            merged["_attachments"] = self._extract_attachments_from_html(html)
         except Exception as e:
             logger.debug(f"[JD] area render failed for {paimai_id}: {e}")
             merged["_area"] = 0.0
+            merged["_detail_text"] = ""
+            merged["_attachments"] = []
         return merged
+
+    @staticmethod
+    def _html_to_text(html: str) -> str:
+        """渲染后 HTML → 单行纯文本（供解析器全文兜底挖掘五字段）。"""
+        if not isinstance(html, str) or not html:
+            return ""
+        try:
+            text = BeautifulSoup(html, "lxml").get_text(separator=" ")
+        except Exception:
+            text = html
+        return re.sub(r"\s+", " ", text)
+
+    @staticmethod
+    def _extract_attachments_from_html(html: str) -> list[tuple[str, str]]:
+        """从渲染后的京东详情页抓附件 <a> 清单 [(名称, 链接)]。
+
+        京东「标的物详情」里附件多以「附件下载：xxx.pdf」链接呈现；
+        识别 .pdf/.doc 等后缀或名称含「确认书/公告/报告」等特征的链接。
+        """
+        if not isinstance(html, str) or not html:
+            return []
+        out: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        try:
+            soup = BeautifulSoup(html, "lxml")
+        except Exception:
+            return []
+        for a in soup.select("a[href]"):
+            href = (a.get("href") or "").strip()
+            name = re.sub(r"\s+", " ", a.get_text() or "").strip()
+            if not href:
+                continue
+            low = href.lower()
+            is_file = (low.endswith((".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip"))
+                       or "attachment" in low or "/file" in low or "download" in low)
+            looks_like_att = any(k in name for k in
+                                 ("确认书", "公告", "须知", "报告", "合同", "附件", "评估"))
+            if not (is_file or looks_like_att):
+                continue
+            if href.startswith("//"):
+                href = "https:" + href
+            if href in seen:
+                continue
+            seen.add(href)
+            out.append((name, href))
+        return out
 
     @staticmethod
     def _extract_area_from_html(html: str) -> float:
         """从渲染后的京东详情页 HTML 提取建筑面积（㎡）。
 
         面积只存在于「标的物详情」tab 正文，主接口无此字段，必须渲染页面后提取。
+        京东详情页有两类模板，都要覆盖：
+          (A) 内联文字型：「建筑总面积：123.08平方米」——标签后紧跟数值；
+          (B) 执行标的调查情况表（表格型）：「建筑面积（平方米）」是表头列名，数值
+              （如 59.33）在下一行单元格，渲染成纯文本后中间隔着 商铺编号/地址/
+              房地产权证号 等几十个字符，故标签与数值不相邻，必须用「表头后窗口内
+              取首个小数」来定位（楼层 2/28 是整数，不会被误取）。
         正文常把「建筑面积」「47.99」「平方米」拆在多个 <span>，故先取纯文本再正则。
+        注意：建筑 与 面积 之间允许「总/物」等 0~2 个汉字，否则「建筑总面积」这类
+        （中间多一个「总」字）会整条匹配失败、面积留 0。
         """
         if not isinstance(html, str) or not html:
             return 0.0
@@ -279,10 +395,15 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
         except Exception:
             text = html
         text = re.sub(r"\s+", " ", text)
-        # 负向先行排除「地下建筑面积」（地下部分非套内/总建面）
+        # 负向先行排除「地下建筑面积」（地下部分非套内/总建面）；
+        # (?:总)?建筑[一-龥]{0,2}面积 兼容 建筑面积/建筑总面积/总建筑面积/套内建筑面积
         patterns = [
-            r"(?<!地下)建筑面积[为约是：:\s]*([\d]+(?:\.\d+)?)\s*(?:平方米|㎡|平米)",
-            r"(?<!地下)建筑面积[^0-9]{0,8}([\d]+(?:\.\d+)?)",
+            # (A) 内联型：标签后紧跟数值 + 单位
+            r"(?<!地下)(?:总)?建筑[一-龥]{0,2}面积[为约是：:\s]*([\d]+(?:\.\d+)?)\s*(?:平方米|㎡|平米)",
+            # (A) 内联型：标签后 8 字内出现数值（含「建筑面积（㎡）123」无空格写法）
+            r"(?<!地下)(?:总)?建筑[一-龥]{0,2}面积[^0-9]{0,8}([\d]+(?:\.\d+)?)",
+            # (B) 表格型：表头「建筑面积（平方米）」后窗口内取首个小数（值与表头被其它单元格隔开）
+            r"(?<!地下)(?:总)?建筑[一-龥]{0,2}面积\s*[（(][^)）]{0,10}[)）].{0,120}?(\d+\.\d+)",
         ]
         for pat in patterns:
             m = re.search(pat, text)

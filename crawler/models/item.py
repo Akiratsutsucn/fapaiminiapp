@@ -103,5 +103,15 @@ class AuctionItem:
     loan_support: bool | None = None
     has_attachments: bool | None = None
 
+    # === 附件清单 & 成交确认（与 Property 同名，upsert 自动入库）===
+    # attachments：附件清单 [{"name": "成交确认书.pdf", "url": "..."}]
+    attachments: list | None = None
+    # deal_confirmed：附件含「成交确认书」→ True（已成交铁证）
+    deal_confirmed: bool | None = None
+    # online_auction_end_time：成交确认书 PDF 内解析出的"网拍结束时间"
+    online_auction_end_time: datetime | None = None
+    # final_deal_price：法拍成交价(元)，来自成交确认书/成交公告
+    final_deal_price: int = 0
+
     # === images ===
     image_urls: list[str] = field(default_factory=list)

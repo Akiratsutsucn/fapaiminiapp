@@ -1,6 +1,7 @@
 """AI助手工具函数 - 提供数据查询和分析能力。"""
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from decimal import Decimal
 from typing import Any
 from sqlalchemy import text, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,27 @@ from ...models.user import User
 from ...models.demand import Demand
 from ...models.article import Article
 from ...core.auction_status import effective_status_sql
+
+
+def _json_safe(val: Any) -> Any:
+    """把数据库原始值转成可 JSON 序列化的类型。
+
+    原始 SELECT 结果里常含 datetime/date/Decimal 等对象，直接
+    json.dumps 会抛 "Object of type datetime is not JSON serializable"，
+    导致 SSE 流推 error、前端弹「消息发送失败」。
+    """
+    if val is None or isinstance(val, (str, int, float, bool)):
+        return val
+    if isinstance(val, (datetime, date)):
+        return val.isoformat()
+    if isinstance(val, Decimal):
+        return float(val)
+    if isinstance(val, (bytes, bytearray)):
+        try:
+            return val.decode("utf-8", errors="replace")
+        except Exception:
+            return str(val)
+    return str(val)
 
 
 async def query_database(db: AsyncSession, sql: str, read_only: bool = True) -> dict[str, Any]:
@@ -37,11 +59,23 @@ async def query_database(db: AsyncSession, sql: str, read_only: bool = True) -> 
                 }
 
         # 检查危险操作
-        dangerous_keywords = ['DROP', 'DELETE', 'TRUNCATE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE']
-        if any(kw in sql_upper for kw in dangerous_keywords):
+        # 用单词边界匹配（\b），避免子串误报：
+        #   旧实现 `kw in sql_upper` 会把 created_at→CREATED_AT 命中 CREATE、
+        #   updated_at→UPDATED_AT 命中 UPDATE，导致几乎所有带时间字段的合法
+        #   SELECT 都被拒绝，AI 反复重试卡在「正在调用工具」。
+        dangerous_keywords = ['DROP', 'DELETE', 'TRUNCATE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE', 'GRANT', 'REVOKE']
+        hit = next((kw for kw in dangerous_keywords if re.search(rf'\b{kw}\b', sql_upper)), None)
+        if hit:
             return {
                 "success": False,
-                "error": f"禁止执行包含以下关键词的语句: {', '.join(dangerous_keywords)}",
+                "error": f"禁止执行包含危险关键词的语句: {hit}",
+            }
+
+        # 禁止多语句（防止 SELECT 1; DROP TABLE ... 这类拼接绕过）
+        if ';' in sql.strip().rstrip(';'):
+            return {
+                "success": False,
+                "error": "禁止在单次查询中执行多条语句",
             }
 
         # 执行查询
@@ -50,7 +84,10 @@ async def query_database(db: AsyncSession, sql: str, read_only: bool = True) -> 
         # 获取列名和数据
         if result.returns_rows:
             columns = list(result.keys())
-            rows = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = [
+                {col: _json_safe(val) for col, val in zip(columns, row)}
+                for row in result.fetchall()
+            ]
 
             return {
                 "success": True,

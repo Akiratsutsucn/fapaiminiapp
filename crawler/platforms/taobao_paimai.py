@@ -391,9 +391,16 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     item = self._row_to_list_item(row)
                     if item.source_url:
                         items.append(item)
+                        # 用「列表itemId」和「source_url里提取的itemId」双键缓存：
+                        # 二者可能不一致（source_url 优先取 auctionLink，其 itemId 形式/有无
+                        # 可能与 row['itemId'] 不同），导致详情阶段按 source_url 的 itemId 查
+                        # 缓存 100% 落空、SSR 失败时无列表数据兜底。双键写入保证兜底必命中。
                         item_id = row.get("itemId", "")
                         if item_id:
-                            self._row_cache[item_id] = row
+                            self._row_cache[str(item_id)] = row
+                        _m = re.search(r'itemId=(\d+)', item.source_url)
+                        if _m:
+                            self._row_cache[_m.group(1)] = row
 
         return items, has_next
 
@@ -615,13 +622,20 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
         logger.debug(f"[TaobaoPaiMai] SSR load: item={item_id}")
 
-        # 经云镜隧道时出口 IP 随连接轮换，IPv6 出口对淘宝详情页常返回骨架/超时；
-        # 故失败或骨架时换 page（=换出口 IP）重试，最多 SSR_MAX_ATTEMPTS 次。
+        # initData 由页面 JS 异步注入 HTML（实测最快 1.5s 就绪），首次单次检测易误判骨架；
+        # 故每轮都「轮询」检测 initData，给足注入时间。仍持续骨架（出口 IP/反爬随机性）时，
+        # 主动触发隧道换出口 IP 再重建 page 重试——仅重建 page 不一定真的换了出口 IP。
         SSR_MAX_ATTEMPTS = 4
         for attempt in range(SSR_MAX_ATTEMPTS):
             if attempt > 0:
-                # 换出口 IP 再试（仅当走代理时有意义；直连时只是重建 page，无害）。
-                # cookie 加在共享 context 上，新 page 自动继承，无需重注。
+                # 持续骨架 → 主动换出口 IP（隧道代理），再重建 page 重试。
+                try:
+                    from .. import tunnel_proxy
+                    if tunnel_proxy.is_enabled():
+                        tunnel_proxy.trigger_ip_change(f"ali-ssr-skeleton:{item_id}")
+                        await asyncio.sleep(5)  # 等新出口 IP 生效
+                except Exception as e:
+                    logger.debug(f"[TaobaoPaiMai] trigger_ip_change failed: {e}")
                 try:
                     page = await self._renew_page()
                 except Exception:
@@ -635,17 +649,22 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     continue
                 return None
 
-            await asyncio.sleep(3 if attempt == 0 else 5)
-
-            # initData 在 HTML 源码里（不依赖渲染），优先提取
-            try:
-                full_html = await page.content()
-                init_data = _extract_suspense_init_data(full_html)
-                if init_data and (init_data.get("title") or init_data.get("realTitle")):
-                    logger.debug(f"[TaobaoPaiMai] initData found for {item_id}")
-                    return {"data": init_data}
-            except Exception as e:
-                logger.debug(f"[TaobaoPaiMai] initData attempt {attempt} failed: {e}")
+            # 轮询提取 initData（不依赖渲染，注入 HTML 后即可读）：每 1.5s 检测一次，
+            # 最多 ~12s。实测就绪后 consultPrice(评估价)/foregiftPrice(保证金) 等字段齐全。
+            init_data = None
+            for _ in range(8):
+                await asyncio.sleep(1.5)
+                try:
+                    full_html = await page.content()
+                    cand = _extract_suspense_init_data(full_html)
+                    if cand and (cand.get("title") or cand.get("realTitle")):
+                        init_data = cand
+                        break
+                except Exception as e:
+                    logger.debug(f"[TaobaoPaiMai] initData poll failed for {item_id}: {e}")
+            if init_data:
+                logger.debug(f"[TaobaoPaiMai] initData found for {item_id} (attempt {attempt})")
+                return {"data": init_data}
 
             # Evaluate DOM to check if real data rendered
             result = await page.evaluate("""() => {

@@ -11,6 +11,11 @@ from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
 from ..cleaners.status import normalize_status as _normalize_status
+from ..cleaners import field_miner as _field_miner
+from ..utils.deal_confirm import (
+    parse_deal_confirm_end_time as _parse_deal_confirm_end_time,
+    parse_deal_confirm as _parse_deal_confirm,
+)
 
 
 class JDDetailParser(AbstractParser):
@@ -22,7 +27,46 @@ class JDDetailParser(AbstractParser):
                     extra: dict | None = None) -> AuctionItem:
         # 新路径：京东改为接口直取，传入的是 fetch_detail_api 合并后的 dict。
         if isinstance(html, dict):
-            return self._parse_from_api(html, source_url, city_id, extra or {})
+            item = self._parse_from_api(html, source_url, city_id, extra or {})
+            # 缺字段兜底（面积/加价幅度等）：京东主接口无这些，从渲染详情页全文再挖一遍。
+            # 注意：这里不再用 apply_text_fallbacks 的「正文出现成交确认书字样」弱兜底来判
+            # deal_confirmed —— 京东详情正文常有「成交确认书」规则说明文字，会误判未成交房源。
+            # 京东成交判定改以 getPaimaiRealTimeData 实时接口为准（见下）。
+            full_text = _field_miner.normalize_text(
+                item.title, html.get("_detail_text") or "")
+            raw_atts = html.get("_attachments") or []
+            _field_miner.apply_text_fallbacks(item, full_text, raw_atts)
+            # 纠正弱兜底可能误置的 deal_confirmed（京东以实时接口为唯一判据）
+            item.deal_confirmed = None
+
+            # 成交判定（京东唯一可靠来源 getPaimaiRealTimeData，jd.py 已塞入 _realtime）：
+            #   auctionStatus==2 → 已成交；currentPrice → 成交价；
+            #   confirmationUrl 非空 → 成交确认书 PDF（含成交价+网拍结束时间，优先取 PDF 精确值）。
+            rt = html.get("_realtime") or {}
+            try:
+                rt_status = rt.get("auctionStatus")
+                cur_price = rt.get("currentPrice") or 0
+                confirm_url = (rt.get("confirmationUrl") or "").strip()
+                is_sold = (rt_status == 2) or bool(confirm_url)
+                if is_sold:
+                    item.deal_confirmed = True
+                    item.auction_status = "已成交"
+                    # 成交价：先用实时接口 currentPrice 兜底
+                    if cur_price and cur_price > 0:
+                        item.final_deal_price = int(round(float(cur_price)))
+                    # 成交确认书 PDF：解析更精确的成交价 + 网拍结束时间
+                    if confirm_url:
+                        info = await _parse_deal_confirm(confirm_url)
+                        if info.get("end_time"):
+                            item.online_auction_end_time = info["end_time"]
+                        if info.get("deal_price"):
+                            item.final_deal_price = info["deal_price"]
+                elif rt.get("blowFlag"):
+                    # 流拍标志
+                    item.auction_status = "流拍"
+            except Exception as e:
+                logger.debug(f"[JD] 实时成交数据解析失败: {e}")
+            return item
 
         soup = BeautifulSoup(html, "lxml")
         text = soup.get_text()
@@ -166,20 +210,88 @@ class JDDetailParser(AbstractParser):
                     pass
 
         self._compute_derived_fields(item)
+        # 结果态提取：京东接口的 displayStatus/bidStatus 携带「成交/撤回」等时间推不出的
+        # 终态。旧实现这里把空串 "" 传给 normalize_status，等于丢弃了平台告知的结果态——
+        # 时间一过就只会被算成「已结束」，成交回访因此永远拿不到「已成交/已撤回」。
+        # 改为先从接口字段推断结果态再交给 normalize_status（结果态会被原样保留）。
+        raw_status = self._result_status_from_api(d)
         item.auction_status = _normalize_status(
-            "", item.auction_start_time, item.auction_end_time
+            raw_status, item.auction_start_time, item.auction_end_time
         )
         return item
 
     @staticmethod
+    def _result_status_from_api(d: dict) -> str:
+        """从京东接口字段推断「结果态」(已成交/已撤回)；无法判定终态时返回 ""。
+
+        ⚠ 京东 getProductBasicInfo / paimai_unifiedSearch 无公开字段文档，下面的
+        displayStatus 枚举为「推断」，依据有二：
+          (1) 本文件 _parse_from_api 既有逻辑「displayStatus == 5 → 变卖」(轮次判定)，
+              说明 5 是「变卖销售模式」标志而非生命周期终态；
+          (2) paimai.jd.com 前端状态角标的常见取值顺序。
+        因此不确定的值一律返回 ""，交由 normalize_status 按 start/end 时间窗兜底，
+        绝不冒进写入可能错误的终态。回访脚本 backfill_revisit_ended.py 默认 dry-run，
+        会打印每条记录的原始 displayStatus/bidStatus 供人工核对；核对确认枚举无误后
+        再加 --commit 落库。若核对发现枚举有偏差，只需修正本函数即可。
+
+        displayStatus 推断枚举（[推断]=待人工核对）：
+            1 = 即将开始 / 报名预展        → 时序态，返回 ""（按时间算「即将开拍」）
+            2 = 正在进行 / 竞价中          → 时序态，返回 ""（「进行中」）
+            3 = 已结束(泛, 未区分成交/流拍) → 返回 ""（无法断定成交，按时间算「已结束」）
+            4 = 已成交(落槌成交)           → "已成交"   [推断]
+            5 = 变卖(销售模式标志, 非终态)  → 返回 ""（与轮次判定口径一致）
+            6 = 流拍 / 中止 / 撤回(未成交)  → "已撤回"   [推断]
+        bidStatus(若接口返回)：参照同源阿里枚举(5=已成交, 6=已撤回)做二次确认，
+        仅在 displayStatus 未给出明确终态时启用。
+        """
+        def _as_int(v):
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        ds = _as_int(d.get("displayStatus"))
+        bs = _as_int(d.get("bidStatus"))
+
+        # displayStatus 主判（仅对推断为终态的值出手，其余一律 ""）
+        if ds == 4:
+            return "已成交"
+        if ds == 6:
+            return "已撤回"
+        # bidStatus 二次确认（displayStatus 未明确终态时）
+        if bs == 5:
+            return "已成交"
+        if bs == 6:
+            return "已撤回"
+        return ""
+
+    @staticmethod
     def _guess_property_type(title: str) -> str:
+        """按标题关键词归入小程序四分类（住宅/商业/工业/办公），其余归 其他/土地。
+
+        京东去掉 childrenCateId 后返回全部类目，故必须能区分商业/工业/办公。
+        判定顺序：办公→工业→商业→住宅→土地/车位，先匹配更具体的类型，
+        避免「商业办公楼」被笼统归入商业、「工业厂房」被归入商业等误分。
+        """
         t = title or ""
-        if any(k in t for k in ("住宅", "公寓", "公租房", "安置房", "经济适用")):
-            return "住宅"
-        if any(k in t for k in ("商业", "商铺", "店铺", "商场", "写字楼", "办公", "营业")):
-            return "商业"
-        if any(k in t for k in ("工业", "厂房", "仓库", "标准厂房")):
+        # 办公（写字楼/办公楼/商务楼）—— 必须先于商业判定，否则会被「商业」吞掉
+        if any(k in t for k in ("写字楼", "办公楼", "办公房", "办公用房", "办公室",
+                                "办公场所", "商务楼", "商务中心", "office", "Office", "OFFICE")):
+            return "办公"
+        # 工业（厂房/仓储/工业用地）
+        if any(k in t for k in ("工业", "厂房", "仓库", "仓储", "标准厂房", "车间",
+                                "工业用房", "工业用地", "工业厂房", "生产用房", "物流")):
             return "工业"
+        # 商业（商铺/店铺/商场/酒店等经营性物业）
+        if any(k in t for k in ("商业", "商铺", "店铺", "商场", "营业", "商业用房",
+                                "门面", "门市", "底商", "商住", "酒店", "宾馆",
+                                "餐饮", "超市", "市场", "购物中心", "综合楼")):
+            return "商业"
+        # 住宅
+        if any(k in t for k in ("住宅", "公寓", "公租房", "安置房", "经济适用",
+                                "商品房", "住房", "别墅", "排屋", "联排")):
+            return "住宅"
+        # 土地 / 车位 归其他
         if any(k in t for k in ("土地", "地块", "宗地", "用地")):
             return "其他"
         if "车位" in t or "车库" in t:

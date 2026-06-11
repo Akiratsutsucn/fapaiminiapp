@@ -10,6 +10,7 @@ from .system_setting import SystemSetting
 from .community import CommunityInfo
 from .recommendation import PropertyRecommendation
 from .data_audit import AuditRule, AuditTask, AuditViolation, AuditReport
+from .ai_chat import AiSession, AiMessage
 
 __all__ = [
     "Property", "PropertyImage",
@@ -24,4 +25,5 @@ __all__ = [
     "CommunityInfo",
     "PropertyRecommendation",
     "AuditRule", "AuditTask", "AuditViolation", "AuditReport",
+    "AiSession", "AiMessage",
 ]

@@ -30,6 +30,7 @@ def upgrade():
         sa.Column('failed_count', sa.Integer(), nullable=False, server_default='0', comment='失败数量'),
         sa.Column('skipped_count', sa.Integer(), nullable=False, server_default='0', comment='跳过数量'),
         sa.Column('error_messages', sa.Text(), nullable=True, comment='错误信息（截断至1000字符）'),
+        sa.Column('failure_type', sa.String(length=32), nullable=True, comment='失败类型: login_cookie/ip_blocked/parse_logic/unknown'),
         sa.Column('duration_seconds', sa.Integer(), nullable=True, comment='耗时（秒）'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('id'),

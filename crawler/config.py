@@ -54,6 +54,14 @@ class CrawlerSettings(BaseSettings):
     STALE_DAYS_THRESHOLD: int = 7  # mark as ended if absent for N days
     STALE_REFRESH_HOURS: int = 24  # re-fetch existing records older than N hours
 
+    # ===== 小区详情补充源（贝壳之外的备援，见 community_sources.py） =====
+    # 总开关：贝壳抓取失败/字段缺失时，是否启用中原等补充源回填。默认关闭，
+    # 开启前请先在生产环境实测各源可用性（中原站点有瑞数动态反爬）。
+    COMMUNITY_SUPPLEMENT_ENABLED: bool = False
+    # 中原地产（centanet.com）源开关。需 Playwright + 住宅代理才有机会过瑞数挑战，
+    # 默认关闭。实测可用后再打开。
+    CENTANET_ENABLED: bool = False
+
     # ===== auth cookies =====
     TAOBAO_COOKIE: str = ""  # logged-in cookie string for sf.taobao.com
     GPAI_COOKIE: str = ""    # 公拍网 cookie（备用，未来若需登录才能爬，配置此项）

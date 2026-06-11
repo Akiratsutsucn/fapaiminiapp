@@ -64,6 +64,7 @@ class CrawlerTaskDetail(Base):
     failed_count = Column(Integer, nullable=False, default=0, comment="失败数量")
     skipped_count = Column(Integer, nullable=False, default=0, comment="跳过数量")
     error_messages = Column(Text, nullable=True, comment="错误信息（截断至1000字符）")
+    failure_type = Column(String(32), nullable=True, comment="失败原因分类：LOGIN_COOKIE/IP_BLOCKED/PARSE_LOGIC/UNKNOWN")
     duration_seconds = Column(Integer, nullable=True, comment="耗时（秒）")
     created_at = Column(DateTime, nullable=False, default=datetime.now)
 

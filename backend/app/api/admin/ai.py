@@ -13,6 +13,8 @@ from loguru import logger
 
 from ...core.database import get_session
 from ...core.security import get_admin_user
+from ...models.ai_chat import AiSession, AiMessage
+from sqlalchemy import select, func, delete as sql_delete
 from .ai_tools import (
     query_database,
     get_crawler_status,
@@ -22,10 +24,7 @@ from .ai_tools import (
 
 router = APIRouter()
 
-# 会话存储（生产环境建议用Redis）
-_sessions: dict[str, list[dict]] = {}
-
-# 改用Deepseek API
+# Deepseek API
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 
 # 系统提示词
@@ -74,21 +73,36 @@ def _create_session_id() -> str:
     return str(uuid.uuid4())
 
 
-def _get_session(session_id: str) -> list[dict]:
-    """获取会话历史。"""
-    if session_id not in _sessions:
-        _sessions[session_id] = []
-    return _sessions[session_id]
+async def _ensure_session(db: AsyncSession, session_id: str) -> AiSession:
+    """获取会话，不存在则创建（落库）。"""
+    sess = await db.get(AiSession, session_id)
+    if sess is None:
+        sess = AiSession(session_id=session_id, title="新会话")
+        db.add(sess)
+        await db.commit()
+    return sess
 
 
-def _add_message(session_id: str, role: str, content: str | list):
-    """添加消息到会话历史。"""
-    session = _get_session(session_id)
-    session.append({
-        "role": role,
-        "content": content,
-        "timestamp": datetime.now().isoformat(),
-    })
+async def _get_history(db: AsyncSession, session_id: str) -> list[dict]:
+    """获取会话历史消息（按时间顺序），返回 {role, content} 列表。"""
+    rows = (await db.execute(
+        select(AiMessage).where(AiMessage.session_id == session_id).order_by(AiMessage.id)
+    )).scalars().all()
+    return [{"role": m.role, "content": m.content} for m in rows]
+
+
+async def _add_message(db: AsyncSession, session_id: str, role: str, content) -> None:
+    """添加消息到会话历史（落库）。content 非字符串时序列化。"""
+    text_content = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
+    db.add(AiMessage(session_id=session_id, role=role, content=text_content or ""))
+    # 触发会话 updated_at 刷新
+    sess = await db.get(AiSession, session_id)
+    if sess is not None:
+        sess.updated_at = datetime.now()
+        # 首条用户消息自动作为标题（仅当标题仍是默认值时）
+        if role == "user" and sess.title in ("新会话", "", None):
+            sess.title = (text_content or "新会话")[:50]
+    await db.commit()
 
 
 async def _call_tool(tool_name: str, tool_input: dict, db: AsyncSession) -> dict:
@@ -148,8 +162,8 @@ async def _stream_chat(
             base_url="https://api.deepseek.com"
         )
 
-        # 获取会话历史
-        history = _get_session(session_id)
+        # 获取会话历史（从数据库）
+        history = await _get_history(db, session_id)
 
         # 构建消息列表（OpenAI格式）
         messages = [
@@ -279,13 +293,17 @@ async def _stream_chat(
 
         # 处理工具调用
         if has_tool_calls:
+            # 先把「assistant 发起的所有 tool_calls」作为单条 assistant 消息加入
+            # （OpenAI/Deepseek 规范：一条 assistant 消息携带全部 tool_calls，
+            #  随后跟与之 id 对应的多条 tool 响应；原实现拆成多条 assistant 消息会
+            #  导致第二次请求 messages 格式非法 → 接口报错/不返回 → 前端卡在「正在调用工具」）
+            assistant_tool_calls = []
+            tool_response_messages = []
             for tool_call in tool_calls_list:
                 tool_name = tool_call["name"]
-
-                # 解析工具参数
                 try:
                     tool_input = json.loads(tool_call["arguments"])
-                except:
+                except Exception:
                     tool_input = {}
 
                 # 通知前端工具调用开始
@@ -297,52 +315,62 @@ async def _stream_chat(
                 # 通知前端工具结果
                 yield f"data: {json.dumps({'type': 'tool_result', 'name': tool_name, 'result': tool_result}, ensure_ascii=False)}\n\n"
 
-                # 继续对话，带上工具结果
-                messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [{
-                        "id": tool_call["id"],
-                        "type": "function",
-                        "function": {
-                            "name": tool_name,
-                            "arguments": tool_call["arguments"],
-                        }
-                    }]
+                assistant_tool_calls.append({
+                    "id": tool_call["id"],
+                    "type": "function",
+                    "function": {
+                        "name": tool_name,
+                        "arguments": tool_call["arguments"],
+                    },
                 })
-                messages.append({
+                tool_response_messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call["id"],
                     "content": json.dumps(tool_result, ensure_ascii=False),
                 })
 
-            # 再次调用API获取最终回复
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": assistant_tool_calls,
+            })
+            messages.extend(tool_response_messages)
+
+            # 再次调用API获取最终回复（带错误兜底，避免前端卡死）
             final_response = ""
-            stream2 = await client.chat.completions.create(
-                model="deepseek-chat",
-                messages=messages,
-                tools=tools,
-                stream=True,
-                max_tokens=4096,
-            )
+            try:
+                stream2 = await client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=messages,
+                    tools=tools,
+                    stream=True,
+                    max_tokens=4096,
+                )
 
-            async for chunk in stream2:
-                if not chunk.choices:
-                    continue
+                async for chunk in stream2:
+                    if not chunk.choices:
+                        continue
 
-                choice = chunk.choices[0]
-                delta = choice.delta
+                    choice = chunk.choices[0]
+                    delta = choice.delta
 
-                if delta.content:
-                    text = delta.content
-                    final_response += text
-                    yield f"data: {json.dumps({'type': 'text', 'text': text}, ensure_ascii=False)}\n\n"
+                    if delta.content:
+                        text = delta.content
+                        final_response += text
+                        yield f"data: {json.dumps({'type': 'text', 'text': text}, ensure_ascii=False)}\n\n"
+            except Exception as e2:
+                logger.error(f"AI二次调用(工具结果汇总)失败: {e2}")
+                # 工具结果已拿到但汇总失败：给用户一个可读的兜底回复，而非永久卡在「正在调用工具」
+                fallback = "（已查询到数据，但生成最终回复时出错，请重试或换个问法）"
+                if not final_response:
+                    final_response = fallback
+                    yield f"data: {json.dumps({'type': 'text', 'text': fallback}, ensure_ascii=False)}\n\n"
 
             assistant_message = final_response
 
-        # 保存到会话历史
-        _add_message(session_id, "user", message)
-        _add_message(session_id, "assistant", assistant_message)
+        # 保存到会话历史（数据库）
+        await _add_message(db, session_id, "user", message)
+        await _add_message(db, session_id, "assistant", assistant_message)
 
         # 发送完成信号
         yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
@@ -359,8 +387,9 @@ async def chat(
     admin: dict = Depends(get_admin_user),
 ):
     """AI助手聊天接口（SSE流式返回）。"""
-    # 创建或获取会话ID
+    # 创建或获取会话ID，并确保会话已落库（外键依赖 + 跨 worker 可见）
     session_id = req.session_id or _create_session_id()
+    await _ensure_session(db, session_id)
 
     # 返回SSE流
     return StreamingResponse(
@@ -376,70 +405,110 @@ async def chat(
 
 @router.get("/sessions", response_model=list[SessionOut])
 async def list_sessions(
+    db: AsyncSession = Depends(get_session),
     admin: dict = Depends(get_admin_user),
 ):
-    """获取会话列表。"""
-    sessions = []
-    for session_id, messages in _sessions.items():
-        # 用第一条用户消息作为标题
-        title = "新会话"
-        for msg in messages:
-            if msg["role"] == "user":
-                title = msg["content"][:50]
-                break
+    """获取会话列表（数据库，按更新时间倒序）。"""
+    # 会话 + 消息数
+    sessions = (await db.execute(
+        select(AiSession).order_by(AiSession.updated_at.desc())
+    )).scalars().all()
 
-        sessions.append(SessionOut(
-            session_id=session_id,
-            title=title,
-            created_at=messages[0]["timestamp"] if messages else datetime.now().isoformat(),
-            message_count=len(messages),
-        ))
+    # 统计每个会话的消息数
+    counts = dict((await db.execute(
+        select(AiMessage.session_id, func.count(AiMessage.id)).group_by(AiMessage.session_id)
+    )).all())
 
-    # 按创建时间倒序
-    sessions.sort(key=lambda x: x.created_at, reverse=True)
-    return sessions
+    return [
+        SessionOut(
+            session_id=s.session_id,
+            title=s.title or "新会话",
+            created_at=s.created_at.isoformat() if s.created_at else datetime.now().isoformat(),
+            message_count=int(counts.get(s.session_id, 0)),
+        )
+        for s in sessions
+    ]
 
 
 @router.post("/sessions", response_model=SessionOut)
 async def create_session(
     req: SessionCreate,
+    db: AsyncSession = Depends(get_session),
     admin: dict = Depends(get_admin_user),
 ):
-    """创建新会话。"""
+    """创建新会话（落库）。"""
     session_id = _create_session_id()
-    _sessions[session_id] = []
+    sess = AiSession(session_id=session_id, title=req.title or "新会话")
+    db.add(sess)
+    await db.commit()
 
     return SessionOut(
         session_id=session_id,
-        title=req.title or "新会话",
-        created_at=datetime.now().isoformat(),
+        title=sess.title,
+        created_at=sess.created_at.isoformat() if sess.created_at else datetime.now().isoformat(),
         message_count=0,
     )
+
+
+@router.patch("/sessions/{session_id}")
+async def rename_session(
+    session_id: str,
+    req: SessionCreate,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(get_admin_user),
+):
+    """重命名会话。"""
+    sess = await db.get(AiSession, session_id)
+    if sess is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    new_title = (req.title or "").strip()
+    if not new_title:
+        raise HTTPException(status_code=400, detail="标题不能为空")
+    sess.title = new_title[:100]
+    await db.commit()
+    return {"success": True, "session_id": session_id, "title": sess.title}
 
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: str,
+    db: AsyncSession = Depends(get_session),
     admin: dict = Depends(get_admin_user),
 ):
-    """删除会话。"""
-    if session_id in _sessions:
-        del _sessions[session_id]
-        return {"success": True, "message": "会话已删除"}
-    else:
+    """删除会话（连同消息，CASCADE）。"""
+    sess = await db.get(AiSession, session_id)
+    if sess is None:
         raise HTTPException(status_code=404, detail="会话不存在")
+    await db.delete(sess)
+    await db.commit()
+    return {"success": True, "message": "会话已删除"}
 
 
 @router.get("/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str,
+    db: AsyncSession = Depends(get_session),
     admin: dict = Depends(get_admin_user),
 ):
-    """获取会话历史消息。"""
-    if session_id not in _sessions:
+    """获取会话历史消息（数据库）。"""
+    sess = await db.get(AiSession, session_id)
+    if sess is None:
         raise HTTPException(status_code=404, detail="会话不存在")
+
+    rows = (await db.execute(
+        select(AiMessage).where(AiMessage.session_id == session_id).order_by(AiMessage.id)
+    )).scalars().all()
 
     return {
         "session_id": session_id,
-        "messages": _sessions[session_id],
+        "messages": [
+            {
+                "id": m.id,
+                "session_id": m.session_id,
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat() if m.created_at else "",
+            }
+            for m in rows
+        ],
     }

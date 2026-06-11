@@ -135,6 +135,10 @@ class PropertyListItem(BaseModel):
     cover_image: Optional[str] = None
     property_type: str = "住宅"
     auction_platform: str = ""
+    # 成交价（昨日成交/已成交展示用）：法拍成交价 + 成交折扣率（成交价/评估价）。
+    final_deal_price: int = 0
+    deal_discount_rate: float = 0.0
+    online_auction_end_time: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -192,6 +196,12 @@ class PropertyDetail(BaseModel):
     participant_count: int = 0
     loan_support: Optional[bool] = None
     has_attachments: Optional[bool] = None
+    # 成交确认书相关（已成交房源）
+    attachments: Optional[list] = None
+    deal_confirmed: Optional[bool] = None
+    online_auction_end_time: Optional[datetime] = None
+    final_deal_price: int = 0
+    deal_discount_rate: float = 0.0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     images: list[PropertyImageOut] = []

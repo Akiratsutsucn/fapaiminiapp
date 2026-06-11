@@ -40,19 +40,7 @@ Page({
         this.setData({
             districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000]
         });
-        this.getLocation();
-    },
-    getLocation() {
-        wx.getLocation({
-            type: 'gcj02',
-            success: (res) => {
-                this.setData({ latitude: res.latitude, longitude: res.longitude });
-                this.loadMarkers();
-            },
-            fail: () => {
-                this.loadMarkers();
-            },
-        });
+        this.loadMarkers();
     },
     async loadMarkers() {
         this.setData({ loading: true });
@@ -61,7 +49,7 @@ Page({
             const cityId = app.globalData.currentCityId || 310000;
             const items = await (0, property_1.getMapMarkers)(cityId);
             const center = CITY_CENTERS[cityId];
-            if (center && !this.data.latitude) {
+            if (center) {
                 this.setData({ latitude: center.lat, longitude: center.lng });
             }
             this.setData({

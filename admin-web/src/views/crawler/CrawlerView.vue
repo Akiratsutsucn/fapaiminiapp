@@ -255,8 +255,26 @@ async function toggleDetail(taskId: number) {
 async function loadTaskDetail(taskId: number) {
   detailLoading.value[taskId] = true
   try {
-    const data = await getTaskDetails(taskId)
-    taskDetails.value[taskId] = data
+    const data: any = await getTaskDetails(taskId)
+    // 后端返回扁平数组 details:[{platform,city,total_fetched,...}]，
+    // 模板按 [平台][城市] 嵌套访问，这里转成嵌套结构并对齐字段名。
+    const nested: Record<string, Record<string, any>> = {}
+    const detailList: any[] = Array.isArray(data?.details) ? data.details : []
+    for (const d of detailList) {
+      if (!nested[d.platform]) nested[d.platform] = {}
+      nested[d.platform][d.city] = {
+        success_count: d.total_fetched,        // 模板用 success_count = 总抓取数
+        total_fetched: d.total_fetched,
+        new_count: d.new_count,
+        updated_count: d.updated_count,
+        failed_count: d.failed_count,
+        skipped_count: d.skipped_count,
+        error_message: d.error_messages,       // 接口字段为 error_messages
+        duration_seconds: d.duration_seconds,
+      }
+    }
+    // 有任一城市数据才挂载（空对象会让模板误判为有数据却全是 '-'）
+    taskDetails.value[taskId] = Object.keys(nested).length ? nested : null
   } catch (err) {
     MessagePlugin.error('加载任务详情失败')
   } finally {

@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_session
 from ...core.security import get_admin_user, check_module_permission
 from ...core.auction_status import (
-    effective_status_sql, BARGAIN_DISCOUNT_MIN, BARGAIN_DISCOUNT_MAX,
-    MOBILE_VISIBLE_STATUSES,
+    effective_status_sql,
+    upcoming_cond, in_progress_cond, bargain_cond,
+    yesterday_listed_cond, yesterday_sold_cond,
 )
 from ...models.property import Property
 from ...models.user import User
@@ -41,37 +42,29 @@ async def get_dashboard(
             func.date(Property.created_at) == today
         ))
     )).scalar() or 0
-    upcoming = (await db.execute(
-        with_city(select(func.count(Property.id)).where(effective_status_sql() == "即将开拍"))
-    )).scalar() or 0
     sold = (await db.execute(
         with_city(select(func.count(Property.id)).where(effective_status_sql() == "已成交"))
     )).scalar() or 0
 
+    # 与小程序首页 market-stats 完全同口径的四个同步指标（共用 auction_status 条件函数）。
+    upcoming = (await db.execute(
+        with_city(select(func.count(Property.id)).where(*upcoming_cond()))
+    )).scalar() or 0
+    in_progress = (await db.execute(
+        with_city(select(func.count(Property.id)).where(*in_progress_cond()))
+    )).scalar() or 0
     bargain_count = (await db.execute(
-        with_city(select(func.count(Property.id)).where(
-            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
-            Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
-            Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
-        ))
+        with_city(select(func.count(Property.id)).where(*bargain_cond()))
     )).scalar() or 0
     yesterday_listed = (await db.execute(
-        with_city(select(func.count(Property.id)).where(
-            func.date(func.coalesce(Property.publish_date, Property.created_at)) == yesterday
-        ))
+        with_city(select(func.count(Property.id)).where(*yesterday_listed_cond(yesterday)))
     )).scalar() or 0
     yesterday_sold = (await db.execute(
-        with_city(select(func.count(Property.id)).where(
-            effective_status_sql().in_(["已成交", "已结束"]),
-            func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == yesterday,
-        ))
+        with_city(select(func.count(Property.id)).where(*yesterday_sold_cond(yesterday)))
     )).scalar() or 0
 
     # 用户、需求、文章不按城市过滤（无 city 字段）
     total_users = (await db.execute(select(func.count(User.id)))).scalar() or 0
-    agent_count = (await db.execute(
-        select(func.count(User.id)).where(User.role == "agent")
-    )).scalar() or 0
 
     pending_demands = (await db.execute(
         select(func.count(Demand.id)).where(Demand.status == "待处理")
@@ -91,30 +84,22 @@ async def get_dashboard(
         """计算城市分项数据"""
         result = {}
         for city_key, city_code in CITIES.items():
-            city_conditions = base_conditions + [Property.city_id == city_code]
+            city_conditions = list(base_conditions) + [Property.city_id == city_code]
             count = (await db.execute(
                 select(func.count(Property.id)).where(*city_conditions)
             )).scalar() or 0
             result[city_key] = count
         return result
 
-    # 房源相关指标的城市分项
+    # 房源相关指标的城市分项（市场指标共用 auction_status 条件函数，与小程序首页同口径）
     total_by_city = await _city_breakdown([])
     today_new_by_city = await _city_breakdown([func.date(Property.created_at) == today])
-    upcoming_by_city = await _city_breakdown([effective_status_sql() == "即将开拍"])
+    upcoming_by_city = await _city_breakdown(upcoming_cond())
+    in_progress_by_city = await _city_breakdown(in_progress_cond())
     sold_by_city = await _city_breakdown([effective_status_sql() == "已成交"])
-    bargain_by_city = await _city_breakdown([
-        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
-        Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
-        Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
-    ])
-    yesterday_listed_by_city = await _city_breakdown([
-        func.date(func.coalesce(Property.publish_date, Property.created_at)) == yesterday
-    ])
-    yesterday_sold_by_city = await _city_breakdown([
-        effective_status_sql().in_(["已成交", "已结束"]),
-        func.date(func.coalesce(Property.auction_end_time, Property.updated_at)) == yesterday,
-    ])
+    bargain_by_city = await _city_breakdown(bargain_cond())
+    yesterday_listed_by_city = await _city_breakdown(yesterday_listed_cond(yesterday))
+    yesterday_sold_by_city = await _city_breakdown(yesterday_sold_cond(yesterday))
 
     return {
         # 总览指标（带城市分项）
@@ -130,13 +115,17 @@ async def get_dashboard(
             "total": upcoming,
             "by_city": upcoming_by_city,
         },
+        # 拍卖进行中（带城市分项）
+        "in_progress": {
+            "total": in_progress,
+            "by_city": in_progress_by_city,
+        },
         "sold": {
             "total": sold,
             "by_city": sold_by_city,
         },
         # 用户、需求、文章（无城市分项）
         "total_users": total_users,
-        "agent_count": agent_count,
         "pending_demands": pending_demands,
         "pending_messages": pending_messages,
         "total_articles": total_articles,

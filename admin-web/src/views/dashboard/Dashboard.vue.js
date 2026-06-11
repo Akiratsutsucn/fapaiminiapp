@@ -3,17 +3,17 @@ import { ref, onMounted } from 'vue';
 import { getDashboard } from '@/api/dashboard';
 const cityId = ref(0); // 0=全部, 310000=上海, 330200=宁波
 const cards = ref([
-    { label: '总房源数', value: 0, cityBreakdown: [] },
-    { label: '今日新增', value: 0, cityBreakdown: [] },
-    { label: '即将开拍', value: 0, cityBreakdown: [] },
-    { label: '捡漏房源', value: 0, cityBreakdown: [] },
-    { label: '昨日上架', value: 0, cityBreakdown: [] },
-    { label: '昨日成交', value: 0, cityBreakdown: [] },
-    { label: '注册用户', value: 0, cityBreakdown: [] },
-    { label: '代理商', value: 0, cityBreakdown: [] },
+    { label: '入数据库总房源数', value: 0, cityBreakdown: [] },
+    { label: '今日入库房源数', value: 0, cityBreakdown: [] },
+    { label: '即将开拍（与小程序同步）', value: 0, cityBreakdown: [] },
+    { label: '捡漏房源（与小程序同步）', value: 0, cityBreakdown: [] },
+    { label: '昨日上架（与小程序同步）', value: 0, cityBreakdown: [] },
+    { label: '昨日成交（与小程序同步）', value: 0, cityBreakdown: [] },
+    { label: '累计已成交', value: 0, cityBreakdown: [] },
+    { label: '拍卖进行中数量', value: 0, cityBreakdown: [] },
     { label: '待处理需求', value: 0, cityBreakdown: [] },
     { label: '待处理留言', value: 0, cityBreakdown: [] },
-    { label: '已成交', value: 0, cityBreakdown: [] },
+    { label: '注册用户', value: 0, cityBreakdown: [] },
     { label: '总文章数', value: 0, cityBreakdown: [] },
 ]);
 async function loadDashboard() {
@@ -40,19 +40,19 @@ async function loadDashboard() {
                 return { value: metricData || 0, cityBreakdown: [] };
             }
         }
-        // 更新卡片数据
+        // 更新卡片数据（顺序须与上方 cards 定义一一对应）
         const metrics = [
-            parseMetric(data.total_properties), // 总房源数
-            parseMetric(data.today_new), // 今日新增
-            parseMetric(data.upcoming), // 即将开拍
-            parseMetric(data.bargain_count), // 捡漏房源
-            parseMetric(data.yesterday_listed), // 昨日上架
-            parseMetric(data.yesterday_sold), // 昨日成交
-            parseMetric(data.total_users), // 注册用户
-            parseMetric(data.agent_count), // 代理商
+            parseMetric(data.total_properties), // 如数据库总房源数
+            parseMetric(data.today_new), // 今日入库房源数
+            parseMetric(data.upcoming), // 即将开拍（与小程序同步）
+            parseMetric(data.bargain_count), // 捡漏房源（与小程序同步）
+            parseMetric(data.yesterday_listed), // 昨日上架（与小程序同步）
+            parseMetric(data.yesterday_sold), // 昨日成交（与小程序同步）
+            parseMetric(data.sold), // 累计已成交
+            parseMetric(data.in_progress), // 拍卖进行中数量
             parseMetric(data.pending_demands), // 待处理需求
             parseMetric(data.pending_messages), // 待处理留言
-            parseMetric(data.sold), // 已成交
+            parseMetric(data.total_users), // 注册用户
             parseMetric(data.total_articles), // 总文章数
         ];
         metrics.forEach((metric, index) => {

@@ -115,6 +115,10 @@ verify_*.py
 !backend/tests/**
 !crawler/tests/
 !crawler/tests/**
+# 但测试目录下的编译缓存仍然忽略
+backend/tests/__pycache__/
+crawler/tests/__pycache__/
+**/__pycache__/
 
 # 截图 / 图片（保留 demo_assets 和 logo）
 *_state.png

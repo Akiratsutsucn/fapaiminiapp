@@ -271,6 +271,22 @@ async def start_audit_scheduler():
         await scheduler.close()
 
 
+async def run_audit_once():
+    """只执行一次审核任务后退出（供爬虫完成后触发使用）。"""
+    scheduler = AuditScheduler(settings.DATABASE_URL)
+    try:
+        logger.info("数据审核：单次执行模式启动")
+        await scheduler.create_daily_audit_task()
+        logger.info("数据审核：单次执行完成")
+    finally:
+        await scheduler.close()
+
+
 if __name__ == "__main__":
-    # 可以独立运行调度器
-    asyncio.run(start_audit_scheduler())
+    import sys
+    # --once：跑一次审核就退出（爬虫完成后由 systemd OnSuccess 触发）
+    # 无参数：常驻调度器模式（兼容旧用法）
+    if "--once" in sys.argv:
+        asyncio.run(run_audit_once())
+    else:
+        asyncio.run(start_audit_scheduler())

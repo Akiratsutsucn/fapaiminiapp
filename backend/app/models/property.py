@@ -89,6 +89,21 @@ class Property(Base):
     loan_support = Column(Boolean, nullable=True)
     has_attachments = Column(Boolean, nullable=True)
 
+    # === 附件清单 & 成交确认（按用户 2026-06-10 要求）===
+    # attachments：详情/公告页的附件清单 [{"name": "成交确认书.pdf", "url": "..."}]，
+    #   三平台统一抓取，用于判定"成交确认书"是否存在。
+    attachments = Column(JSON, nullable=True, comment="附件清单[{name,url}]")
+    # deal_confirmed：附件中存在「成交确认书」→ True，是「已成交」的铁证
+    #   （比按结束时间推断可靠）。
+    deal_confirmed = Column(Boolean, nullable=True, comment="存在成交确认书附件=已成交铁证")
+    # online_auction_end_time：从「成交确认书」PDF 正文解析出的"网拍结束时间"，
+    #   是判定"昨日成交"的准绳（优先于 auction_end_time）。
+    online_auction_end_time = Column(DateTime, nullable=True, comment="成交确认书内网拍结束时间")
+    # final_deal_price：法拍「成交价」(元)，来自成交确认书/成交公告(京东成交确认书PDF
+    #   「网络拍卖成交价格：￥…」、公拍网HTML「成交价：…元」、阿里成交结果)。
+    #   远低于评估价 appraisal_price，是小程序「昨日成交」展示折扣冲击力的核心数据。
+    final_deal_price = Column(BigInteger, nullable=False, default=0, comment="法拍成交价(元),来自成交确认书")
+
     # === smart enrichment（O5/O6）===
     tags = Column(JSON, nullable=True, comment="智能标签数组，如 ['学区房','地铁2号线','次新房']")
     bargain_tagline = Column(String(256), nullable=True, comment="爆款营销文案 1-2 句")

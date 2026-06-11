@@ -33,7 +33,7 @@
     longitude="{{longitude}}"
     scale="{{scale}}"
     markers="{{markers}}"
-    show-location="{{true}}"
+    show-location="{{false}}"
     bindmarkertap="onMarkerTap"
     bindregionchange="onRegionChange"
   >
