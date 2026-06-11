@@ -8,7 +8,7 @@ from loguru import logger
 
 from ...core.database import get_session
 from ...core.auction_status import (
-    effective_status, effective_status_sql, mobile_listable_sql,
+    effective_status, effective_status_sql, mobile_listable_sql, mobile_sort_rank_sql,
     MOBILE_VISIBLE_STATUSES,
     listed_on_sql, sold_on_sql,
 )
@@ -176,12 +176,17 @@ async def list_properties(
     total = (await db.execute(count_q)).scalar() or 0
 
     # 排序：用户主动选了字段(starting_price/appraisal_price/area)就按该字段；
-    # 否则套主城优先 4 档 + 开拍时间升序 + created_at desc 兜底（默认排序口径）。
+    # 否则套 状态优先(可参拍排前/已结束已成交沉底) + 主城优先 4 档 + 开拍时间升序 + created_at desc 兜底。
     if sort_by in ("starting_price", "appraisal_price", "area"):
         order_col = getattr(Property, sort_by)
-        order_clauses = [order_col.asc() if sort_order == "asc" else order_col.desc()]
+        # 状态优先仍置顶：即使按价格/面积排序，已结束/已成交也沉到可参拍之后
+        order_clauses = [
+            mobile_sort_rank_sql().asc(),
+            order_col.asc() if sort_order == "asc" else order_col.desc(),
+        ]
     else:
         order_clauses = [
+            mobile_sort_rank_sql().asc(),
             tier_sql_expr().asc(),
             Property.auction_start_time.is_(None).asc(),
             Property.auction_start_time.asc(),

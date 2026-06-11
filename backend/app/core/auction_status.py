@@ -190,6 +190,20 @@ def mobile_listable_sql(now: datetime | None = None, hours: int = RECENT_ENDED_W
     )
 
 
+def mobile_sort_rank_sql(now: datetime | None = None):
+    """小程序「全部房源」默认排序的「状态优先级」表达式。
+
+    可参拍(即将开拍/进行中) → 0（排最前）；其余结束态(已成交/已结束/流拍/已撤回/中止)
+    → 1（沉到最后）。按 effective_status 实时计算，不信库存状态文本。
+    用作默认排序的第一档，确保已结束/已成交房源不会排在可参拍房源前面。
+    """
+    from sqlalchemy import case
+    return case(
+        (effective_status_sql(now).in_(MOBILE_VISIBLE_STATUSES), 0),
+        else_=1,
+    )
+
+
 def sold_on_sql(target_date, now: datetime | None = None):
     """返回「某房源在 target_date 当天真正成交」的 SQLAlchemy 布尔条件。
 
