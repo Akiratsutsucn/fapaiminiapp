@@ -1,0 +1,13 @@
+[Unit]
+Description=Fapai Post-Crawl Pipeline (revisit + backfill + audit, triggered after crawler)
+After=network.target fapai-backend.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/fapai
+EnvironmentFile=/opt/fapai/.env
+ExecStart=/bin/bash /opt/fapai/post_crawl_pipeline.sh
+TimeoutStartSec=7200
+StandardOutput=append:/var/log/fapai/post-crawl-pipeline.log
+StandardError=append:/var/log/fapai/post-crawl-pipeline.log

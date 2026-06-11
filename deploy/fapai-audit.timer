@@ -1,0 +1,12 @@
+[Unit]
+Description=法拍者联盟 数据处理流水线独立定时(成交回访+审核回填+数据审核)
+
+[Timer]
+# 凌晨6点跑:与爬虫(2点)解耦,即使爬虫失败,成交回访/审核仍照常补数据。
+# 错开整点用23分,降低与系统任务争抢。
+OnCalendar=*-*-* 06:23:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -1,9 +1,8 @@
 [Unit]
-Description=法拍者联盟 Daily Crawler Timer (3 AM)
-Requires=fapai-crawler.service
+Description=法拍者联盟 Daily Crawler Timer (2 AM)
 
 [Timer]
-OnCalendar=daily
+OnCalendar=*-*-* 02:00:00
 Persistent=true
 RandomizedDelaySec=600
 
