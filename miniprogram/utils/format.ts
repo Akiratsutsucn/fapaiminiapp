@@ -75,6 +75,8 @@ export function statusLabel(status: string): string {
     '进行中': '正在拍卖',
     '已结束': '已结束',
     '已成交': '已成交',
+    '流拍': '流拍',
+    '已撤回': '已撤回',
     '中止': '中止',
     '撤回': '撤回',
   };
@@ -88,6 +90,8 @@ export function statusTagClass(status: string): string {
     '进行中': 'tag-red',
     '已结束': 'tag-red',
     '已成交': 'tag-green',
+    '流拍': 'tag-orange',
+    '已撤回': 'tag-orange',
     '中止': 'tag-orange',
     '撤回': 'tag-orange',
   };
