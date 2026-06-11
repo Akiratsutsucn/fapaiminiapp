@@ -110,6 +110,12 @@ gpai_new.py
 *_debug.py
 verify_*.py
 
+# 例外：正式测试目录不受上面的一次性脚本规则影响
+!backend/tests/
+!backend/tests/**
+!crawler/tests/
+!crawler/tests/**
+
 # 截图 / 图片（保留 demo_assets 和 logo）
 *_state.png
 登录界面*.png

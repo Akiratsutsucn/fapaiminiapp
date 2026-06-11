@@ -41,6 +41,11 @@ MOBILE_DETAIL_STATUSES = MOBILE_VISIBLE_STATUSES + MOBILE_FALLBACK_STATUSES
 # 即将开拍但开拍时间已过、又缺结束时间时，超过该天数判定为已结束，避免永久卡在「进行中」。
 DEFAULT_STALE_DAYS = 3
 
+# 小程序「全部房源」额外纳入「过去 N 小时内结束」的房源（含所有结束态：
+# 已成交/已结束/流拍/已撤回/中止），让刚结束/刚成交的房源继续停留 N 小时，超期隐藏。
+# 按 auction_end_time（计划结束时间）计算窗口（用户 2026-06-11 确认的口径）。
+RECENT_ENDED_WINDOW_HOURS = 72
+
 # 「昨日上架」(listed_on_sql) 里需排除的平台：京东库内多为已结束/已撤回的过期房源，
 # 且系批量补抓入库，不代表真实新上架，故整体排除。阿里/公拍网按 created_at 计入。
 UNRELIABLE_PUBLISH_DATE_PLATFORMS = ("京东拍卖",)
@@ -59,12 +64,19 @@ def effective_status(
     end_time: datetime | None,
     now: datetime | None = None,
     stale_days: int = DEFAULT_STALE_DAYS,
+    deal_confirmed: bool | None = None,
 ) -> str:
     """按时间窗 + 当前时间计算房源的真实拍卖状态。
 
     结果态（已成交/已撤回/中止/流拍）原样保留；其余一律按时间重算。
     缺少时间信息时回退到存储值（再兜底「即将开拍」）。
+    deal_confirmed=True（附件含成交确认书，已成交铁证）时直接判「已成交」，
+    优先级高于一切（与 effective_status_sql 的 case 分支 0 对齐）。
     """
+    # 成交确认书铁证优先（用户 2026-06-10 要求）
+    if deal_confirmed:
+        return "已成交"
+
     stored = (stored_status or "").strip()
     if stored in RESULT_STATES:
         return stored
@@ -87,6 +99,36 @@ def effective_status(
     return stored or "即将开拍"
 
 
+def mobile_listable(
+    stored_status: str | None,
+    start_time: datetime | None,
+    end_time: datetime | None,
+    now: datetime | None = None,
+    hours: int = RECENT_ENDED_WINDOW_HOURS,
+    stale_days: int = DEFAULT_STALE_DAYS,
+    deal_confirmed: bool | None = None,
+) -> bool:
+    """小程序「全部房源」列表 + 详情页可见性的单一事实源（纯 Python）。
+
+    放行 = 可参拍 OR 近 hours 小时内结束：
+      - effective_status ∈ (即将开拍, 进行中)，或
+      - end_time 不为空且落在 [now - hours, now] 闭区间内
+        （按计划结束时间算，自动涵盖所有结束态：已成交/已结束/流拍/已撤回/中止）。
+    与 mobile_listable_sql() 口径严格一致。
+    """
+    now = now or datetime.now()
+    eff = effective_status(
+        stored_status, start_time, end_time,
+        now=now, stale_days=stale_days, deal_confirmed=deal_confirmed,
+    )
+    if eff in MOBILE_VISIBLE_STATUSES:
+        return True
+    if end_time is not None:
+        window_start = now - timedelta(hours=hours)
+        return window_start <= end_time <= now
+    return False
+
+
 # ── SQLAlchemy 表达式 ─────────────────────────────────────────────────────
 
 def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_STALE_DAYS):
@@ -105,6 +147,9 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
     et = Property.auction_end_time
 
     return case(
+        # 0. 成交确认书铁证：deal_confirmed=True → 已成交（优先级最高，不被时间窗覆盖）。
+        #    依据用户 2026-06-10 要求：附件含「成交确认书」即已成交。
+        (Property.deal_confirmed.is_(True), "已成交"),
         # 1. 结果态保留原值
         (s.in_(RESULT_STATES), s),
         # 2. now < start → 即将开拍
@@ -124,6 +169,91 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
         # 8. 兜底：保留存储值
         else_=s,
     )
+
+
+def sold_on_sql(target_date, now: datetime | None = None):
+    """返回「某房源在 target_date 当天真正成交」的 SQLAlchemy 布尔条件。
+
+    严格口径（按用户要求 2026-06-08 / 2026-06-10 确认）：
+      - 真实状态(effective_status_sql)必须为「已成交」——只认平台明确告知的成交，
+        或附件含「成交确认书」(deal_confirmed) 的铁证；不把「已结束」(可能流拍/撤回)
+        算作成交；
+      - 成交日期 = 「网拍结束时间」online_auction_end_time（来自成交确认书 PDF 正文，
+        最准）的日期 == target_date；该字段为空时回退到 auction_end_time（计划结束时间）。
+        不用 updated_at(记录更新时间)兜底——避免昨天被爬虫更新过的旧房源被误计。
+
+    成交确认书内的「网拍结束时间」是用户 2026-06-10 指定的判定准绳：它是真实落槌
+    结束时刻，比 auction_end_time（常为计划结束、可能因延时出价而偏差）更可靠。
+
+    已知局限：库内「已成交」状态依赖爬虫当轮抓到平台的成交标记 / 成交确认书。若某房源
+    结拍后爬虫未及时抓到，它会停在按时间推算的「已结束」，不计入本口径。需配合
+    backfill_revisit_ended 对「end_time 已过」的房源回访核实，方能提升召回。
+    """
+    from sqlalchemy import and_, func
+
+    return and_(
+        effective_status_sql(now) == "已成交",
+        func.date(_sold_date_col()) == target_date,
+    )
+
+
+def _sold_date_col():
+    """成交日期列：优先「网拍结束时间」(成交确认书 PDF 解析所得)，空则回退拍卖结束时间。"""
+    from sqlalchemy import func
+    from ..models.property import Property
+    return func.coalesce(Property.online_auction_end_time, Property.auction_end_time)
+
+
+def _PropertyEndTime():
+    """惰性取 Property.auction_end_time，避免模块顶部导入 ORM。"""
+    from ..models.property import Property
+    return Property.auction_end_time
+
+
+# ── 首页/看板共用的市场指标计数条件 ──────────────────────────────────────
+# 「数据看板」四个同步卡片（即将开拍 / 捡漏 / 昨日上架 / 昨日成交）的数字必须与
+# 「小程序首页 market-stats」完全一致（用户 2026-06-10 第十三轮要求）。两端都引用
+# 下列条件函数，任何口径调整只改这一处，杜绝 dashboard.py 与 common.py 两端 SQL 漂移。
+# 各函数返回「条件列表」，调用方自行追加城市过滤（city_id）与 by_city 分项。
+
+def upcoming_cond():
+    """即将开拍 计数条件。"""
+    return [effective_status_sql() == "即将开拍"]
+
+
+def in_progress_cond():
+    """拍卖进行中 计数条件。"""
+    return [effective_status_sql() == "进行中"]
+
+
+def bargain_cond():
+    """捡漏 计数条件：可参拍（即将开拍/进行中）且法院折扣 1折~6.5折。"""
+    from ..models.property import Property
+    return [
+        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+        Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
+        Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
+    ]
+
+
+def yesterday_listed_cond(target_date):
+    """昨日上架 计数条件：真实上架日 == target_date + 仍为可参拍状态。
+
+    与小程序首页 market-stats.yesterday_listed 完全同口径。
+    """
+    return [
+        listed_on_sql(target_date),
+        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+    ]
+
+
+def yesterday_sold_cond(target_date):
+    """昨日成交 计数条件：复用 sold_on_sql（已成交 + 真实结束日 == target_date，
+    成交日期优先取成交确认书内「网拍结束时间」online_auction_end_time，空则回退
+    auction_end_time）。与小程序首页 market-stats.yesterday_sold 及列表页
+    sold_day=yesterday 完全同口径，保证「首页数字 == 看板数字 == 列表共xxx套」。
+    """
+    return [sold_on_sql(target_date)]
 
 
 def listed_on_sql(target_date):
