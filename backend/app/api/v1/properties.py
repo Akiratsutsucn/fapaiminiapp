@@ -286,7 +286,8 @@ async def map_markers(
             Property.city_id == city_id,
             Property.lat.isnot(None),
             Property.lng.isnot(None),
-            _mobile_filter(),
+            # 地图仅展示可参拍房源（不含近72h结束的）——窗口仅作用于「全部房源」列表。
+            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
         )
         .limit(200)
     )
