@@ -41,23 +41,25 @@ PAIMAI_CONFIGS = [
 
 
 # ---- JD Auction URLs (2 cities) ----
+# 不带 childrenCateId：原 12728=住宅用房会漏掉商业/工业/办公，去掉后返回该城市
+# 全部类目的司法拍卖（publishSource=7 保留），物业类型由 jd_detail._guess_property_type 归类。
 JD_CONFIGS = [
     SourceConfig(
         platform="京东拍卖",
         city="上海",
-        source_url="https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728&provinceId=2&cityId=2810",
+        source_url="https://pmsearch.jd.com/?publishSource=7&provinceId=2&cityId=2810",
         label="京东-上海-cityId筛选",
     ),
     SourceConfig(
         platform="京东拍卖",
         city="宁波",
-        source_url="https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728&provinceId=15",
+        source_url="https://pmsearch.jd.com/?publishSource=7&provinceId=15",
         label="京东-宁波-浙江省筛选",
     ),
     SourceConfig(
         platform="京东拍卖",
         city="杭州",
-        source_url="https://pmsearch.jd.com/?publishSource=7&childrenCateId=12728&provinceId=15",
+        source_url="https://pmsearch.jd.com/?publishSource=7&provinceId=15",
         label="京东-杭州-浙江省筛选",
     ),
 ]
@@ -95,6 +97,12 @@ GPAI_CONFIGS = [
         city="杭州",
         source_url="https://s.gpai.net/sf/search.do?at=376&cityNum=3301",
         label="公拍网-杭州-住宅代理城市搜索",
+    ),
+    SourceConfig(
+        platform="公拍网",
+        city="杭州",
+        source_url="https://s.gpai.net/sf/search.do?at=381&cityNum=3301",
+        label="公拍网-杭州-类型B",
     ),
     # 注：公拍网现通过住宅代理(GPAI_PROXY)调 s.gpai.net 城市精确搜索(cityNum)，
     # 见 gpai.py _fetch_city_search_ids；城市归属仍由详情页 province_city 二次校验。
