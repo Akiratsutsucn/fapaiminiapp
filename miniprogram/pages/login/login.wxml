@@ -5,6 +5,8 @@
     <view class="bg-circle circle-1"></view>
     <view class="bg-circle circle-2"></view>
     <view class="bg-circle circle-3"></view>
+    <!-- 2026世界杯 文字装饰（右下角，倾斜，半透明） -->
+    <image class="wc-text" src="/images/wc-2026-text.png" mode="aspectFit" />
   </view>
 
   <!-- 顶部品牌 -->

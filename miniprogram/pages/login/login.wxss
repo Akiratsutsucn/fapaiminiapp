@@ -54,6 +54,18 @@
   right: 60rpx;
 }
 
+/* 2026世界杯 文字装饰：右下角，倾斜20°，半透明 */
+.wc-text {
+  position: absolute;
+  width: 460rpx;
+  height: 311rpx;
+  right: -20rpx;
+  bottom: 160rpx;
+  transform: rotate(-20deg);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* ===== 品牌 ===== */
 .login-brand {
   display: flex;
