@@ -242,10 +242,9 @@ async def recommend_properties(
     conditions = []
     if city_id:
         conditions.append(Property.city_id == city_id)
-    # 有可参拍房源就推可参拍，否则兜底推已成交（避免首页推荐区空白）。
-    # 用实时计算状态筛选，避免推到库存状态过期/抓错的房源。
-    listing_statuses = await _pick_listing_statuses(db, conditions)
-    conditions.append(effective_status_sql().in_(listing_statuses))
+    # 推荐区仅推可参拍房源（即将开拍/进行中）。按用户 2026-06-11 要求全站取消
+    # 「无可参拍时兜底已成交」逻辑：宁可推荐区为空也不展示过期成交房。
+    conditions.append(effective_status_sql().in_(MOBILE_VISIBLE_STATUSES))
 
     q = (
         select(Property)
