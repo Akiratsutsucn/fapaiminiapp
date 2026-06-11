@@ -171,6 +171,25 @@ def effective_status_sql(now: datetime | None = None, stale_days: int = DEFAULT_
     )
 
 
+def mobile_listable_sql(now: datetime | None = None, hours: int = RECENT_ENDED_WINDOW_HOURS):
+    """小程序「全部房源」列表 + 详情页可见性的单一事实源（SQLAlchemy 表达式）。
+
+    与 mobile_listable() 纯函数口径严格一致：
+      可参拍(即将开拍/进行中) OR auction_end_time 落在 [now-hours, now] 闭区间内。
+    可直接用于 .where()。
+    """
+    from sqlalchemy import and_, or_
+    from ..models.property import Property
+
+    now = now or datetime.now()
+    window_start = now - timedelta(hours=hours)
+    et = Property.auction_end_time
+    return or_(
+        effective_status_sql(now).in_(MOBILE_VISIBLE_STATUSES),
+        and_(et.isnot(None), et >= window_start, et <= now),
+    )
+
+
 def sold_on_sql(target_date, now: datetime | None = None):
     """返回「某房源在 target_date 当天真正成交」的 SQLAlchemy 布尔条件。
 
