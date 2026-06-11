@@ -11,6 +11,12 @@ from ..cleaners.text import clean_text, extract_district
 from ..cleaners.text_extractor import extract_community_from_title
 from ..cleaners.city import city_name_by_id
 from ..cleaners.status import normalize_status as _normalize_status
+from ..cleaners import field_miner as _field_miner
+from ..utils.deal_confirm import (
+    parse_deal_confirm_end_time as _parse_deal_confirm_end_time,
+    parse_deal_confirm as _parse_deal_confirm,
+    extract_deal_price as _extract_deal_price,
+)
 
 
 # ====================================================================
@@ -116,13 +122,47 @@ class GPaiDetailParser(AbstractParser):
         self._extract_location(soup, item, city_id, extra)
         self._extract_dates(soup, item)
         self._extract_description(soup, item)
+
+        # 缺字段兜底 + 附件 + 成交确认书（用户 2026-06-10 要求）：
+        # 聚合整页全文，对面积/加价幅度/起拍价/保证金缺失项从全文再挖一遍；
+        # 抓附件清单并识别「成交确认书」；命中则下载 PDF 解析「网拍结束时间」。
+        full_text = re.sub(r"\s+", " ", soup.get_text(separator=" "))
+        raw_atts = self._extract_attachments(soup)
+        confirm_att = _field_miner.apply_text_fallbacks(item, full_text, raw_atts)
+        if confirm_att:
+            try:
+                info = await _parse_deal_confirm(confirm_att["url"])
+                if info.get("end_time"):
+                    item.online_auction_end_time = info["end_time"]
+                if info.get("deal_price"):
+                    item.final_deal_price = info["deal_price"]
+            except Exception as e:
+                logger.debug(f"[公拍网] 成交确认书 PDF 解析失败: {e}")
+
+        # 成交价 + 成交识别（公拍网 HTML 明文）：成交后正文有「成交 成交价：9282000 元」，
+        # 且有「竞价成功确认书 / 成交确认书 / 成交公告」字样。这些是已成交的判据。
+        if _field_miner.has_deal_confirmation_in_text(full_text) or "竞价成功确认书" in full_text:
+            item.deal_confirmed = True
+        # HTML 正文解析成交价（PDF 未给出时）
+        if not item.final_deal_price:
+            dp = _extract_deal_price(full_text)
+            if dp:
+                item.final_deal_price = dp
+        # 有成交价即视为已成交（公拍网成交价只在成交后才显示）
+        if item.final_deal_price and not item.deal_confirmed:
+            item.deal_confirmed = True
+
         self._compute_derived_fields(item)
 
         # 状态归一：抽完开拍/结束时间后，按时间窗 + 当前时间重算时序态，保留结果态。
         # 与后端读取层 / 引擎自校正同一口径，避免存入抓取时刻的过期状态文本。
-        item.auction_status = _normalize_status(
-            item.auction_status, item.auction_start_time, item.auction_end_time
-        )
+        # 成交确认书是已成交铁证：deal_confirmed 时强制结果态为「已成交」，不被时间窗覆盖。
+        if item.deal_confirmed and item.auction_status not in ("已成交",):
+            item.auction_status = "已成交"
+        else:
+            item.auction_status = _normalize_status(
+                item.auction_status, item.auction_start_time, item.auction_end_time
+            )
 
         return item
 
@@ -313,8 +353,12 @@ class GPaiDetailParser(AbstractParser):
         if not ptype:
             ptype = self._find_row_value(soup, "房屋类型") or self._find_row_value(soup, "标的类型") or self._find_row_value(soup, "房屋用途")
         if ptype:
-            # Normalize GPai types: 店铺/商铺→商业, 公寓/住宅→住宅
-            if any(w in ptype for w in ("店铺", "商铺", "商业", "办公")):
+            # Normalize GPai types → 五大类:办公/工业/商业/住宅/其他
+            if any(w in ptype for w in ("写字楼", "办公")):
+                item.property_type = "办公"
+            elif any(w in ptype for w in ("工业", "厂房", "仓库", "车间")):
+                item.property_type = "工业"
+            elif any(w in ptype for w in ("店铺", "商铺", "商业", "商服")):
                 item.property_type = "商业"
             elif any(w in ptype for w in ("住宅", "公寓", "别墅")):
                 item.property_type = "住宅"
@@ -715,6 +759,39 @@ class GPaiDetailParser(AbstractParser):
                     parts.append(desc)
 
         item.description = "\n".join(parts)
+
+    # ============================================================
+    # Attachments（附件清单：用于识别「成交确认书」）
+    # ============================================================
+
+    def _extract_attachments(self, soup: BeautifulSoup) -> list[tuple[str, str]]:
+        """抓详情页附件 <a> 清单，返回 [(名称, 链接)]。
+
+        公拍网附件多为 <a href="...pdf">成交确认书.pdf</a> 形式；
+        兼容 .doc/.docx/.zip 等其它附件后缀，也兼容 href 含 attachment/file/download。
+        """
+        out: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for a in soup.select("a[href]"):
+            href = (a.get("href") or "").strip()
+            name = clean_text(a.get_text())
+            if not href:
+                continue
+            low = href.lower()
+            is_file = (low.endswith((".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip"))
+                       or "attachment" in low or "/file" in low or "download" in low)
+            # 名称含「确认书/公告/报告/合同」等附件特征也收（避免漏掉无后缀的动态链接）
+            looks_like_att = any(k in name for k in
+                                 ("确认书", "公告", "须知", "报告", "合同", "附件", "评估"))
+            if not (is_file or looks_like_att):
+                continue
+            if href.startswith("//"):
+                href = "https:" + href
+            if href in seen:
+                continue
+            seen.add(href)
+            out.append((name, href))
+        return out
 
     # ============================================================
     # Computed fields
