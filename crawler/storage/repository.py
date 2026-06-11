@@ -19,6 +19,39 @@ from app.models.property import Property, PropertyImage  # noqa: E402
 from app.models.crawl import CrawlTask, CrawlRecord, CrawlerTaskDetail  # noqa: E402
 
 
+# 「动态字段」:每次重抓以新值为准(即使新值为空/0也覆盖),反映价格调整/状态流转/下架清零。
+DYNAMIC_FIELDS = frozenset({
+    "starting_price", "starting_unit_price", "appraisal_price",
+    "court_discount_rate", "deposit", "increment_amount",
+    "market_deal_price", "market_deal_unit_price",
+    "auction_status", "auction_round",
+    "auction_start_time", "auction_end_time", "online_auction_end_time",
+    "final_deal_price", "deal_confirmed",
+    "view_count", "participant_count",
+})
+
+# 永不参与 update 的字段(主键/创建时间/图片单独处理)。
+_UPSERT_EXCLUDE = frozenset({"image_urls", "id", "created_at"})
+
+
+def build_update_data(item_dict: dict) -> dict:
+    """构造 update 字段集:动态字段强刷(含空值覆盖);静态字段仅在新值非空时覆盖。
+
+    静态字段(面积/朝向/户型/地址/坐标等)新值为 None/0/"" 时保留旧值,
+    避免某次解析抖动把已抓到的好数据清空。动态字段(价格/状态/时间)无条件以新值为准,
+    确保每日重抓能正确反映价格调整、状态流转、下架清零。
+    """
+    out = {}
+    for k, v in item_dict.items():
+        if k in _UPSERT_EXCLUDE:
+            continue
+        if k in DYNAMIC_FIELDS:
+            out[k] = v  # 动态:无条件覆盖(含 None/0)
+        elif v is not None and v != "" and v != 0:
+            out[k] = v  # 静态:仅非空覆盖
+    return out
+
+
 class PropertyRepository:
     """CRUD for properties table."""
 
@@ -81,13 +114,8 @@ class PropertyRepository:
         existing_id = await PropertyRepository.exists_by_url(db, item.source_url)
 
         if existing_id:
-            # Update existing
-            update_data = {
-                k: v
-                for k, v in item.__dict__.items()
-                if k not in ("image_urls",)
-                and v is not None
-            }
+            # Update existing:动态字段强刷、静态字段保留(见 build_update_data)
+            update_data = build_update_data(item.__dict__)
             update_data["updated_at"] = datetime.now()
 
             await db.execute(
@@ -116,6 +144,21 @@ class PropertyRepository:
             update(Property)
             .where(Property.id == property_id)
             .values(auction_status="已结束", updated_at=datetime.now())
+        )
+
+    @staticmethod
+    async def update_auction_status(
+        db: AsyncSession, property_id: int, status: str
+    ) -> None:
+        """更新单条房源的拍卖状态（成交回访用：写入平台告知的结果态）。
+
+        与 mark_as_ended 同属仓储层的状态写入方法，区别仅在于 status 由调用方给定
+        （已成交/已撤回/中止/流拍 等），避免回访脚本绕过仓储层直接写 SQL。
+        """
+        await db.execute(
+            update(Property)
+            .where(Property.id == property_id)
+            .values(auction_status=status, updated_at=datetime.now())
         )
 
     @staticmethod
@@ -292,6 +335,7 @@ class CrawlerTaskDetailRepository:
         skipped_count: int = 0,
         error_messages: str | None = None,
         duration_seconds: int | None = None,
+        failure_type: str | None = None,
     ) -> CrawlerTaskDetail:
         """创建或更新任务详情记录"""
         # 截断错误信息到1000字符
@@ -317,6 +361,8 @@ class CrawlerTaskDetailRepository:
             existing.skipped_count = skipped_count
             existing.error_messages = error_messages
             existing.duration_seconds = duration_seconds
+            if failure_type is not None:
+                existing.failure_type = failure_type
             await db.flush()
             return existing
         else:
@@ -332,6 +378,7 @@ class CrawlerTaskDetailRepository:
                 skipped_count=skipped_count,
                 error_messages=error_messages,
                 duration_seconds=duration_seconds,
+                failure_type=failure_type,
             )
             db.add(detail)
             await db.flush()
