@@ -294,10 +294,16 @@ class DataAuditService:
         return None
 
     def _check_property_type(self, property_obj: Property, config: Dict) -> Optional[Dict]:
-        """检查房产类型"""
+        """检查房产类型（仅删除明确为「非房产类型」的；空值不删，留作 flag/补全）"""
         allowed_types = config.get("allowed_types", [])
 
-        if property_obj.property_type not in allowed_types:
+        ptype = (property_obj.property_type or "").strip()
+        # 关键安全约束：property_type 为空 = 数据未抓全（如爬虫未跑完），绝不因此删除房源。
+        # 仅当类型有明确取值、且不在白名单内时，才判为非法类型。
+        if not ptype:
+            return None
+
+        if ptype not in allowed_types:
             return {
                 "type": "invalid_property_type",
                 "property_type": property_obj.property_type,

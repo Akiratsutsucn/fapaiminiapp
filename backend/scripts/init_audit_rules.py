@@ -121,7 +121,7 @@ async def init_default_rules():
                 category="property_type_filter",
                 description="仅保留住宅、别墅、公寓等不动产类型",
                 config={
-                    "allowed_types": ["住宅", "别墅", "公寓", "商铺", "写字楼", "厂房", "仓库", "车位"]
+                    "allowed_types": ["住宅", "别墅", "公寓", "商铺", "商业", "办公", "写字楼", "工业", "厂房", "仓库", "车位", "其他"]
                 },
                 action="delete",
                 severity="critical",
