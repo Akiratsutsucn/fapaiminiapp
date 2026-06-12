@@ -79,35 +79,6 @@
   white-space: nowrap;
 }
 
-/* 超人气角标：拍卖价不低于评估价时替代橙色折扣率，用红色人气色 */
-.card-hot-corner {
-  position: absolute;
-  top: 24rpx;
-  right: 24rpx;
-  background: linear-gradient(135deg, #f5365c 0%, #f56036 100%);
-  color: #fff;
-  padding: 16rpx 26rpx;
-  border-radius: var(--radius-md);
-  text-align: center;
-  box-shadow: 0 8rpx 24rpx rgba(245, 54, 92, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  transform: rotate(15deg);
-  transform-origin: center;
-  border: 2rpx solid rgba(255, 255, 255, 0.4);
-  letter-spacing: 1rpx;
-  min-width: 120rpx;
-}
-
-.hc-text {
-  font-size: 32rpx;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.18);
-}
-
 .card-body { padding: 20rpx 24rpx; }
 
 .card-title {

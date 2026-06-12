@@ -169,3 +169,13 @@
   font-size: 28rpx;
   color: #999;
 }
+
+/* 合规提示：AI 生成内容声明（常驻页面底部） */
+.as-ai-notice {
+  margin-top: 48rpx;
+  padding: 24rpx 32rpx 40rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b0b3b8;
+  letter-spacing: 1rpx;
+}

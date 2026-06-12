@@ -86,4 +86,9 @@
       <text>暂无匹配房源，试试调整条件</text>
     </view>
   </view>
+
+  <!-- 合规提示：AI 生成内容声明 -->
+  <view class="as-ai-notice">
+    <text>包含人工智能生成合成内容</text>
+  </view>
 </view>

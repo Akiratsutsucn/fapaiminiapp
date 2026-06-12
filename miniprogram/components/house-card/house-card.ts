@@ -31,8 +31,7 @@ Component({
       const showAsYi = wan >= 10000;
       const saving = (p.appraisal_price || 0) - (p.starting_price || 0);
       const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
-      // 有折扣空间就显示折扣率（含 6.5 折以上，如 7 折、8 折）；
-      // rate>=1（起拍价不低于评估价，无折扣空间）不再显示「超人气」角标。
+      // 有折扣空间就显示折扣率（含 6.5 折以上，如 7 折、8 折）；rate>=1（起拍价不低于评估价）不显示折扣。
       const rate = p.court_discount_rate || 0;
       const discount = rate > 0 && rate < 1 ? formatDiscount(rate) : '';
       this.setData({
@@ -49,7 +48,6 @@ Component({
         layout: p.layout || '',
         title: p.title || '',
         discount,
-        hotTag: '', // 超人气角标已移除
         savingWan,
         auctionTime: p.auction_start_time ? formatDate(p.auction_start_time, 'MM-DD HH:mm') : '',
         platformLabel: p.auction_platform || '',
@@ -72,7 +70,6 @@ Component({
     layout: '',
     title: '',
     discount: '',
-    hotTag: '',
     savingWan: '',
     auctionTime: '',
     platformLabel: '',
