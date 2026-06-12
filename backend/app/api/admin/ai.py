@@ -248,55 +248,61 @@ async def _stream_chat(
             },
         ]
 
-        # 调用Deepseek API（流式）
+        # 多轮工具调用循环（agentic loop）：
+        # LLM 可能需要连续多次查询才能得出结论（如先查总数→再查明细→再查爬虫状态）。
+        # 每轮：调 LLM → 若发起工具调用则执行并把结果喂回 → 再调 LLM；
+        # 直到 LLM 不再调工具（给出最终文字回复）或达到 MAX_TOOL_ROUNDS 上限。
+        # 此前为单轮（工具→回复一次），LLM 第二轮想继续查工具时被忽略，导致回复中断无结论。
+        MAX_TOOL_ROUNDS = 6
         assistant_message = ""
-        tool_calls_list = []
 
-        stream = await client.chat.completions.create(
-            model="deepseek-chat",
-            messages=messages,
-            tools=tools,
-            stream=True,
-            max_tokens=4096,
-        )
+        for round_idx in range(MAX_TOOL_ROUNDS + 1):
+            # 最后一轮强制不带 tools，逼 LLM 用已有结果作答，避免无限查询/卡在工具轮
+            use_tools = round_idx < MAX_TOOL_ROUNDS
+            round_text = ""
+            tool_calls_list = []
 
-        async for chunk in stream:
-            if not chunk.choices:
-                continue
+            try:
+                stream = await client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=messages,
+                    tools=tools if use_tools else None,
+                    stream=True,
+                    max_tokens=4096,
+                )
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        round_text += delta.content
+                        assistant_message += delta.content
+                        yield f"data: {json.dumps({'type': 'text', 'text': delta.content}, ensure_ascii=False)}\n\n"
+                    if use_tools and delta.tool_calls:
+                        for tool_call in delta.tool_calls:
+                            if tool_call.index >= len(tool_calls_list):
+                                tool_calls_list.append({
+                                    "id": tool_call.id,
+                                    "name": tool_call.function.name if tool_call.function else "",
+                                    "arguments": tool_call.function.arguments if tool_call.function else "",
+                                })
+                            else:
+                                if tool_call.function and tool_call.function.arguments:
+                                    tool_calls_list[tool_call.index]["arguments"] += tool_call.function.arguments
+            except Exception as e_round:
+                logger.error(f"AI调用失败(round={round_idx}): {e_round}")
+                if not assistant_message:
+                    fb = "（查询时出错，请重试或换个问法）"
+                    assistant_message = fb
+                    yield f"data: {json.dumps({'type': 'text', 'text': fb}, ensure_ascii=False)}\n\n"
+                break
 
-            choice = chunk.choices[0]
-            delta = choice.delta
+            # 本轮没有工具调用 → LLM 已给出最终回复，结束循环
+            if not tool_calls_list:
+                break
 
-            # 文本增量
-            if delta.content:
-                text = delta.content
-                assistant_message += text
-                yield f"data: {json.dumps({'type': 'text', 'text': text}, ensure_ascii=False)}\n\n"
-
-            # 工具调用
-            if delta.tool_calls:
-                for tool_call in delta.tool_calls:
-                    # 初始化或更新工具调用
-                    if tool_call.index >= len(tool_calls_list):
-                        tool_calls_list.append({
-                            "id": tool_call.id,
-                            "name": tool_call.function.name if tool_call.function else "",
-                            "arguments": tool_call.function.arguments if tool_call.function else "",
-                        })
-                    else:
-                        # 累积参数
-                        if tool_call.function and tool_call.function.arguments:
-                            tool_calls_list[tool_call.index]["arguments"] += tool_call.function.arguments
-
-        # 检查是否有完整的停止原因
-        has_tool_calls = len(tool_calls_list) > 0
-
-        # 处理工具调用
-        if has_tool_calls:
-            # 先把「assistant 发起的所有 tool_calls」作为单条 assistant 消息加入
-            # （OpenAI/Deepseek 规范：一条 assistant 消息携带全部 tool_calls，
-            #  随后跟与之 id 对应的多条 tool 响应；原实现拆成多条 assistant 消息会
-            #  导致第二次请求 messages 格式非法 → 接口报错/不返回 → 前端卡在「正在调用工具」）
+            # 有工具调用：作为单条 assistant 消息（携带全部 tool_calls）加入，
+            # 随后跟与之 id 对应的多条 tool 响应（OpenAI/Deepseek 规范）。
             assistant_tool_calls = []
             tool_response_messages = []
             for tool_call in tool_calls_list:
@@ -306,22 +312,14 @@ async def _stream_chat(
                 except Exception:
                     tool_input = {}
 
-                # 通知前端工具调用开始
                 yield f"data: {json.dumps({'type': 'tool_call', 'name': tool_name, 'input': tool_input}, ensure_ascii=False)}\n\n"
-
-                # 执行工具
                 tool_result = await _call_tool(tool_name, tool_input, db)
-
-                # 通知前端工具结果
                 yield f"data: {json.dumps({'type': 'tool_result', 'name': tool_name, 'result': tool_result}, ensure_ascii=False)}\n\n"
 
                 assistant_tool_calls.append({
                     "id": tool_call["id"],
                     "type": "function",
-                    "function": {
-                        "name": tool_name,
-                        "arguments": tool_call["arguments"],
-                    },
+                    "function": {"name": tool_name, "arguments": tool_call["arguments"]},
                 })
                 tool_response_messages.append({
                     "role": "tool",
@@ -331,42 +329,16 @@ async def _stream_chat(
 
             messages.append({
                 "role": "assistant",
-                "content": None,
+                "content": round_text or None,
                 "tool_calls": assistant_tool_calls,
             })
             messages.extend(tool_response_messages)
+            # 继续下一轮：把工具结果喂回 LLM
 
-            # 再次调用API获取最终回复（带错误兜底，避免前端卡死）
-            final_response = ""
-            try:
-                stream2 = await client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=messages,
-                    tools=tools,
-                    stream=True,
-                    max_tokens=4096,
-                )
-
-                async for chunk in stream2:
-                    if not chunk.choices:
-                        continue
-
-                    choice = chunk.choices[0]
-                    delta = choice.delta
-
-                    if delta.content:
-                        text = delta.content
-                        final_response += text
-                        yield f"data: {json.dumps({'type': 'text', 'text': text}, ensure_ascii=False)}\n\n"
-            except Exception as e2:
-                logger.error(f"AI二次调用(工具结果汇总)失败: {e2}")
-                # 工具结果已拿到但汇总失败：给用户一个可读的兜底回复，而非永久卡在「正在调用工具」
-                fallback = "（已查询到数据，但生成最终回复时出错，请重试或换个问法）"
-                if not final_response:
-                    final_response = fallback
-                    yield f"data: {json.dumps({'type': 'text', 'text': fallback}, ensure_ascii=False)}\n\n"
-
-            assistant_message = final_response
+        # 兜底：循环结束仍无任何文字（如末轮只输出空），给可读提示而非空白
+        if not assistant_message.strip():
+            assistant_message = "（已查询到数据，但未能生成最终回复，请重试或换个问法）"
+            yield f"data: {json.dumps({'type': 'text', 'text': assistant_message}, ensure_ascii=False)}\n\n"
 
         # 保存到会话历史（数据库）
         await _add_message(db, session_id, "user", message)
