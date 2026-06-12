@@ -45,8 +45,8 @@ class DataAuditService:
             if not rules:
                 raise ValueError("没有启用的审核规则")
 
-            # 构建查询条件
-            query = select(Property)
+            # 构建查询条件（排除已软删除的房源，无需重复审核）
+            query = select(Property).where(Property.is_deleted == 0)
             if task.scope:
                 query = self._apply_scope_filter(query, task.scope)
 
@@ -348,22 +348,17 @@ class DataAuditService:
         action = rule.action
 
         if action == "delete":
-            # 删除房源前先删除相关的推荐记录（避免外键约束错误）
+            # 软删除：标记 is_deleted=1 + 记录原因，保留在库可追溯/恢复，不物理删除。
+            # 同时清理推荐记录，避免软删房源出现在推荐位。
             from app.models.recommendation import PropertyRecommendation
-            await self.db.execute(
-                select(PropertyRecommendation).where(
-                    PropertyRecommendation.property_id == property_obj.id
-                )
-            )
-            # 删除所有相关推荐
             from sqlalchemy import delete as sql_delete
             await self.db.execute(
                 sql_delete(PropertyRecommendation).where(
                     PropertyRecommendation.property_id == property_obj.id
                 )
             )
-            # 删除房源
-            await self.db.delete(property_obj)
+            property_obj.is_deleted = 1
+            property_obj.deleted_reason = rule.rule_code
             return "deleted"
 
         elif action == "fix" and rule.auto_fix:

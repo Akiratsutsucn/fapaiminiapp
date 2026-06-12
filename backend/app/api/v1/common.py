@@ -83,7 +83,7 @@ async def home_summary(db: AsyncSession = Depends(get_session)):
     """
     city_ids = [c["city_id"] for c in CITIES]
     in_cities = Property.city_id.in_(city_ids)
-    visible = and_(effective_status_sql().in_(["即将开拍", "进行中"]), in_cities)
+    visible = and_(effective_status_sql().in_(["即将开拍", "进行中"]), in_cities, Property.is_deleted == 0)
 
     on_auction = (await db.execute(
         select(func.count(Property.id)).where(visible)

@@ -110,7 +110,7 @@ async def list_properties(
             return []
         return [s.strip() for s in v.split(",") if s.strip()]
 
-    conditions = []
+    conditions = [Property.is_deleted == 0]  # 全局排除软删除房源(审核隐藏的非房产/外省)
 
     if city_id:
         conditions.append(Property.city_id == city_id)
@@ -244,7 +244,7 @@ async def recommend_properties(
     city_id: int | None = Query(None),
     page_size: int = Query(6, le=20),
 ):
-    conditions = []
+    conditions = [Property.is_deleted == 0]  # 排除软删除房源
     if city_id:
         conditions.append(Property.city_id == city_id)
     # 推荐区仅推可参拍房源（即将开拍/进行中）。按用户 2026-06-11 要求全站取消
@@ -291,6 +291,7 @@ async def map_markers(
             Property.city_id == city_id,
             Property.lat.isnot(None),
             Property.lng.isnot(None),
+            Property.is_deleted == 0,
             # 地图仅展示可参拍房源（不含近72h结束的）——窗口仅作用于「全部房源」列表。
             effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
         )

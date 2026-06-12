@@ -111,6 +111,11 @@ class Property(Base):
     amenities_updated_at = Column(DateTime, nullable=True)
 
     # === system ===
+    # 软删除：审核判定为非房产/外省等时标记隐藏(1)，保留在库可追溯/恢复，不物理删除。
+    # 小程序所有 C 端入口经 auction_status 单一事实源过滤 is_deleted==0。
+    is_deleted = Column(Integer, nullable=False, default=0, server_default="0",
+                        comment="软删除标记:0正常/1已删(审核隐藏)")
+    deleted_reason = Column(String(64), nullable=True, comment="软删除原因(审核规则code)")
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 

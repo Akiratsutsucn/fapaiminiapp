@@ -242,7 +242,7 @@ async def list_recommendations(
 
     items = []
     for r in rows:
-        p = (await db.execute(select(Property).where(Property.id == r.property_id))).scalar_one_or_none()
+        p = (await db.execute(select(Property).where(Property.id == r.property_id, Property.is_deleted == 0))).scalar_one_or_none()
         if not p:
             continue
         cover = next((img.image_url for img in (p.images or []) if img.is_cover), None)

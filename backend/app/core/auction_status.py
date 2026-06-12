@@ -176,7 +176,7 @@ def mobile_listable_sql(now: datetime | None = None, hours: int = RECENT_ENDED_W
 
     与 mobile_listable() 纯函数口径严格一致：
       可参拍(即将开拍/进行中) OR auction_end_time 落在 [now-hours, now] 闭区间内。
-    可直接用于 .where()。
+    且排除软删除房源(is_deleted==0)。可直接用于 .where()。
     """
     from sqlalchemy import and_, or_
     from ..models.property import Property
@@ -184,10 +184,23 @@ def mobile_listable_sql(now: datetime | None = None, hours: int = RECENT_ENDED_W
     now = now or datetime.now()
     window_start = now - timedelta(hours=hours)
     et = Property.auction_end_time
-    return or_(
-        effective_status_sql(now).in_(MOBILE_VISIBLE_STATUSES),
-        and_(et.isnot(None), et >= window_start, et <= now),
+    return and_(
+        not_deleted_sql(),
+        or_(
+            effective_status_sql(now).in_(MOBILE_VISIBLE_STATUSES),
+            and_(et.isnot(None), et >= window_start, et <= now),
+        ),
     )
+
+
+def not_deleted_sql():
+    """软删除过滤：仅保留未被审核软删除的房源(is_deleted==0)。
+
+    小程序所有 C 端可见性的统一约束，注入 mobile_listable_sql 及各市场指标计数条件，
+    确保被审核标记为非房产/外省的房源不在任何 C 端入口露出，但保留在库可追溯/恢复。
+    """
+    from ..models.property import Property
+    return Property.is_deleted == 0
 
 
 def mobile_sort_rank_sql(now: datetime | None = None):
@@ -251,12 +264,12 @@ def _PropertyEndTime():
 
 def upcoming_cond():
     """即将开拍 计数条件。"""
-    return [effective_status_sql() == "即将开拍"]
+    return [effective_status_sql() == "即将开拍", not_deleted_sql()]
 
 
 def in_progress_cond():
     """拍卖进行中 计数条件。"""
-    return [effective_status_sql() == "进行中"]
+    return [effective_status_sql() == "进行中", not_deleted_sql()]
 
 
 def bargain_cond():
@@ -266,6 +279,7 @@ def bargain_cond():
         effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
         Property.court_discount_rate >= BARGAIN_DISCOUNT_MIN,
         Property.court_discount_rate <= BARGAIN_DISCOUNT_MAX,
+        not_deleted_sql(),
     ]
 
 
@@ -277,6 +291,7 @@ def yesterday_listed_cond(target_date):
     return [
         listed_on_sql(target_date),
         effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+        not_deleted_sql(),
     ]
 
 
@@ -286,7 +301,7 @@ def yesterday_sold_cond(target_date):
     auction_end_time）。与小程序首页 market-stats.yesterday_sold 及列表页
     sold_day=yesterday 完全同口径，保证「首页数字 == 看板数字 == 列表共xxx套」。
     """
-    return [sold_on_sql(target_date)]
+    return [sold_on_sql(target_date), not_deleted_sql()]
 
 
 def listed_on_sql(target_date):
