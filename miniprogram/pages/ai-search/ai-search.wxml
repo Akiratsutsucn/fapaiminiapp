@@ -1,6 +1,6 @@
 <view class="ai-search-page">
   <view class="as-header">
-    <view class="as-icon">🤖</view>
+    <view class="as-icon"></view>
     <text class="as-title">AI 智能选房</text>
     <text class="as-subtitle">说出你的需求，AI 帮你找房</text>
   </view>
