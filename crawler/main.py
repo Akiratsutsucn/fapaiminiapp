@@ -147,6 +147,40 @@ async def async_main(args: argparse.Namespace) -> None:
             logger.warning(f"自动创建 CrawlTask 失败：{e}（爬虫继续运行，但本次不会有后台记录）")
 
     engine = CrawlEngine(task_id=task_id)
+
+    # 优雅处理 systemd 超时终止(SIGTERM)：被 kill 前把任务标记 failed + 原因，
+    # 避免任务永远卡在 running(此前6/12超时被杀即如此)。
+    import signal as _signal
+
+    async def _mark_terminated():
+        if not task_id:
+            return
+        try:
+            from crawler.storage.db import get_session as _gs
+            from crawler.storage.repository import CrawlTaskRepository as _R
+            _db = await _gs()
+            try:
+                await _R.update_status(
+                    _db, task_id, "failed",
+                    error_message="进程被终止(systemd超时/手动停止),未跑完。可能阿里详情过慢或异常卡住。",
+                )
+                await _db.commit()
+            finally:
+                await _db.close()
+            logger.warning(f"收到终止信号，已将 CrawlTask #{task_id} 标记 failed")
+        except Exception as e:
+            logger.error(f"终止时标记 failed 失败: {e}")
+
+    def _on_sigterm():
+        logger.warning("收到 SIGTERM(systemd超时/停止)，开始收尾...")
+        asyncio.create_task(_mark_terminated())
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.add_signal_handler(_signal.SIGTERM, _on_sigterm)
+    except (NotImplementedError, RuntimeError):
+        pass  # 某些平台不支持，忽略
+
     await engine.run(
         platform=platform,
         city=args.city,

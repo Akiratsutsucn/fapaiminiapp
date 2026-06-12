@@ -23,6 +23,11 @@ class CrawlTask(Base):
     stats_summary = Column(JSON, nullable=True)       # 详细 diff 报告：变价/状态变化等
     cron_expression = Column(String(32), nullable=True)
     last_run_at = Column(DateTime, nullable=True)
+    # 实时进度/心跳（用于「跑到哪了」可视化 + 看门狗判定卡死）
+    heartbeat_at = Column(DateTime, nullable=True, comment="最近一次心跳时间;running时engine定期刷新")
+    phase = Column(String(64), nullable=True, comment="当前阶段:如「阿里拍卖-详情抓取」「增量比对」")
+    progress_done = Column(Integer, nullable=True, comment="当前阶段已处理数")
+    progress_total = Column(Integer, nullable=True, comment="当前阶段总数")
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 

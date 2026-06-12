@@ -74,6 +74,25 @@ async def list_tasks(
     db: AsyncSession = Depends(get_session),
     admin: dict = Depends(check_module_permission("crawler")),
 ):
+    # 看门狗：running 但心跳超过15分钟未更新 → 进程已死(被kill/崩溃/SIGKILL来不及收尾),
+    # 自动标记 failed，避免任务永远卡在「运行中」误导用户。
+    from datetime import datetime, timedelta
+    from sqlalchemy import update as _update, or_, and_
+    stale_before = datetime.now() - timedelta(minutes=15)
+    await db.execute(
+        _update(CrawlTask)
+        .where(
+            CrawlTask.status == "running",
+            or_(
+                and_(CrawlTask.heartbeat_at.isnot(None), CrawlTask.heartbeat_at < stale_before),
+                # 从未有心跳且创建超过15分钟(老任务或启动即死)
+                and_(CrawlTask.heartbeat_at.is_(None), CrawlTask.created_at < stale_before),
+            ),
+        )
+        .values(status="failed", error_message="进程心跳超时(>15分钟无更新),判定为已终止/卡死。")
+    )
+    await db.commit()
+
     rows = (await db.execute(
         select(CrawlTask).order_by(CrawlTask.created_at.desc()).limit(50)
     )).scalars().all()
@@ -86,6 +105,10 @@ async def list_tasks(
         "cron_expression": t.cron_expression,
         "last_run_at": str(t.last_run_at) if t.last_run_at else None,
         "created_at": str(t.created_at),
+        "heartbeat_at": str(t.heartbeat_at) if t.heartbeat_at else None,
+        "phase": t.phase,
+        "progress_done": t.progress_done,
+        "progress_total": t.progress_total,
     } for t in rows]
 
 

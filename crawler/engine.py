@@ -732,7 +732,46 @@ class CrawlEngine:
                         await task_db.close()
 
             # Execute concurrent detail processing
-            tasks = [process_detail(item) for item in to_fetch]
+            # 进度心跳：详情抓取是最耗时阶段（阿里单条~11s），每处理若干条刷新一次心跳，
+            # 让前端能看到「跑到哪了」，也让看门狗知道进程仍存活。
+            if self.task_id:
+                try:
+                    await CrawlTaskRepository.update_heartbeat(
+                        db, self.task_id,
+                        phase=f"{platform_name}-详情抓取",
+                        progress_done=0, progress_total=len(to_fetch),
+                    )
+                    await db.commit()
+                except Exception:
+                    pass
+            _hb = {"done": 0}
+
+            async def _tick():
+                _hb["done"] += 1
+                # 每10条刷新一次心跳。用独立短事务 session，避免与并发详情任务争用共享 db。
+                if self.task_id and _hb["done"] % 10 == 0:
+                    done_snapshot = _hb["done"]
+                    try:
+                        hb_db = await get_session()
+                        try:
+                            await CrawlTaskRepository.update_heartbeat(
+                                hb_db, self.task_id,
+                                phase=f"{platform_name}-详情抓取",
+                                progress_done=done_snapshot, progress_total=len(to_fetch),
+                            )
+                            await hb_db.commit()
+                        finally:
+                            await hb_db.close()
+                    except Exception:
+                        pass
+
+            async def process_detail_tracked(item):
+                try:
+                    return await process_detail(item)
+                finally:
+                    await _tick()
+
+            tasks = [process_detail_tracked(item) for item in to_fetch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # 统计结果并按城市归类

@@ -287,7 +287,29 @@ class CrawlTaskRepository:
         )
 
     @staticmethod
-    async def get_active_tasks(db: AsyncSession) -> list[CrawlTask]:
+    async def update_heartbeat(
+        db: AsyncSession,
+        task_id: int,
+        phase: str | None = None,
+        progress_done: int | None = None,
+        progress_total: int | None = None,
+    ) -> None:
+        """刷新心跳 + 当前阶段/进度（用于实时可视化 + 看门狗判定卡死）。
+
+        running 任务每处理一批就调用一次。心跳时间戳长时间不更新即视为卡死。
+        独立小事务提交，不影响主流程。
+        """
+        values: dict = {"heartbeat_at": datetime.now()}
+        if phase is not None:
+            values["phase"] = phase
+        if progress_done is not None:
+            values["progress_done"] = progress_done
+        if progress_total is not None:
+            values["progress_total"] = progress_total
+        await db.execute(
+            update(CrawlTask).where(CrawlTask.id == task_id).values(**values)  # type: ignore[arg-type]
+        )
+
         """Get all tasks with a cron expression set."""
         result = await db.execute(
             select(CrawlTask).where(

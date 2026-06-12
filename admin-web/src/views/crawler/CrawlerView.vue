@@ -99,8 +99,28 @@
       <t-table :data="tasks" :columns="taskColumns" :loading="taskLoading" row-key="id" :expanded-row-keys="expandedRowKeys">
         <template #status="{ row }">
           <t-tag :theme="row.status === 'completed' ? 'success' : row.status === 'failed' ? 'danger' : row.status === 'running' ? 'primary' : 'default'">
-            {{ row.status }}
+            {{ statusText(row.status) }}
           </t-tag>
+        </template>
+        <template #progress="{ row }">
+          <div v-if="row.status === 'running'" class="progress-cell">
+            <div class="progress-phase">{{ row.phase || '准备中...' }}</div>
+            <div v-if="row.progress_total" class="progress-bar-wrap">
+              <t-progress
+                :percentage="Math.round((row.progress_done || 0) / row.progress_total * 100)"
+                :label="false" size="small"
+              />
+              <span class="progress-num">{{ row.progress_done || 0 }}/{{ row.progress_total }}</span>
+            </div>
+            <div v-if="row.heartbeat_at" class="progress-hb">心跳 {{ shortTime(row.heartbeat_at) }}</div>
+          </div>
+          <span v-else-if="row.status === 'failed' && row.error_message" class="fail-reason" :title="row.error_message">
+            {{ row.error_message.length > 28 ? row.error_message.slice(0, 28) + '…' : row.error_message }}
+          </span>
+          <span v-else-if="row.status === 'completed' && row.stats_summary" class="done-summary">
+            耗时 {{ fmtDuration(row.stats_summary.duration_sec) }}
+          </span>
+          <span v-else class="muted">--</span>
         </template>
         <template #op="{ row }">
           <t-button variant="text" size="small" @click="toggleDetail(row.id)">
@@ -157,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie, getTaskDetails } from '@/api/crawler'
 
@@ -202,16 +222,34 @@ let loginWindow: Window | null = null
 const statusItems = ref([{ label: '最近运行', value: '--' }, { label: '当前状态', value: '--' }])
 
 const taskColumns = [
-  { colKey: 'id', title: 'ID', width: 70 },
-  { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'status', title: '状态', width: 100 },
-  { colKey: 'total_count', title: '总抓取数', width: 100 },
-  { colKey: 'new_count', title: '新增', width: 80 },
-  { colKey: 'updated_count', title: '更新', width: 80 },
-  { colKey: 'op', title: '操作', width: 100 },
+  { colKey: 'id', title: 'ID', width: 60 },
+  { colKey: 'created_at', title: '创建时间', width: 160 },
+  { colKey: 'status', title: '状态', width: 90 },
+  { colKey: 'progress', title: '进度', width: 220 },
+  { colKey: 'total_count', title: '总抓取', width: 80 },
+  { colKey: 'new_count', title: '新增', width: 70 },
+  { colKey: 'updated_count', title: '更新', width: 70 },
+  { colKey: 'op', title: '操作', width: 90 },
 ]
 
 onMounted(() => { loadStatus(); loadTasks(); loadCookiesStatus() })
+onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function statusText(s: string): string {
+  return ({ completed: '已完成', failed: '失败', running: '运行中', pending: '等待中' } as any)[s] || s
+}
+function shortTime(ts: string): string {
+  // 取 HH:mm:ss 部分
+  const m = String(ts).match(/(\d{2}:\d{2}:\d{2})/)
+  return m ? m[1] : ts
+}
+function fmtDuration(sec?: number): string {
+  if (!sec || sec <= 0) return '--'
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60
+  return h > 0 ? `${h}时${m}分` : m > 0 ? `${m}分${s}秒` : `${s}秒`
+}
 
 async function loadStatus() {
   try {
@@ -228,6 +266,13 @@ async function loadTasks() {
   try {
     const data: any = await listCrawlerTasks()
     tasks.value = data
+    // 有 running 任务则自动轮询刷新进度(每15秒),全部结束则停止
+    const hasRunning = Array.isArray(data) && data.some((t: any) => t.status === 'running')
+    if (hasRunning && !pollTimer) {
+      pollTimer = setInterval(() => { loadTasks() }, 15000)
+    } else if (!hasRunning && pollTimer) {
+      clearInterval(pollTimer); pollTimer = null
+    }
   } finally { taskLoading.value = false }
 }
 
@@ -364,6 +409,16 @@ async function onTriggerPlatform(platform: string) {
 
 <style scoped>
 .page-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+
+/* 任务进度列 */
+.progress-cell { display: flex; flex-direction: column; gap: 2px; }
+.progress-phase { font-size: 12px; color: #0052d9; font-weight: 600; }
+.progress-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.progress-num { font-size: 11px; color: #666; white-space: nowrap; }
+.progress-hb { font-size: 11px; color: #999; }
+.fail-reason { font-size: 12px; color: #d54941; cursor: help; }
+.done-summary { font-size: 12px; color: #666; }
+.muted { color: #ccc; }
 
 .detail-grid-container {
   padding: 20px;
