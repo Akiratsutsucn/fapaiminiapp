@@ -623,19 +623,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         logger.debug(f"[TaobaoPaiMai] SSR load: item={item_id}")
 
         # initData 由页面 JS 异步注入 HTML（实测最快 1.5s 就绪），首次单次检测易误判骨架；
-        # 故每轮都「轮询」检测 initData，给足注入时间。仍持续骨架（出口 IP/反爬随机性）时，
-        # 主动触发隧道换出口 IP 再重建 page 重试——仅重建 page 不一定真的换了出口 IP。
-        SSR_MAX_ATTEMPTS = 4
+        # 故每轮都「轮询」检测 initData，给足注入时间。
+        # 注意：住宅IP为固定出口、不支持自动换IP，持续骨架时重试同一IP结果相同，
+        # 故仅保留 1 次额外重试（应对 initData 注入时机抖动），不再触发换IP/sleep。
+        # 仍骨架则尽快返回 skeleton 标记，让调用方走列表数据兜底（列表已含多数字段）。
+        SSR_MAX_ATTEMPTS = 2
         for attempt in range(SSR_MAX_ATTEMPTS):
             if attempt > 0:
-                # 持续骨架 → 主动换出口 IP（隧道代理），再重建 page 重试。
-                try:
-                    from .. import tunnel_proxy
-                    if tunnel_proxy.is_enabled():
-                        tunnel_proxy.trigger_ip_change(f"ali-ssr-skeleton:{item_id}")
-                        await asyncio.sleep(5)  # 等新出口 IP 生效
-                except Exception as e:
-                    logger.debug(f"[TaobaoPaiMai] trigger_ip_change failed: {e}")
+                # 持续骨架 → 重建 page 重试一次（不换IP：固定住宅IP无法换，换了也无意义）。
                 try:
                     page = await self._renew_page()
                 except Exception:

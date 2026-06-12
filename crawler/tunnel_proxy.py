@@ -29,7 +29,11 @@ def _min_interval() -> float:
 
 
 def is_enabled() -> bool:
-    return bool(os.getenv("TUNNEL_IP_CHANGE_URL", "").strip())
+    # 已禁用：住宅IP服务商不支持API自动换IP(只能手动换、每天≤20次)。
+    # 此前 trigger_ip_change 每撞风控就自动调用，一晚303次全失败(订单不存在),
+    # 纯属无效调用且可能触发服务商换IP次数限制。固定IP下重试也徒劳(同IP同结果)。
+    # 全局关闭，所有调用点(anti_block/browser/community_scraper/taobao_paimai)自动跳过。
+    return False
 
 
 def trigger_ip_change(reason: str = "", *, force: bool = False) -> bool:
