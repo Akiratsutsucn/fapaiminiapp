@@ -212,6 +212,11 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._token: str | None = None
         self._cookie_str: str = ""
         self._row_cache: dict[str, dict] = {}  # itemId → raw list API row
+        # SSR 熔断：当前IP若被阿里风控，SSR 会连续返回骨架(每条白耗~35s)。
+        # 连续失败达阈值即熔断，后续直接走列表数据兜底(每条几百ms)，避免空耗。
+        self._ssr_consecutive_fails = 0
+        self._ssr_circuit_open = False
+        self._SSR_FAIL_THRESHOLD = 12
 
     # ------------------------------------------------------------------
     # HTTP client
@@ -501,13 +506,36 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
     @retry_on_failure(max_retries=2, backoff_factor=3.0, base_delay=3.0)
     async def fetch_detail_api(self, item_id: str) -> dict | None:
-        """Fetch detail data: Playwright SSR first, then list API fallback."""
-        # Strategy 1: Try Playwright SSR page
-        ssr_data = await self._extract_from_ssr(item_id)
-        if ssr_data and ssr_data.get("_source") != "skeleton":
-            logger.info(f"[TaobaoPaiMai] SSR success for {item_id}")
-            await self._enrich_notice(item_id, ssr_data)
-            return ssr_data
+        """Fetch detail data: Playwright SSR first, then list API fallback.
+
+        SSR 熔断：当前IP被风控时 SSR 连续返回骨架(每条白耗~35s)。连续失败达
+        阈值即熔断，后续直接用列表数据(每条几百ms)，避免整轮空耗超时被杀。
+        """
+        # 熔断已开启 → 跳过 SSR，直接走列表兜底
+        if not self._ssr_circuit_open:
+            # Strategy 1: Try Playwright SSR page
+            ssr_data = await self._extract_from_ssr(item_id)
+            if ssr_data and ssr_data.get("_source") != "skeleton":
+                self._ssr_consecutive_fails = 0  # 成功 → 重置计数
+                logger.info(f"[TaobaoPaiMai] SSR success for {item_id}")
+                await self._enrich_notice(item_id, ssr_data)
+                return ssr_data
+            # SSR 失败(骨架/无数据)→ 累计连续失败
+            self._ssr_consecutive_fails += 1
+            if self._ssr_consecutive_fails >= self._SSR_FAIL_THRESHOLD:
+                self._ssr_circuit_open = True
+                logger.warning(
+                    f"[TaobaoPaiMai] SSR连续失败{self._ssr_consecutive_fails}次,"
+                    f"判定当前IP被风控,熔断SSR→后续直接走列表数据兜底"
+                    f"(建议手动切换住宅IP后重跑可恢复完整详情抓取)"
+                )
+                # 联动换IP抽象层:当前manual模式仅记录+提示人工换IP;
+                # 将来换服务商后自动从地址池切换,此处无需改动。
+                try:
+                    from .. import ip_rotator
+                    ip_rotator.request_ip_rotation(reason="ali-ssr-circuit-open")
+                except Exception:
+                    pass
 
         # Strategy 2: Build from cached list API row
         row = self._row_cache.get(item_id)

@@ -1013,6 +1013,15 @@ class CrawlEngine:
         self.result.total_skipped += platform_stats["skipped"]
         self.result.total_failed += platform_stats["failed"]
 
+        # SSR 熔断 → 标记 IP_BLOCKED,让任务记录显示「IP被风控,需手动换IP重跑」
+        if getattr(crawler, "_ssr_circuit_open", False):
+            for city_name, stats in city_stats.items():
+                stats["failure_type"] = IP_BLOCKED
+                stats["error_messages"].append(
+                    "SSR连续失败已熔断:当前IP疑似被风控,本轮阿里房源仅列表级数据。建议手动切换住宅IP后重跑补全详情。"
+                )
+            logger.warning(f"[{platform_name}] 熔断状态已记入任务详情(failure_type=IP_BLOCKED)")
+
         # 保存每个城市的详细统计到 crawler_task_details
         if self.task_id:
             for city_name, stats in city_stats.items():
