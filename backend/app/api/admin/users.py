@@ -98,12 +98,25 @@ async def delete_user(
     db: AsyncSession = Depends(get_session),
     admin: dict = Depends(check_write_permission()),
 ):
+    from sqlalchemy import text as _text
+
     result = await db.execute(select(User).where(User.id == user_id))
     u = result.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
-    await db.delete(u)
-    await db.commit()
+
+    # 先清理指向该用户的关联记录,避免外键约束导致删除失败(此前删用户报500被前端吞掉)。
+    # browse_history/demands/property_recommendations/user_favorites: 该用户的记录直接删;
+    # users.inviter_id: 把"被该用户邀请"的客户的邀请人置空(保留客户本身)。
+    try:
+        for tbl in ("browse_history", "demands", "property_recommendations", "user_favorites"):
+            await db.execute(_text(f"DELETE FROM {tbl} WHERE user_id = :uid"), {"uid": user_id})
+        await db.execute(_text("UPDATE users SET inviter_id = NULL WHERE inviter_id = :uid"), {"uid": user_id})
+        await db.delete(u)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"删除失败(可能存在关联数据): {e}")
     return {"message": "删除成功"}
 
 

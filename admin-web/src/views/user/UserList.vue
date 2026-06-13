@@ -184,7 +184,15 @@ async function loadData() {
 }
 
 function onSearch() { pagination.current = 1; loadData() }
-function onPageChange(p: any) { pagination.current = p.current; loadData() }
+function onPageChange(p: any) {
+  pagination.current = p.current
+  // 切换「x条/页」时 pageSize 变化也要生效(此前只读 current 导致每页条数切换失效)
+  if (p.pageSize && p.pageSize !== pagination.pageSize) {
+    pagination.pageSize = p.pageSize
+    pagination.current = 1
+  }
+  loadData()
+}
 
 function onCreate() {
   createForm.nickname = ''; createForm.phone = ''; createForm.role = 'customer'; createForm.password = ''
@@ -258,7 +266,9 @@ async function onDelete(row: any) {
     await deleteUser(row.id)
     MessagePlugin.success('删除成功')
     loadData()
-  } catch { /* skip */ }
+  } catch (err: any) {
+    MessagePlugin.error(err?.response?.data?.detail || err?.message || '删除失败')
+  }
 }
 </script>
 
