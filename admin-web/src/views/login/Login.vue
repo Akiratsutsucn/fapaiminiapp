@@ -26,6 +26,7 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { adminLogin } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { firstAccessiblePath } from '@/router'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -40,8 +41,10 @@ async function onLogin() {
   loading.value = true
   try {
     const data = await adminLogin(form.username, form.password)
-    auth.setAuth(data.access_token, data.user_info || { nickname: form.username, role: 'admin', id: 0 })
-    router.push('/dashboard')
+    const info = data.user_info || { nickname: form.username, role: 'admin', id: 0 }
+    auth.setAuth(data.access_token, info)
+    // 跳到该角色可达首页(内容管理员无看板权限,跳 dashboard 会被拦成403)
+    router.push(firstAccessiblePath(info.role || ''))
   } catch { /* interceptor handles */ }
   finally { loading.value = false }
 }
