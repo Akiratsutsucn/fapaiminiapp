@@ -56,7 +56,9 @@
             <t-option value="customer" label="客户" />
             <t-option value="salesperson" label="业务员" />
             <t-option value="agent" label="代理商" />
-            <t-option value="admin" label="管理员" />
+            <t-option value="content_manager" label="内容管理员" />
+            <t-option value="leader" label="领导" />
+            <t-option value="admin" label="最高管理员" />
           </t-select>
         </t-form-item>
         <t-form-item label="城市">

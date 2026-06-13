@@ -16,7 +16,7 @@ class User(Base):
     phone = Column(String(20), nullable=True)
     gender = Column(Integer, nullable=True)  # 1男/2女
     birthday = Column(Date, nullable=True)
-    role = Column(String(16), nullable=False, default="customer")  # customer/agent/salesman/leader/content_manager/admin
+    role = Column(String(16), nullable=False, default="customer")  # customer/agent/salesperson/leader/content_manager/admin
     password_hash = Column(String(128), nullable=True)  # bcrypt hash for admin/agent login
     inviter_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     region = Column(String(64), nullable=True, default="")  # 代理商负责地区，例如「上海市长宁区」

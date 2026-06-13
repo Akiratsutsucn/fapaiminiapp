@@ -64,7 +64,7 @@ async def create_user(
     from ...core.security import pwd_context
 
     # 验证角色是否合法
-    valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+    valid_roles = ["customer", "agent", "salesperson", "leader", "content_manager", "admin"]
     role = body.get("role", "customer")
     if role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
@@ -157,7 +157,7 @@ async def update_user(
         if k in allowed:
             # 验证角色
             if k == "role":
-                valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+                valid_roles = ["customer", "agent", "salesperson", "leader", "content_manager", "admin"]
                 if v not in valid_roles:
                     raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
             setattr(u, k, v)
@@ -182,7 +182,7 @@ async def update_user_role(
     if not role:
         raise HTTPException(status_code=400, detail="缺少role参数")
 
-    valid_roles = ["customer", "agent", "salesman", "leader", "content_manager", "admin"]
+    valid_roles = ["customer", "agent", "salesperson", "leader", "content_manager", "admin"]
     if role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"无效的角色类型，可选值：{', '.join(valid_roles)}")
 
@@ -222,7 +222,7 @@ async def get_role_list(
         {"value": "leader", "label": "领导", "description": "全局可见但只读"},
         {"value": "content_manager", "label": "内容管理员", "description": "仅能访问文章、横幅、爬虫模块"},
         {"value": "agent", "label": "代理商", "description": "可登录后台，部分权限"},
-        {"value": "salesman", "label": "业务员", "description": "不能登录后台"},
+        {"value": "salesperson", "label": "业务员", "description": "不能登录后台"},
         {"value": "customer", "label": "客户", "description": "普通用户，不能登录后台"},
     ]
     return {"roles": roles}

@@ -23,7 +23,7 @@ async def admin_login(req: AdminLoginRequest, db: AsyncSession = Depends(get_ses
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
     # 只允许admin、agent、leader、content_manager登录管理后台
-    # salesman和customer不能登录
+    # salesperson和customer不能登录
     if user.role not in ("admin", "agent", "leader", "content_manager"):
         raise HTTPException(status_code=403, detail="无管理后台访问权限")
 
