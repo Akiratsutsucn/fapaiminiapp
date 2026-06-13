@@ -375,24 +375,59 @@ class DataAuditService:
         return "flagged"
 
     def _try_auto_fix(self, property_obj: Property, violation_data: Dict) -> bool:
-        """尝试自动修复"""
+        """尝试自动修复。
+
+        面积缺失：从该房源的「竞买公告/标的物详情」正文(description + attachments)
+        全文搜索「建筑面积」补全(复用爬虫 cleaners.field_miner.mine_area)。
+        挖到真实面积才填;挖不到则不修复(返回False→保持标记,绝不填0/删除)。
+        """
         detail = violation_data.get("detail", {})
         fix_type = detail.get("type")
 
-        # 这里可以根据具体情况实现自动修复逻辑
-        # 例如：补充默认值、格式化数据等
-
-        # 示例：补充缺失的必填字段为默认值
         if fix_type == "missing_required_fields":
             missing = detail.get("missing_fields", [])
+            fixed_any = False
             for field in missing:
-                if field in ["starting_price", "deposit", "increment_amount"]:
-                    setattr(property_obj, field, 0)
-                elif field in ["area"]:
-                    setattr(property_obj, field, 0.0)
-            return True
+                if field == "area":
+                    mined = self._mine_area_from_text(property_obj)
+                    if mined and mined > 0:
+                        property_obj.area = mined
+                        fixed_any = True
+                    # 挖不到 → 不动(保持空+标记),不再填 0.0
+            return fixed_any
 
         return False
+
+    def _mine_area_from_text(self, property_obj: Property) -> float:
+        """从房源正文(description + 附件名/正文)全文挖建筑面积。挖不到返回0。"""
+        try:
+            from crawler.cleaners.field_miner import mine_area
+        except Exception:
+            return 0.0
+        parts = []
+        if getattr(property_obj, "description", None):
+            parts.append(str(property_obj.description))
+        att = getattr(property_obj, "attachments", None)
+        if att:
+            # attachments 可能是 [{name,url}] 列表或 JSON 字符串,拼接其文本
+            try:
+                if isinstance(att, str):
+                    parts.append(att)
+                elif isinstance(att, (list, tuple)):
+                    for a in att:
+                        if isinstance(a, dict):
+                            parts.append(str(a.get("name", "")))
+                        else:
+                            parts.append(str(a))
+            except Exception:
+                pass
+        full_text = "\n".join(p for p in parts if p)
+        if not full_text:
+            return 0.0
+        try:
+            return float(mine_area(full_text) or 0.0)
+        except Exception:
+            return 0.0
 
     async def _generate_report(self, task_id: int):
         """生成审核报告"""
