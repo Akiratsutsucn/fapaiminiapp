@@ -186,10 +186,24 @@
         <div v-if="currentDetail.violations_found && Object.keys(currentDetail.violations_found).length > 0" class="violations-section">
           <t-divider />
           <h4 class="section-title">违规详情统计</h4>
+          <p class="section-hint">每条规则的违规数及处理方式（删除 / 标记 / 修复），避免歧义</p>
           <div class="violations-list">
             <div v-for="(count, ruleName) in currentDetail.violations_found" :key="ruleName" class="violation-item">
               <span class="violation-rule">{{ ruleName }}</span>
-              <t-tag theme="warning" size="small">{{ count }}条</t-tag>
+              <div class="violation-actions">
+                <t-tag theme="default" size="small">违规 {{ count }}条</t-tag>
+                <template v-if="currentDetail.rule_action_summary && currentDetail.rule_action_summary[ruleName]">
+                  <t-tag v-if="currentDetail.rule_action_summary[ruleName].deleted > 0" theme="danger" size="small">
+                    已删除 {{ currentDetail.rule_action_summary[ruleName].deleted }}
+                  </t-tag>
+                  <t-tag v-if="currentDetail.rule_action_summary[ruleName].fixed > 0" theme="success" size="small">
+                    已修复 {{ currentDetail.rule_action_summary[ruleName].fixed }}
+                  </t-tag>
+                  <t-tag v-if="currentDetail.rule_action_summary[ruleName].flagged > 0" theme="warning" size="small">
+                    已标记 {{ currentDetail.rule_action_summary[ruleName].flagged }}
+                  </t-tag>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -582,6 +596,19 @@ function getActionLabel(action: string) {
 .violation-rule {
   font-size: 14px;
   color: #333;
+}
+
+.violation-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.section-hint {
+  font-size: 12px;
+  color: #999;
+  margin: -4px 0 10px;
 }
 
 .text-warning {

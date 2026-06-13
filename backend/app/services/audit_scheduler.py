@@ -219,8 +219,20 @@ class AuditScheduler:
         for rule, count in flag_by_rule.items():
             detailed_actions.append(f"{rule}：已标记{count}条")
 
+        # 每条规则的「违规数 + 各动作分解」,供前端清晰展示「删除/标记/修复」,消除歧义。
+        # 例:{"房源面积必填": {"total":51, "deleted":0, "fixed":40, "flagged":11}}
+        rule_action_summary = {}
+        for rule_name, total in violations_summary.items():
+            rule_action_summary[rule_name] = {
+                "total": total,
+                "deleted": delete_by_rule.get(rule_name, 0),
+                "fixed": fix_by_rule.get(rule_name, 0),
+                "flagged": flag_by_rule.get(rule_name, 0),
+            }
+
         return {
             "summary": violations_summary,
+            "rule_action_summary": rule_action_summary,
             "detailed_actions": detailed_actions,
             "action_statistics": {
                 "deleted_count": len(action_details["deleted"]),

@@ -692,6 +692,7 @@ async def get_execution(
 
     # 提取规则统计摘要
     summary = violations_found.get("summary", {})
+    rule_action_summary = violations_found.get("rule_action_summary", {})
 
     return {
         "id": execution.id,
@@ -701,6 +702,7 @@ async def get_execution(
         "properties_deleted": execution.properties_deleted,
         "properties_fixed": execution.properties_fixed,
         "violations_found": summary,  # 按规则分组的违规统计
+        "rule_action_summary": rule_action_summary,  # 每规则的违规数+动作分解(删/标/修),消歧义
         "detailed_actions": detailed_actions,  # 详细操作描述
         "action_statistics": action_stats,  # 操作统计
         "execution_duration": execution.execution_duration,
