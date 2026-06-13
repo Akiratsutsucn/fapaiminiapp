@@ -52,17 +52,21 @@ async def get_current_user(
 async def get_admin_user(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    if user.get("role") not in ("admin", "agent", "leader", "content_manager"):
+    # 仅 admin / leader / content_manager 可访问管理后台。
+    # 代理商(agent)、业务员(salesperson)、客户(customer)仅小程序使用,不能登录后台。
+    if user.get("role") not in ("admin", "leader", "content_manager"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无管理后台访问权限")
     return user
 
 
-# 角色权限映射
+# 角色权限映射(模块级)。仅后台角色:
+#   admin           = 全部权限
+#   leader          = 全部模块只读(可看,不可改,由 check_write_permission 拦截写操作)
+#   content_manager = 仅文章、横幅
 ROLE_PERMISSIONS = {
-    "admin": ["*"],  # 全部权限
-    "leader": ["dashboard", "users", "properties", "demands", "articles", "banners", "crawler", "communities", "data-audit"],  # 全部模块只读
-    "content_manager": ["articles", "banners", "crawler"],  # 仅内容管理相关模块
-    "agent": ["dashboard", "users", "demands"],  # 代理商权限
+    "admin": ["*"],
+    "leader": ["dashboard", "users", "properties", "demands", "articles", "banners", "crawler", "communities", "data-audit"],
+    "content_manager": ["articles", "banners"],
 }
 
 

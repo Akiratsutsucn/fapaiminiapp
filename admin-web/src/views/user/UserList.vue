@@ -39,6 +39,10 @@
         <template #op="{ row }">
           <t-space>
             <t-button variant="text" size="small" @click="onEdit(row)">编辑</t-button>
+            <t-button
+              v-if="auth.isAdmin && ['admin','leader','content_manager'].includes(row.role)"
+              variant="text" size="small" theme="warning" @click="onResetPassword(row)"
+            >重置密码</t-button>
             <t-popconfirm content="确定删除该用户？" @confirm="onDelete(row)">
               <t-button variant="text" size="small" theme="danger">删除</t-button>
             </t-popconfirm>
@@ -117,13 +121,26 @@
         </t-form-item>
       </t-form>
     </t-dialog>
+
+    <t-dialog v-model:visible="resetPwVisible" header="重置登录密码" width="420px" @confirm="onSaveResetPassword">
+      <t-form label-width="90px">
+        <t-form-item label="账号">{{ resetPwForm.nickname }}（{{ roleLabel(resetPwForm.role) }}）</t-form-item>
+        <t-form-item label="新密码">
+          <t-input v-model="resetPwForm.password" type="password" placeholder="至少6位" clearable />
+        </t-form-item>
+      </t-form>
+      <p style="color:#999;font-size:12px;margin:0 0 0 90px">该账号将用「手机号 + 新密码」登录后台（admin 用用户名）</p>
+    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { listUsers, createUser, updateUser, deleteUser, updateUserRole } from '@/api/users'
+import { listUsers, createUser, updateUser, deleteUser, updateUserRole, resetUserPassword } from '@/api/users'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -170,6 +187,9 @@ const createForm = reactive({ nickname: '', phone: '', role: 'customer', passwor
 
 const roleChangeVisible = ref(false)
 const roleChangeForm = reactive({ userId: 0, nickname: '', currentRole: '', newRole: '' })
+
+const resetPwVisible = ref(false)
+const resetPwForm = reactive({ userId: 0, nickname: '', role: '', password: '' })
 
 onMounted(() => loadData())
 
@@ -261,6 +281,28 @@ async function onSaveRoleChange() {
     roleChangeVisible.value = false
     loadData()
   } catch { /* skip */ }
+}
+
+function onResetPassword(row: any) {
+  resetPwForm.userId = row.id
+  resetPwForm.nickname = row.nickname
+  resetPwForm.role = row.role
+  resetPwForm.password = ''
+  resetPwVisible.value = true
+}
+
+async function onSaveResetPassword() {
+  if (!resetPwForm.password || resetPwForm.password.length < 6) {
+    MessagePlugin.warning('新密码至少6位')
+    return
+  }
+  try {
+    await resetUserPassword(resetPwForm.userId, resetPwForm.password)
+    MessagePlugin.success('密码重置成功')
+    resetPwVisible.value = false
+  } catch (err: any) {
+    MessagePlugin.error(err?.response?.data?.detail || '重置失败')
+  }
 }
 
 async function onDelete(row: any) {

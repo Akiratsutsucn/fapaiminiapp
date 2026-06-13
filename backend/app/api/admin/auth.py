@@ -13,18 +13,26 @@ router = APIRouter()
 
 @router.post("/login", response_model=TokenResponse)
 async def admin_login(req: AdminLoginRequest, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(User).where(User.nickname == req.username))
-    user = result.scalar_one_or_none()
+    # 登录方式:admin 用用户名「admin」(nickname)登录;其余后台角色(领导/内容管理员)
+    # 用「手机号 + 密码」登录。先按用户名找 admin,找不到再按手机号找。
+    ident = (req.username or "").strip()
+    user = None
+    if ident == "admin":
+        result = await db.execute(select(User).where(User.nickname == "admin"))
+        user = result.scalar_one_or_none()
+    if user is None:
+        result = await db.execute(select(User).where(User.phone == ident))
+        user = result.scalar_one_or_none()
 
     if not user or not user.password_hash:
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise HTTPException(status_code=401, detail="账号或密码错误")
 
     if not pwd_context.verify(req.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise HTTPException(status_code=401, detail="账号或密码错误")
 
-    # 只允许admin、agent、leader、content_manager登录管理后台
-    # salesperson和customer不能登录
-    if user.role not in ("admin", "agent", "leader", "content_manager"):
+    # 仅 admin / leader / content_manager 可登录管理后台。
+    # 代理商/业务员/客户仅小程序使用,不能登录后台。
+    if user.role not in ("admin", "leader", "content_manager"):
         raise HTTPException(status_code=403, detail="无管理后台访问权限")
 
     token_data = {"sub": str(user.id), "openid": user.openid, "role": user.role}

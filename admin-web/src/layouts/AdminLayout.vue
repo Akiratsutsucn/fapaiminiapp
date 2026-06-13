@@ -68,16 +68,16 @@ interface MenuItem {
 }
 
 const ALL_MENUS: MenuItem[] = [
-  { path: '/dashboard', label: '数据看板', icon: 'chart-bar', roles: ['admin', 'agent', 'leader'] },
+  { path: '/dashboard', label: '数据看板', icon: 'chart-bar', roles: ['admin', 'leader'] },
   { path: '/ai-assistant', label: 'AI助手', icon: 'chat', roles: ['admin'] },
-  { path: '/users', label: '用户管理', icon: 'user', roles: ['admin', 'agent'] },
-  { path: '/properties', label: '房源管理', icon: 'home', roles: ['admin'] },
-  { path: '/demands', label: '需求管理', icon: 'task', roles: ['admin', 'agent'] },
-  { path: '/articles', label: '文章管理', icon: 'file-paste', roles: ['admin', 'content_manager'] },
-  { path: '/banners', label: '横幅管理', icon: 'image', roles: ['admin', 'content_manager'] },
-  { path: '/crawler', label: '爬虫管理', icon: 'cloud-download', roles: ['admin', 'content_manager'] },
-  { path: '/data-audit/executions', label: '审核历史', icon: 'check-circle', roles: ['admin'] },
-  { path: '/communities', label: '小区管理', icon: 'shop', roles: ['admin'] },
+  { path: '/users', label: '用户管理', icon: 'user', roles: ['admin', 'leader'] },
+  { path: '/properties', label: '房源管理', icon: 'home', roles: ['admin', 'leader'] },
+  { path: '/demands', label: '需求管理', icon: 'task', roles: ['admin', 'leader'] },
+  { path: '/articles', label: '文章管理', icon: 'file-paste', roles: ['admin', 'leader', 'content_manager'] },
+  { path: '/banners', label: '横幅管理', icon: 'image', roles: ['admin', 'leader', 'content_manager'] },
+  { path: '/crawler', label: '爬虫管理', icon: 'cloud-download', roles: ['admin', 'leader'] },
+  { path: '/data-audit/executions', label: '审核历史', icon: 'check-circle', roles: ['admin', 'leader'] },
+  { path: '/communities', label: '小区管理', icon: 'shop', roles: ['admin', 'leader'] },
   { path: '/settings', label: '系统设置', icon: 'setting', roles: ['admin'] },
 ]
 

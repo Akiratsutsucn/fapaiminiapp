@@ -191,6 +191,38 @@ async def update_user_role(
     return {"message": "角色更新成功", "role": role}
 
 
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_session),
+    admin: dict = Depends(check_write_permission()),
+):
+    """重置后台账号(admin/leader/content_manager)登录密码。仅 admin 可操作。"""
+    from ...core.security import pwd_context
+
+    # 仅最高管理员可重置他人密码
+    if admin.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅最高管理员可重置密码")
+
+    new_password = (body.get("password") or "").strip()
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码至少6位")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    u = result.scalar_one_or_none()
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 只能给后台角色重置(其余角色无后台登录,重置无意义)
+    if u.role not in ("admin", "leader", "content_manager"):
+        raise HTTPException(status_code=400, detail="该角色不登录管理后台,无需密码")
+
+    u.password_hash = pwd_context.hash(new_password)
+    await db.commit()
+    return {"message": "密码重置成功"}
+
+
 @router.get("/me/permissions")
 async def get_current_user_permissions(
     admin: dict = Depends(get_admin_user),

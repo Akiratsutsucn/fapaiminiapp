@@ -6,8 +6,8 @@
         <p>管理后台</p>
       </div>
       <t-form :data="form" @submit="onLogin">
-        <t-form-item label="用户名">
-          <t-input v-model="form.username" placeholder="请输入用户名" clearable />
+        <t-form-item label="账号">
+          <t-input v-model="form.username" placeholder="管理员用户名 或 手机号" clearable />
         </t-form-item>
         <t-form-item label="密码">
           <t-input v-model="form.password" type="password" placeholder="请输入密码" clearable />
