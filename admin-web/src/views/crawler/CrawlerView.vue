@@ -19,12 +19,13 @@
       </t-col>
       <t-col :span="6">
         <t-card title="手动操作">
-          <t-space direction="vertical">
+          <t-space v-if="!auth.isReadonly" direction="vertical">
             <t-button theme="primary" @click="onTriggerAll" :loading="triggerLoading">全量抓取（所有平台）</t-button>
             <t-button variant="outline" @click="onTriggerPlatform('阿里拍卖')">仅淘宝拍卖</t-button>
             <t-button variant="outline" @click="onTriggerPlatform('京东拍卖')">仅京东拍卖</t-button>
             <t-button variant="outline" @click="onTriggerPlatform('公拍网')">仅公拍网</t-button>
           </t-space>
+          <span v-else style="color:#999">只读角色,仅可查看爬虫状态</span>
         </t-card>
       </t-col>
       <t-col :span="12">
@@ -46,7 +47,7 @@
                   <div>2. 登录成功后，回到本页点击"提取Cookie"按钮</div>
                 </div>
 
-                <t-space>
+                <t-space v-if="!auth.isReadonly">
                   <t-button
                     size="small"
                     variant="outline"
@@ -67,16 +68,18 @@
                   </t-button>
                 </t-space>
 
-                <t-divider style="margin:8px 0" />
+                <t-divider style="margin:8px 0" v-if="!auth.isReadonly" />
 
-                <div style="font-size:12px;color:#999">或手动粘贴Cookie：</div>
+                <div v-if="!auth.isReadonly" style="font-size:12px;color:#999">或手动粘贴Cookie：</div>
                 <t-textarea
+                  v-if="!auth.isReadonly"
                   v-model="cookieInputs[platform.key]"
                   :placeholder="`手动粘贴${platform.name}的Cookie字符串`"
                   :autosize="{ minRows: 2, maxRows: 3 }"
                   style="font-size:12px"
                 />
                 <t-button
+                  v-if="!auth.isReadonly"
                   size="small"
                   variant="base"
                   @click="onUpdateCookie(platform.key)"
@@ -180,7 +183,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getCrawlerStatus, listCrawlerTasks, triggerCrawler, getCookiesStatus, updateCookie, getTaskDetails } from '@/api/crawler'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const triggerLoading = ref(false)
 const taskLoading = ref(false)
 const tasks = ref<any[]>([])

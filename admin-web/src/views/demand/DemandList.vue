@@ -14,7 +14,7 @@
           <t-option value="message" label="客服留言" />
         </t-select>
         <t-button theme="primary" @click="loadData">查询</t-button>
-        <t-button theme="primary" variant="outline" @click="onCreate">新增需求</t-button>
+        <t-button v-if="!auth.isReadonly" theme="primary" variant="outline" @click="onCreate">新增需求</t-button>
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #source="{ row }">
@@ -32,11 +32,12 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-button variant="text" size="small" @click="onEdit(row)">处理</t-button>
-            <t-button variant="text" size="small" theme="primary" @click="onRecommend(row)">推荐房源</t-button>
-            <t-popconfirm content="确定删除该需求？" @confirm="onDelete(row)">
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" @click="onEdit(row)">处理</t-button>
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" theme="primary" @click="onRecommend(row)">推荐房源</t-button>
+            <t-popconfirm v-if="!auth.isReadonly" content="确定删除该需求？" @confirm="onDelete(row)">
               <t-button variant="text" size="small" theme="danger">删除</t-button>
             </t-popconfirm>
+            <span v-if="auth.isReadonly" style="color:#999">只读</span>
           </t-space>
         </template>
       </t-table>
@@ -110,7 +111,9 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listDemands, createDemand, updateDemand, deleteDemand, recommendProperty, listAssignableUsers } from '@/api/demands'
 import { listProperties } from '@/api/properties'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const loading = ref(false)
 const list = ref<any[]>([])
 const filters = reactive({ phone: '', status: '', source: '' })

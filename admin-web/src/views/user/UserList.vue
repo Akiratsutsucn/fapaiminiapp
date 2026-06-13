@@ -13,13 +13,13 @@
           <t-option value="admin" label="最高管理员" />
         </t-select>
         <t-button theme="primary" @click="loadData">查询</t-button>
-        <t-button theme="primary" variant="outline" @click="onCreate">新增用户</t-button>
+        <t-button v-if="!auth.isReadonly" theme="primary" variant="outline" @click="onCreate">新增用户</t-button>
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #role="{ row }">
           <t-tag :theme="roleTheme(row.role)">{{ roleLabel(row.role) }}</t-tag>
           <t-button
-            v-if="row.role !== 'admin'"
+            v-if="row.role !== 'admin' && !auth.isReadonly"
             variant="text"
             size="small"
             style="margin-left: 8px"
@@ -38,14 +38,15 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-button variant="text" size="small" @click="onEdit(row)">编辑</t-button>
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" @click="onEdit(row)">编辑</t-button>
             <t-button
               v-if="auth.isAdmin && ['admin','leader','content_manager'].includes(row.role)"
               variant="text" size="small" theme="warning" @click="onResetPassword(row)"
             >重置密码</t-button>
-            <t-popconfirm content="确定删除该用户？" @confirm="onDelete(row)">
+            <t-popconfirm v-if="!auth.isReadonly" content="确定删除该用户？" @confirm="onDelete(row)">
               <t-button variant="text" size="small" theme="danger">删除</t-button>
             </t-popconfirm>
+            <span v-if="auth.isReadonly" style="color:#999">只读</span>
           </t-space>
         </template>
       </t-table>

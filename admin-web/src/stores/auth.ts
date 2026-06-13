@@ -16,6 +16,8 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed(() => user.value?.role || '')
   const isAdmin = computed(() => role.value === 'admin')
   const isAgent = computed(() => role.value === 'agent')
+  // 只读角色:领导(leader)可看全局但不能做任何修改/新增/删除操作
+  const isReadonly = computed(() => role.value === 'leader')
 
   function setAuth(t: string, u: AuthUser) {
     token.value = t
@@ -37,5 +39,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('admin_user')
   }
 
-  return { token, user, role, isAdmin, isAgent, setAuth, hasRole, logout }
+  return { token, user, role, isAdmin, isAgent, isReadonly, setAuth, hasRole, logout }
 })

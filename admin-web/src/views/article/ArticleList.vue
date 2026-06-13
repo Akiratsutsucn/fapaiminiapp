@@ -5,9 +5,9 @@
       <div class="search-bar">
         <t-input v-model="filters.keyword" placeholder="搜索标题" clearable style="width:200px" @change="onSearch" />
         <t-button theme="primary" @click="onSearch">查询</t-button>
-        <t-button variant="outline" @click="onAdd">添加文章</t-button>
-        <t-button theme="success" :loading="syncing" @click="onSyncFromMp">从公众号同步</t-button>
-        <t-button theme="primary" variant="outline" @click="onImportDialog">粘贴链接导入</t-button>
+        <t-button v-if="!auth.isReadonly" variant="outline" @click="onAdd">添加文章</t-button>
+        <t-button v-if="!auth.isReadonly" theme="success" :loading="syncing" @click="onSyncFromMp">从公众号同步</t-button>
+        <t-button v-if="!auth.isReadonly" theme="primary" variant="outline" @click="onImportDialog">粘贴链接导入</t-button>
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange">
         <template #cover_image="{ row }">
@@ -25,9 +25,10 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-button variant="text" size="small" @click="onEdit(row)">编辑</t-button>
-            <t-button v-if="row.mp_url" variant="text" size="small" theme="primary" :loading="refetchingId === row.id" @click="onRefetch(row)">抓正文</t-button>
-            <t-popconfirm content="确定删除？" @confirm="onDelete(row.id)"><t-button variant="text" size="small" theme="danger">删除</t-button></t-popconfirm>
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" @click="onEdit(row)">编辑</t-button>
+            <t-button v-if="!auth.isReadonly && row.mp_url" variant="text" size="small" theme="primary" :loading="refetchingId === row.id" @click="onRefetch(row)">抓正文</t-button>
+            <t-popconfirm v-if="!auth.isReadonly" content="确定删除？" @confirm="onDelete(row.id)"><t-button variant="text" size="small" theme="danger">删除</t-button></t-popconfirm>
+            <span v-if="auth.isReadonly" style="color:#999">只读</span>
           </t-space>
         </template>
       </t-table>
@@ -75,7 +76,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listArticles, createArticle, updateArticle, deleteArticle, syncArticlesFromMp, importArticleFromUrl, refetchArticleContent } from '@/api/articles'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const loading = ref(false)
 const syncing = ref(false)
 const refetchingId = ref(0)

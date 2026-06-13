@@ -47,7 +47,7 @@
           <t-option value="10000000-99999999999" label="1000万以上" />
         </t-select>
         <t-button theme="primary" @click="loadData">查询</t-button>
-        <t-button variant="outline" @click="router.push('/properties/edit')">手动添加</t-button>
+        <t-button v-if="!auth.isReadonly" variant="outline" @click="router.push('/properties/edit')">手动添加</t-button>
         <t-button variant="outline" @click="() => onExport('xlsx')">导出 Excel</t-button>
         <t-button variant="outline" @click="() => onExport('csv')">导出 CSV</t-button>
         <t-button variant="outline" @click="showColumnPicker = true">列设置</t-button>
@@ -62,10 +62,11 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-button variant="text" size="small" @click="router.push('/properties/edit/' + row.id)">编辑</t-button>
-            <t-popconfirm content="确定删除？" @confirm="onDelete(row.id)">
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" @click="router.push('/properties/edit/' + row.id)">编辑</t-button>
+            <t-popconfirm v-if="!auth.isReadonly" content="确定删除？" @confirm="onDelete(row.id)">
               <t-button variant="text" size="small" theme="danger">删除</t-button>
             </t-popconfirm>
+            <span v-if="auth.isReadonly" style="color:#999">只读</span>
           </t-space>
         </template>
       </t-table>
@@ -90,7 +91,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listProperties, deleteProperty, exportProperties } from '@/api/properties'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 const list = ref<any[]>([])

@@ -3,7 +3,8 @@
     <h2 class="page-title">横幅管理</h2>
     <t-card>
       <div class="search-bar">
-        <t-button theme="primary" @click="onAdd">添加横幅</t-button>
+        <t-button v-if="!auth.isReadonly" theme="primary" @click="onAdd">添加横幅</t-button>
+        <span v-else style="color:#999">只读角色,仅可查看</span>
       </div>
       <t-table :data="list" :columns="columns" :loading="loading" row-key="id">
         <template #image_url="{ row }">
@@ -17,8 +18,9 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-button variant="text" size="small" @click="onEdit(row)">编辑</t-button>
-            <t-popconfirm content="确定删除？" @confirm="onDelete(row.id)"><t-button variant="text" size="small" theme="danger">删除</t-button></t-popconfirm>
+            <t-button v-if="!auth.isReadonly" variant="text" size="small" @click="onEdit(row)">编辑</t-button>
+            <t-popconfirm v-if="!auth.isReadonly" content="确定删除？" @confirm="onDelete(row.id)"><t-button variant="text" size="small" theme="danger">删除</t-button></t-popconfirm>
+            <span v-if="auth.isReadonly" style="color:#999">只读</span>
           </t-space>
         </template>
       </t-table>
@@ -48,7 +50,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listBanners, createBanner, updateBanner, deleteBanner } from '@/api/banners'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const loading = ref(false)
 const list = ref<any[]>([])
 const columns = [
