@@ -65,7 +65,7 @@
             <t-option value="admin" label="最高管理员" />
           </t-select>
         </t-form-item>
-        <t-form-item label="城市">
+        <t-form-item label="城市" v-if="!['content_manager','leader','admin'].includes(editForm.role)">
           <t-select v-model="editForm.city_id">
             <t-option value="310000" label="上海" />
             <t-option value="330200" label="宁波" />
