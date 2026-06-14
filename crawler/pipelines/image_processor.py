@@ -21,6 +21,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 MAX_WIDTH = 1080
 THUMB_WIDTH = 300
 WEBP_QUALITY = 80
+# 单张图目标上限：≤180KB(留余量,避免卡200KB边缘)。压完超标则迭代降质/降分辨率。
+TARGET_MAX_BYTES = 180 * 1024
 REQUEST_TIMEOUT = 30
 MAX_CONCURRENT_DOWNLOADS = 3
 
@@ -110,10 +112,19 @@ class ImageProcessor:
         return None
 
     @staticmethod
-    def _resize_to_webp(image_bytes: bytes, max_width: int, quality: int = WEBP_QUALITY) -> bytes:
-        """Resize image to max_width (maintaining aspect ratio), convert to WebP.
+    def _resize_to_webp(
+        image_bytes: bytes,
+        max_width: int,
+        quality: int = WEBP_QUALITY,
+        max_bytes: int | None = TARGET_MAX_BYTES,
+    ) -> bytes:
+        """Resize to max_width (keep aspect ratio), convert to WebP, 保证 ≤ max_bytes。
 
-        Aspect ratio is preserved — width constrained to max_width, height scaled proportionally.
+        宽高比始终保留(不拉伸)。若首次编码后仍超过 max_bytes,则:
+          1) 逐级降低 WebP 质量(quality → 70/60/50/40)——优先保分辨率、保清晰;
+          2) 质量降到底仍超标,再逐级缩小分辨率(×0.85)后重新走质量阶梯;
+          3) 兜底:最低质量(35)+ 最小宽度(720)一定能压到目标以下。
+        max_bytes=None 时退回纯固定质量(用于缩略图,本就很小)。
         """
         img = Image.open(io.BytesIO(image_bytes))
 
@@ -127,13 +138,45 @@ class ImageProcessor:
         original_w, original_h = img.size
         if original_w > max_width:
             ratio = max_width / original_w
-            new_w = max_width
-            new_h = int(original_h * ratio)
-            img = img.resize((new_w, new_h), Image.LANCZOS)
+            img = img.resize((max_width, int(original_h * ratio)), Image.LANCZOS)
 
-        buf = io.BytesIO()
-        img.save(buf, format="WEBP", quality=quality)
-        return buf.getvalue()
+        def encode(im, q) -> bytes:
+            buf = io.BytesIO()
+            im.save(buf, format="WEBP", quality=q)
+            return buf.getvalue()
+
+        out = encode(img, quality)
+        if max_bytes is None or len(out) <= max_bytes:
+            return out
+
+        # 1) 先在当前分辨率下逐级降质
+        for q in (70, 60, 50, 40):
+            if q >= quality:
+                continue
+            out = encode(img, q)
+            if len(out) <= max_bytes:
+                return out
+
+        # 2) 仍超标 → 逐级缩小分辨率(每次 ×0.85),每个分辨率再走质量阶梯
+        cur = img
+        min_width = 720
+        while cur.size[0] > min_width:
+            new_w = max(min_width, int(cur.size[0] * 0.85))
+            new_h = int(cur.size[1] * new_w / cur.size[0])
+            cur = cur.resize((new_w, new_h), Image.LANCZOS)
+            for q in (60, 50, 40):
+                out = encode(cur, q)
+                if len(out) <= max_bytes:
+                    return out
+
+        # 3) 兜底:最小宽度 + 最低质量(几乎必达标)
+        if cur.size[0] > min_width:
+            ratio = min_width / cur.size[0]
+            cur = cur.resize((min_width, int(cur.size[1] * ratio)), Image.LANCZOS)
+        out = encode(cur, 35)
+        if len(out) > max_bytes:
+            logger.warning(f"图片压缩后仍 {len(out)//1024}KB > 目标 {max_bytes//1024}KB(已尽力)")
+        return out
 
     async def download_and_process(
         self, url: str, generate_thumb: bool = True, platform: str = ""
@@ -173,7 +216,7 @@ class ImageProcessor:
 
         thumb = None
         if generate_thumb:
-            thumb = await loop.run_in_executor(None, self._resize_to_webp, raw, THUMB_WIDTH, 75)
+            thumb = await loop.run_in_executor(None, self._resize_to_webp, raw, THUMB_WIDTH, 75, None)
 
         return full, thumb, junk_reason
 
