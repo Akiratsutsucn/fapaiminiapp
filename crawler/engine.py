@@ -350,6 +350,14 @@ class CrawlEngine:
                 f"{platform_stats['skipped']} skipped (dedup)"
             )
 
+            # 开抓前预切:阿里详情开始前,先主动切一个全新IP,保证用新鲜IP开场
+            # (不用昨天可能已被盯过的IP)。仅当有详情要抓时才切,避免空耗额度。
+            if to_fetch and hasattr(crawler, "_switch_ip_and_restart"):
+                try:
+                    await crawler._switch_ip_and_restart(reason="ali-pre-crawl")
+                except Exception as e:
+                    logger.warning(f"[{platform_name}] 开抓前预切IP异常(忽略,继续): {e}")
+
             # Fetch details concurrently with semaphore
             # API-driven crawlers (PaiMai) use concurrency=1 to avoid MTOP rate-limiting
             api_concurrency = 1 if (hasattr(crawler, 'fetch_detail_api') or platform_name == '公拍网') else settings.DETAIL_PAGE_CONCURRENCY

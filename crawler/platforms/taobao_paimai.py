@@ -217,6 +217,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._ssr_consecutive_fails = 0
         self._ssr_circuit_open = False
         self._SSR_FAIL_THRESHOLD = 12
+        # 计划性换IP(预防式,优于熔断后补救):每成功抓 N 条阿里详情就主动切一个新IP,
+        # 让阿里来不及把某IP盯到风控阈值。比熔断被动切更省时、更不易被风控。
+        self._ssr_success_since_switch = 0
+        self._PROACTIVE_SWITCH_EVERY = 150  # 每150条主动切一次(全量~1500条约切10次,留足20次/天额度)
 
     # ------------------------------------------------------------------
     # HTTP client
@@ -504,6 +508,33 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         "&itemId={item_id}"
     )
 
+    async def _switch_ip_and_restart(self, reason: str) -> bool:
+        """切换住宅IP并重启爬虫浏览器,让阿里SSR用上新IP。返回是否切换成功。
+
+        计划性切换和熔断兜底共用此逻辑。阿里详情 concurrency=1 串行,此处切换/重启安全。
+        切IP会重置住宅隧道使旧page连接失效,故切后必须 restart_with_new_proxy 重连,
+        否则后续SSR会报 browser closed 且仍连旧IP。
+        """
+        try:
+            from .. import ip_rotator
+            rot = await ip_rotator.request_ip_rotation_async(reason=reason)
+        except Exception as e:
+            logger.warning(f"[TaobaoPaiMai] 换IP调用异常({reason}): {e}")
+            return False
+        if not rot.get("rotated"):
+            logger.warning(f"[TaobaoPaiMai] 换IP未成功({reason}): {rot.get('message')}")
+            return False
+        # 切成功 → 等隧道稳定,丢弃失效旧page,重启浏览器走新IP
+        await asyncio.sleep(8)
+        self._page = None
+        try:
+            await browser_manager.restart_with_new_proxy()
+            logger.info(f"[TaobaoPaiMai] 换IP成功+浏览器已重启({reason}),SSR用新IP继续")
+        except Exception as re:
+            logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
+        self._ssr_success_since_switch = 0  # 重置计划性计数
+        return True
+
     @retry_on_failure(max_retries=2, backoff_factor=3.0, base_delay=3.0)
     async def fetch_detail_api(self, item_id: str) -> dict | None:
         """Fetch detail data: Playwright SSR first, then list API fallback.
@@ -516,9 +547,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             # Strategy 1: Try Playwright SSR page
             ssr_data = await self._extract_from_ssr(item_id)
             if ssr_data and ssr_data.get("_source") != "skeleton":
-                self._ssr_consecutive_fails = 0  # 成功 → 重置计数
+                self._ssr_consecutive_fails = 0  # 成功 → 重置连续失败计数
+                self._ssr_success_since_switch += 1
                 logger.info(f"[TaobaoPaiMai] SSR success for {item_id}")
                 await self._enrich_notice(item_id, ssr_data)
+                # 计划性换IP:成功抓够 N 条就主动切新IP(预防式),不等被风控熔断
+                if self._ssr_success_since_switch >= self._PROACTIVE_SWITCH_EVERY:
+                    await self._switch_ip_and_restart(
+                        reason=f"ali-proactive-{self._ssr_success_since_switch}")
                 return ssr_data
             # SSR 失败(骨架/无数据)→ 累计连续失败
             self._ssr_consecutive_fails += 1
@@ -526,29 +562,13 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 self._ssr_circuit_open = True
                 logger.warning(
                     f"[TaobaoPaiMai] SSR连续失败{self._ssr_consecutive_fails}次,"
-                    f"判定当前IP被风控,熔断SSR→后续直接走列表数据兜底"
-                    f"(建议手动切换住宅IP后重跑可恢复完整详情抓取)"
+                    f"判定当前IP被风控,熔断SSR→尝试自动换IP恢复"
                 )
-                # 联动换IP抽象层:auto 模式用浏览器自动点面板「切换」换住宅IP。
-                # 切换成功后必须重启爬虫浏览器(restart_with_new_proxy)——阿里SSR走共享
-                # 浏览器page+住宅代理桥,切IP会重置隧道使旧连接失效(否则报browser closed);
-                # 重启让SSR用新IP重连。阿里详情 concurrency=1 串行,此处重启安全。
-                try:
-                    from .. import ip_rotator
-                    rot = await ip_rotator.request_ip_rotation_async(reason="ali-ssr-circuit-open")
-                    if rot.get("rotated"):
-                        # 等隧道稳定后重启浏览器,丢弃失效的旧page
-                        await asyncio.sleep(8)
-                        self._page = None
-                        try:
-                            await browser_manager.restart_with_new_proxy()
-                            logger.info("[TaobaoPaiMai] 换IP成功+浏览器已重启,重置熔断,SSR用新IP重试")
-                        except Exception as re:
-                            logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
-                        self._ssr_circuit_open = False
-                        self._ssr_consecutive_fails = 0
-                except Exception as e:
-                    logger.warning(f"[TaobaoPaiMai] 自动换IP调用异常(降级人工): {e}")
+                # 熔断兜底:也走同一套切IP+重启逻辑;切成功则重置熔断继续用新IP抓
+                switched = await self._switch_ip_and_restart(reason="ali-ssr-circuit-open")
+                if switched:
+                    self._ssr_circuit_open = False
+                    self._ssr_consecutive_fails = 0
 
         # Strategy 2: Build from cached list API row
         row = self._row_cache.get(item_id)
