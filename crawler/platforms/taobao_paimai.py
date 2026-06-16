@@ -529,13 +529,22 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     f"判定当前IP被风控,熔断SSR→后续直接走列表数据兜底"
                     f"(建议手动切换住宅IP后重跑可恢复完整详情抓取)"
                 )
-                # 联动换IP抽象层:auto 模式会用浏览器自动点面板「切换」换住宅IP;
-                # 切换成功则重置熔断,让后续 SSR 用新IP重试恢复完整详情抓取。
+                # 联动换IP抽象层:auto 模式用浏览器自动点面板「切换」换住宅IP。
+                # 切换成功后必须重启爬虫浏览器(restart_with_new_proxy)——阿里SSR走共享
+                # 浏览器page+住宅代理桥,切IP会重置隧道使旧连接失效(否则报browser closed);
+                # 重启让SSR用新IP重连。阿里详情 concurrency=1 串行,此处重启安全。
                 try:
                     from .. import ip_rotator
                     rot = await ip_rotator.request_ip_rotation_async(reason="ali-ssr-circuit-open")
                     if rot.get("rotated"):
-                        logger.info(f"[TaobaoPaiMai] 自动换IP成功,重置熔断,SSR将用新IP重试")
+                        # 等隧道稳定后重启浏览器,丢弃失效的旧page
+                        await asyncio.sleep(8)
+                        self._page = None
+                        try:
+                            await browser_manager.restart_with_new_proxy()
+                            logger.info("[TaobaoPaiMai] 换IP成功+浏览器已重启,重置熔断,SSR用新IP重试")
+                        except Exception as re:
+                            logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
                         self._ssr_circuit_open = False
                         self._ssr_consecutive_fails = 0
                 except Exception as e:
