@@ -62,14 +62,23 @@ def _parse_remaining(dialog_text: str) -> int | None:
 
 
 async def switch_ip_async() -> dict:
-    """执行一次自动切换。返回 {ok, remaining, message}。"""
+    """执行一次自动切换。返回 {ok, remaining, message}。
+
+    关键:用**独立的 Playwright 实例 + 直连(不走任何代理)**访问云镜面板。
+    绝不能复用爬虫的住宅代理桥——那个IP此刻正被风控,用它登录面板会失败
+    (实测过:复用代理桥导致「登录后仍停留在登录页」)。云镜面板是公网正常
+    网站,服务器直连最稳,也不和正在跑的爬虫浏览器互相干扰。
+    """
     cfg = _cfg()
     if not all([cfg["login_url"], cfg["switch_url"], cfg["user"], cfg["passwd"]]):
         return {"ok": False, "remaining": None, "message": "IP面板配置不全(检查.env IP_PANEL_*)"}
 
-    from .browser import browser_manager
-    await browser_manager.start()
-    page = await browser_manager.new_page()
+    from playwright.async_api import async_playwright
+    pw = await async_playwright().start()
+    browser = await pw.chromium.launch(headless=True)  # 不传 proxy = 直连
+    ctx = await browser.new_context(locale="zh-CN")
+    page = await ctx.new_page()
+    page.set_default_timeout(NAV_TIMEOUT)
     try:
         await _login(page, cfg)
         await page.goto(cfg["switch_url"], wait_until="domcontentloaded", timeout=NAV_TIMEOUT)
@@ -103,10 +112,11 @@ async def switch_ip_async() -> dict:
         return {"ok": True, "remaining": (remaining - 1) if remaining else None,
                 "message": "已自动切换IP(全国随机)"}
     finally:
-        try:
-            await page.close()
-        except Exception:
-            pass
+        for closer in (ctx.close, browser.close, pw.stop):
+            try:
+                await closer()
+            except Exception:
+                pass
 
 
 async def _click_confirm(page) -> None:
