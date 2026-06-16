@@ -529,13 +529,17 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     f"判定当前IP被风控,熔断SSR→后续直接走列表数据兜底"
                     f"(建议手动切换住宅IP后重跑可恢复完整详情抓取)"
                 )
-                # 联动换IP抽象层:当前manual模式仅记录+提示人工换IP;
-                # 将来换服务商后自动从地址池切换,此处无需改动。
+                # 联动换IP抽象层:auto 模式会用浏览器自动点面板「切换」换住宅IP;
+                # 切换成功则重置熔断,让后续 SSR 用新IP重试恢复完整详情抓取。
                 try:
                     from .. import ip_rotator
-                    ip_rotator.request_ip_rotation(reason="ali-ssr-circuit-open")
-                except Exception:
-                    pass
+                    rot = await ip_rotator.request_ip_rotation_async(reason="ali-ssr-circuit-open")
+                    if rot.get("rotated"):
+                        logger.info(f"[TaobaoPaiMai] 自动换IP成功,重置熔断,SSR将用新IP重试")
+                        self._ssr_circuit_open = False
+                        self._ssr_consecutive_fails = 0
+                except Exception as e:
+                    logger.warning(f"[TaobaoPaiMai] 自动换IP调用异常(降级人工): {e}")
 
         # Strategy 2: Build from cached list API row
         row = self._row_cache.get(item_id)

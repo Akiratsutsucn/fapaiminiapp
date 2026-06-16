@@ -1,20 +1,15 @@
-"""换 IP 抽象层 —— 面向未来的统一接口。
+"""换 IP 抽象层 —— 把「需要换IP」和「具体怎么换」解耦。
 
-设计目的：把「需要换 IP」这个动作和「具体怎么换」解耦。
-上层(如 SSR 熔断)只调 request_ip_rotation()，不关心当前是手动还是自动换。
+上层(SSR 熔断)只调 request_ip_rotation_async(),不关心底层方式。
 
-当前阶段(固定住宅IP，只能手动换、每天≤20次)：
-    实现 = 记录一次「换IP请求」事件 + 返回 manual_required，让上层把
-    「IP被风控,需手动切换」写进任务状态,供运维早上看到后手动换IP重跑。
-    ❌ 不调用任何换IP API(此前 90daili 自动换IP接口已失效并禁用)。
+模式(环境变量 IP_ROTATION_MODE):
+  auto   = 调用 ip_panel 用浏览器自动化点云镜面板「切换」按钮换住宅IP
+           (服务商只给WEB后台、无API,每天≤20次,内置额度保护)。
+  manual = 仅记录+提示人工换IP(默认,作为 auto 失败时的兜底语义)。
 
-未来阶段(换服务商,API 地址池 ~1000 IP):
-    只需把 _ROTATION_MODE 改为 "auto" 并实现 _rotate_via_pool()——
-    从地址池 API 取下一个 IP 切换。上层熔断逻辑零改动。
-
-环境变量(未来启用自动换IP时):
-    IP_ROTATION_MODE = manual | auto   (默认 manual)
-    IP_POOL_API_URL  = 地址池提取API(auto模式用)
+环境变量:
+  IP_ROTATION_MODE = manual | auto
+  IP_PANEL_*       = 见 ip_panel.py(登录URL/切换URL/账号/密码)
 """
 from __future__ import annotations
 import os
@@ -68,18 +63,42 @@ def request_ip_rotation(reason: str = "") -> dict:
 
 
 def _rotate_via_pool(reason: str) -> bool:
-    """[未来实现] 从地址池API取下一个IP并切换。
-
-    换服务商后在此实现:调 IP_POOL_API_URL 取新IP → 更新本地代理出口。
-    目前未接入,返回 False。
-    """
-    api_url = os.getenv("IP_POOL_API_URL", "").strip()
-    if not api_url:
-        logger.warning("[ip_rotator] auto模式但未配置 IP_POOL_API_URL,无法换IP")
-        return False
-    # TODO(换服务商后): 调用地址池API取IP、切换 socks 桥上游出口。
-    logger.warning("[ip_rotator] _rotate_via_pool 尚未实现(待换服务商后接入地址池)")
+    """[已废弃占位] 旧的地址池API方案(服务商未批准)。保留以兼容旧引用。"""
     return False
+
+
+async def request_ip_rotation_async(reason: str = "") -> dict:
+    """异步版换IP(auto 模式实际执行浏览器自动切换)。
+
+    auto 模式:调用 ip_panel 浏览器自动化点「切换」按钮换住宅IP(每天≤20次,
+    内置额度保护)。manual 模式:仅记录+提示人工(同 request_ip_rotation)。
+    """
+    global _last_rotation_request_at, _rotation_request_count
+    _last_rotation_request_at = time.time()
+    _rotation_request_count += 1
+
+    if rotation_mode() != "auto":
+        logger.warning(f"[ip_rotator] 需换IP(reason={reason}),当前 manual 模式,提示人工。")
+        return {"mode": "manual", "rotated": False, "manual_required": True,
+                "message": "当前IP疑似被风控,需手动切换住宅IP后重跑(每天可换≤20次)"}
+
+    try:
+        from . import ip_panel
+        result = await ip_panel.switch_ip_async()
+        if result.get("ok"):
+            logger.info(f"[ip_rotator] 自动换IP成功(reason={reason}): {result.get('message')}")
+            return {"mode": "auto", "rotated": True, "manual_required": False,
+                    "message": result.get("message", "已自动切换IP"),
+                    "remaining": result.get("remaining")}
+        # 未切成(额度不足/按钮异常)→ 兜底提示人工
+        logger.warning(f"[ip_rotator] 自动换IP未成功: {result.get('message')}")
+        return {"mode": "auto", "rotated": False, "manual_required": True,
+                "message": result.get("message", "自动换IP失败,需人工介入"),
+                "remaining": result.get("remaining")}
+    except Exception as e:
+        logger.error(f"[ip_rotator] auto 换IP异常: {e}")
+        return {"mode": "auto", "rotated": False, "manual_required": True,
+                "message": f"自动换IP异常,需人工介入: {e}"}
 
 
 def stats() -> dict:
