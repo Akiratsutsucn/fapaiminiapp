@@ -359,8 +359,18 @@ class CrawlEngine:
                     logger.warning(f"[{platform_name}] 开抓前预切IP异常(忽略,继续): {e}")
 
             # Fetch details concurrently with semaphore
-            # API-driven crawlers (PaiMai) use concurrency=1 to avoid MTOP rate-limiting
-            api_concurrency = 1 if (hasattr(crawler, 'fetch_detail_api') or platform_name == '公拍网') else settings.DETAIL_PAGE_CONCURRENCY
+            # 京东 getProductBasicInfo 接口限流宽松→并发5;
+            # 阿里 SSR(区县拆分后~2200条)串行~6h超时,改并发3(MTOP较敏感,保守;
+            #   page 改为每条独立新建,切IP用锁串行化,并发安全);
+            # 公拍→串行1。
+            if platform_name == "京东拍卖":
+                api_concurrency = 5
+            elif platform_name == "阿里拍卖":
+                api_concurrency = 3
+            elif hasattr(crawler, 'fetch_detail_api') or platform_name == '公拍网':
+                api_concurrency = 1
+            else:
+                api_concurrency = settings.DETAIL_PAGE_CONCURRENCY
             semaphore = asyncio.Semaphore(api_concurrency)
 
             async def process_detail(item) -> tuple[str, int | None]:

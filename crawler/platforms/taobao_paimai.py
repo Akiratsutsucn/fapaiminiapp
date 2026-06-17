@@ -221,6 +221,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         # 让阿里来不及把某IP盯到风控阈值。比熔断被动切更省时、更不易被风控。
         self._ssr_success_since_switch = 0
         self._PROACTIVE_SWITCH_EVERY = 150  # 每150条主动切一次(全量~1500条约切10次,留足20次/天额度)
+        # SSR 并发(区县拆分后阿里全量~2200条,串行~6h超时;并发3约2h跑完)。
+        # MTOP 较敏感,故并发保守=3。切IP/熔断/重启浏览器是全局动作,用锁串行化,
+        # 避免并发下多个任务同时切IP(浪费额度+互相打断浏览器)。
+        self._switch_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # HTTP client
@@ -538,28 +542,35 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     async def _switch_ip_and_restart(self, reason: str) -> bool:
         """切换住宅IP并重启爬虫浏览器,让阿里SSR用上新IP。返回是否切换成功。
 
-        计划性切换和熔断兜底共用此逻辑。阿里详情 concurrency=1 串行,此处切换/重启安全。
-        切IP会重置住宅隧道使旧page连接失效,故切后必须 restart_with_new_proxy 重连,
-        否则后续SSR会报 browser closed 且仍连旧IP。
+        计划性切换和熔断兜底共用此逻辑。并发(SSR并发3)下用 _switch_lock 串行化:
+        同一时刻只允许一个切换;若进锁时计数已被别的任务清零(说明刚切过),则跳过,
+        避免并发触发多次切IP(浪费额度+互相打断浏览器)。切IP会重置住宅隧道使所有
+        page 连接失效,故切后 restart_with_new_proxy 重启浏览器;调用方各自持有的 page
+        会失效,_extract_from_ssr 每次新建 page 故自动用到新IP。
         """
-        try:
-            from .. import ip_rotator
-            rot = await ip_rotator.request_ip_rotation_async(reason=reason)
-        except Exception as e:
-            logger.warning(f"[TaobaoPaiMai] 换IP调用异常({reason}): {e}")
-            return False
-        if not rot.get("rotated"):
-            logger.warning(f"[TaobaoPaiMai] 换IP未成功({reason}): {rot.get('message')}")
-            return False
-        # 切成功 → 等隧道稳定,丢弃失效旧page,重启浏览器走新IP
-        await asyncio.sleep(8)
-        self._page = None
-        try:
-            await browser_manager.restart_with_new_proxy()
-            logger.info(f"[TaobaoPaiMai] 换IP成功+浏览器已重启({reason}),SSR用新IP继续")
-        except Exception as re:
-            logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
-        self._ssr_success_since_switch = 0  # 重置计划性计数
+        # 计划性切换:进锁前先看是否已被并发的其他任务刚切过(计数清零)→ 跳过
+        is_proactive = reason.startswith("ali-proactive")
+        async with self._switch_lock:
+            if is_proactive and self._ssr_success_since_switch < self._PROACTIVE_SWITCH_EVERY:
+                return True  # 别的并发任务刚切过,无需重复
+            try:
+                from .. import ip_rotator
+                rot = await ip_rotator.request_ip_rotation_async(reason=reason)
+            except Exception as e:
+                logger.warning(f"[TaobaoPaiMai] 换IP调用异常({reason}): {e}")
+                return False
+            if not rot.get("rotated"):
+                logger.warning(f"[TaobaoPaiMai] 换IP未成功({reason}): {rot.get('message')}")
+                return False
+            # 切成功 → 等隧道稳定,重启浏览器走新IP
+            await asyncio.sleep(8)
+            self._page = None
+            try:
+                await browser_manager.restart_with_new_proxy()
+                logger.info(f"[TaobaoPaiMai] 换IP成功+浏览器已重启({reason}),SSR用新IP继续")
+            except Exception as re:
+                logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
+            self._ssr_success_since_switch = 0  # 重置计划性计数
         return True
 
     @retry_on_failure(max_retries=2, backoff_factor=3.0, base_delay=3.0)
@@ -681,48 +692,70 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     # SSR page extraction
     # ------------------------------------------------------------------
 
+    async def _add_taobao_cookies(self, page) -> None:
+        """给 page 注入 TAOBAO_COOKIE(每个新 page 都要,SSR 登录态依赖)。"""
+        cookie_str = settings.TAOBAO_COOKIE.strip()
+        if not cookie_str:
+            return
+        cookies = []
+        for pair in cookie_str.split(";"):
+            pair = pair.strip()
+            if "=" in pair:
+                name, value = pair.split("=", 1)
+                cookies.append({
+                    "name": name.strip(), "value": value.strip(),
+                    "domain": ".taobao.com", "path": "/",
+                })
+        if cookies:
+            try:
+                await page.context.add_cookies(cookies)
+            except Exception:
+                pass
+
     async def _extract_from_ssr(self, item_id: str) -> dict | None:
         """Load SSR detail page in Playwright and extract rendered data.
 
         Returns a dict mimicking the MTOP detail API response, or None.
         Sets _source='skeleton' if only the placeholder rendered.
-        """
-        page = await self._get_page()
-        url = self.DETAIL_SSR_URL.format(item_id=item_id)
 
-        # Add cookies to page context
-        cookie_str = settings.TAOBAO_COOKIE.strip()
-        if cookie_str:
-            cookies = []
-            for pair in cookie_str.split(";"):
-                pair = pair.strip()
-                if "=" in pair:
-                    name, value = pair.split("=", 1)
-                    cookies.append({
-                        "name": name.strip(), "value": value.strip(),
-                        "domain": ".taobao.com", "path": "/",
-                    })
-            if cookies:
-                try:
-                    await page.context.add_cookies(cookies)
-                except Exception:
-                    pass
+        并发安全:每次调用新建独立 page(不再共享 self._page),用完即关。这样
+        SSR 并发3 时各任务互不干扰;切IP重启浏览器后,新调用自然在新 browser 上建 page。
+        """
+        try:
+            page = await browser_manager.new_page()
+        except Exception as e:
+            logger.warning(f"[TaobaoPaiMai] 新建SSR page失败 {item_id}: {e}")
+            return None
+        try:
+            return await self._do_ssr_extract(page, item_id)
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
+
+    async def _do_ssr_extract(self, page, item_id: str) -> dict | None:
+        url = self.DETAIL_SSR_URL.format(item_id=item_id)
+        await self._add_taobao_cookies(page)
 
         logger.debug(f"[TaobaoPaiMai] SSR load: item={item_id}")
 
         # initData 由页面 JS 异步注入 HTML（实测最快 1.5s 就绪），首次单次检测易误判骨架；
         # 故每轮都「轮询」检测 initData，给足注入时间。
-        # 注意：住宅IP为固定出口、不支持自动换IP，持续骨架时重试同一IP结果相同，
-        # 故仅保留 1 次额外重试（应对 initData 注入时机抖动），不再触发换IP/sleep。
         # 仍骨架则尽快返回 skeleton 标记，让调用方走列表数据兜底（列表已含多数字段）。
         SSR_MAX_ATTEMPTS = 2
         for attempt in range(SSR_MAX_ATTEMPTS):
             if attempt > 0:
-                # 持续骨架 → 重建 page 重试一次（不换IP：固定住宅IP无法换，换了也无意义）。
+                # 持续骨架 → 换一个新 page 重试一次(新建连接可能命中更优出口)。
                 try:
-                    page = await self._renew_page()
+                    await page.close()
                 except Exception:
-                    page = await self._get_page()
+                    pass
+                try:
+                    page = await browser_manager.new_page()
+                    await self._add_taobao_cookies(page)
+                except Exception:
+                    return {"_source": "skeleton"}
             try:
                 # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
@@ -1103,38 +1136,31 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
     @retry_on_failure(max_retries=2, backoff_factor=2.0)
     async def fetch_detail(self, detail_url: str) -> str:
-        """Navigate to a PaiMai SSR detail page and return rendered HTML."""
-        page = await self._get_page()
+        """Navigate to a PaiMai SSR detail page and return rendered HTML.
 
-        if detail_url.startswith("//"):
-            detail_url = "https:" + detail_url
-
-        logger.debug(f"[TaobaoPaiMai] Fetching detail page: {detail_url[:120]}")
-
-        cookie_str = settings.TAOBAO_COOKIE.strip()
-        if cookie_str:
-            cookies = []
-            for pair in cookie_str.split(";"):
-                pair = pair.strip()
-                if "=" in pair:
-                    name, value = pair.split("=", 1)
-                    cookies.append({
-                        "name": name.strip(), "value": value.strip(),
-                        "domain": ".taobao.com", "path": "/",
-                    })
-            if cookies:
-                await page.context.add_cookies(cookies)
-
+        并发安全:独立 page,用完即关(API兜底路径,并发3下不与他人共享 page)。
+        """
+        page = await browser_manager.new_page()
         try:
-            await page.goto(detail_url, wait_until="domcontentloaded", timeout=settings.DETAIL_PAGE_TIMEOUT_MS)
-        except PlaywrightTimeout:
-            logger.warning(f"[TaobaoPaiMai] Detail page slow: {detail_url[:120]}")
-            await page.goto(detail_url, wait_until="networkidle", timeout=settings.DETAIL_PAGE_TIMEOUT_MS)
+            await self._add_taobao_cookies(page)
+            if detail_url.startswith("//"):
+                detail_url = "https:" + detail_url
+            logger.debug(f"[TaobaoPaiMai] Fetching detail page: {detail_url[:120]}")
+            try:
+                await page.goto(detail_url, wait_until="domcontentloaded", timeout=settings.DETAIL_PAGE_TIMEOUT_MS)
+            except PlaywrightTimeout:
+                logger.warning(f"[TaobaoPaiMai] Detail page slow: {detail_url[:120]}")
+                await page.goto(detail_url, wait_until="networkidle", timeout=settings.DETAIL_PAGE_TIMEOUT_MS)
 
-        await asyncio.sleep(2)
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await asyncio.sleep(0.5)
-        await page.evaluate("window.scrollTo(0, 0)")
-        await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await asyncio.sleep(0.5)
+            await page.evaluate("window.scrollTo(0, 0)")
+            await asyncio.sleep(0.5)
 
-        return await page.content()
+            return await page.content()
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
