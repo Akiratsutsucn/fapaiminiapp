@@ -324,35 +324,66 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     async def collect_list_items(
         self, source_url: str | None = None, city: str = "上海", max_pages: int = 50
     ) -> list[ListItem]:
-        """Collect auction items via MTOP list API with pagination."""
-        client = await self._get_http()
-        items: list[ListItem] = []
+        """Collect auction items via MTOP list API with pagination.
 
+        突破「每个 keyword 最多返回~500条」的接口上限:除按城市整体搜一次外,再按
+        该城市各区县分别搜(keyword='城市 区县'),结果按 source_url 去重合并。实测城市
+        整体搜顶格500被截断,而逐区搜每区都远不到500,合并后可覆盖全量(如上海实际549+、
+        杭州641+)。区县清单复用 engine.VALID_DISTRICTS。
+        """
+        client = await self._get_http()
+
+        # 构造关键词列表:城市整体 + 各区县
+        keywords = [city or ""]
+        try:
+            from ..engine import VALID_DISTRICTS, CITY_ID_MAP
+            cid = CITY_ID_MAP.get(city)
+            for d in sorted(VALID_DISTRICTS.get(cid, [])):
+                keywords.append(f"{city} {d}")
+        except Exception as e:
+            logger.warning(f"[TaobaoPaiMai] 加载区县清单失败,仅按城市整体搜: {e}")
+
+        merged: dict[str, ListItem] = {}  # source_url → item,天然去重
+        for kw in keywords:
+            try:
+                kw_items = await self._collect_by_keyword(client, kw, max_pages)
+            except Exception as e:
+                logger.warning(f"[TaobaoPaiMai] keyword='{kw}' 抓取失败,跳过: {e}")
+                continue
+            new_in_kw = 0
+            for it in kw_items:
+                key = it.source_url or ""
+                if key and key not in merged:
+                    merged[key] = it
+                    new_in_kw += 1
+            logger.info(f"[TaobaoPaiMai] keyword='{kw}': {len(kw_items)}条 (新增{new_in_kw}, 累计{len(merged)})")
+            await asyncio.sleep(1.0)
+
+        items = list(merged.values())
+        logger.info(f"[TaobaoPaiMai] {city} 整体+逐区去重合并完成: 共 {len(items)} 条 "
+                    f"(用了 {len(keywords)} 个keyword)")
+        return items
+
+    async def _collect_by_keyword(self, client, keyword: str, max_pages: int = 50) -> list[ListItem]:
+        """单个 keyword 的分页抓取(原 collect_list_items 的核心循环)。"""
+        items: list[ListItem] = []
         sid = str(int(time.time() * 1000))
-        # 城市筛选：auctionwalle 搜索仅 keyword 生效（appendMap 省市参数无效）。
-        # 实测默认列表（keyword 空）只返回约 212 条「诉讼资产」精选，远少于实际在拍量；
-        # 用城市名作 keyword 可拉到 500+ 条全量（上海/杭州/宁波同理），故所有城市都带 keyword。
-        city_keyword = city or ""
-        data_payload = _build_scene_config("searchlist-items", ["6"], sid, keyword=city_keyword)
+        data_payload = _build_scene_config("searchlist-items", ["6"], sid, keyword=keyword)
 
         page = 1
         while page <= max_pages:
             url = _build_list_url(self._token, data_payload, page)
-            logger.debug(f"[TaobaoPaiMai] List page {page}")
-
             resp = await client.get(url)
-            # 每次响应都尝试刷新 token（MTOP 行为）
             self._refresh_token_from_response(resp)
 
             if resp.status_code != 200 or not resp.text:
-                logger.error(f"[TaobaoPaiMai] Page {page}: HTTP {resp.status_code}")
+                logger.error(f"[TaobaoPaiMai] kw='{keyword}' Page {page}: HTTP {resp.status_code}")
                 break
 
             page_items, has_next = self._parse_list_response(resp.text)
 
-            # 如果是 token 过期错误 + 已刷新到新 token + 这是第一页，自动重试一次
+            # token 过期 + 已刷新 + 第一页 → 自动重试一次
             if not page_items and page == 1 and "FAIL_SYS_TOKEN" in resp.text.upper():
-                logger.info(f"[TaobaoPaiMai] Token was expired, retrying page 1 with refreshed token...")
                 url = _build_list_url(self._token, data_payload, page)
                 resp = await client.get(url)
                 self._refresh_token_from_response(resp)
@@ -360,19 +391,15 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     page_items, has_next = self._parse_list_response(resp.text)
 
             if not page_items:
-                logger.info(f"[TaobaoPaiMai] No items on page {page}, stopping")
                 break
 
             items.extend(page_items)
-            logger.info(f"[TaobaoPaiMai] Page {page}: {len(page_items)} items (total: {len(items)})")
-
             if not has_next:
                 break
 
             page += 1
             await asyncio.sleep(1.5)
 
-        logger.info(f"[TaobaoPaiMai] Collection done: {len(items)} items from {page} pages")
         return items
 
     def _parse_list_response(self, body: str) -> tuple[list[ListItem], bool]:
