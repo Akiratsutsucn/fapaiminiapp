@@ -91,6 +91,37 @@ VALID_DISTRICTS = {
 _ALL_VALID_DISTRICTS = set().union(*VALID_DISTRICTS.values()) | {"上海", "宁波", "杭州"}
 
 
+def _build_auction_item_from_list(item, platform_name: str, city_id: int):
+    """仅用列表数据构造 AuctionItem(不抓详情页)。
+
+    用于「列表全量入库 + SSR限量渐补」:对超出SSR限额的房源,直接用列表已有字段
+    (标题/地址/区/状态/面积/起拍价)快速入库,不开浏览器、不占内存、几乎瞬时。
+    缺失的深度字段(评估价等)留待后续轮次的SSR补抓。
+    """
+    from .models.item import AuctionItem
+    auction_item = AuctionItem(source_url=item.source_url, auction_platform=platform_name)
+    auction_item.title = item.title or ""
+    auction_item.district = item.district or ""
+    auction_item.address = item.address or ""
+    auction_item.auction_status = item.auction_status or ""
+    auction_item.city_id = city_id
+    area_text = getattr(item, "area_text", "")
+    if area_text:
+        import re as _re_area
+        m = _re_area.search(r"[\d.]+", str(area_text))
+        if m:
+            try:
+                auction_item.area = float(m.group())
+            except ValueError:
+                pass
+    sp_text = getattr(item, "starting_price_text", "")
+    if sp_text:
+        from .cleaners.price import parse_price_to_yuan
+        auction_item.starting_price = parse_price_to_yuan(sp_text)
+    return auction_item
+
+
+
 class CrawlRunResult:
     """Summary of a crawl run."""
 
@@ -374,11 +405,14 @@ class CrawlEngine:
                 api_concurrency = settings.DETAIL_PAGE_CONCURRENCY
             semaphore = asyncio.Semaphore(api_concurrency)
 
-            async def process_detail(item) -> tuple[str, int | None]:
+            async def process_detail(item, list_only: bool = False) -> tuple[str, int | None]:
                 """Fetch, parse, process images, and save a single detail page.
 
                 Each task uses its own DB session to avoid concurrent-access errors
                 with aiomysql / SQLAlchemy async sessions.
+
+                list_only=True:不抓详情页,仅用列表数据快速入库(SSR限额外的房源走此路径,
+                内存安全、瞬时;深度字段留待后续轮次SSR补)。
                 """
                 # 风控冷却检查：该 host 在冷却期内直接跳过
                 try:
@@ -393,8 +427,11 @@ class CrawlEngine:
                 async with semaphore:
                     task_db = await get_session()
                     try:
+                        # ===== list_only:跳过详情抓取,直接用列表数据构造 =====
+                        if list_only:
+                            auction_item = _build_auction_item_from_list(item, platform_name, city_id)
                         # API-driven crawler (PaiMai) vs HTML crawler (JD, GPai)
-                        if hasattr(crawler, 'fetch_detail_api'):
+                        elif hasattr(crawler, 'fetch_detail_api'):
                             # MTOP API has aggressive rate-limiting — space out calls
                             await random_sleep(2.0, 4.0)
                             _api_ok = False
@@ -784,19 +821,40 @@ class CrawlEngine:
                     except Exception:
                         pass
 
-            async def process_detail_tracked(item):
+            async def process_detail_tracked(item, list_only: bool = False):
                 try:
-                    return await process_detail(item)
+                    return await process_detail(item, list_only=list_only)
                 finally:
                     await _tick()
 
-            tasks = [process_detail_tracked(item) for item in to_fetch]
+            # 阿里:列表全量入库 + SSR限量渐补。超出SSR限额的房源走 list_only 快速入库
+            # (起拍价/面积/地址等列表字段已全,不开浏览器、不占内存、不超时);
+            # 深度字段(评估价)留待后续轮次SSR渐补。打乱顺序使每轮SSR覆盖不同房源,多天累积补全。
+            ssr_limit = int(os.getenv("ALI_SSR_DETAIL_LIMIT", "400"))
+            if platform_name == "阿里拍卖" and len(to_fetch) > ssr_limit:
+                import random as _random
+                shuffled = list(to_fetch)
+                _random.shuffle(shuffled)
+                ssr_items = shuffled[:ssr_limit]
+                list_only_items = shuffled[ssr_limit:]
+                logger.info(
+                    f"[阿里拍卖] 列表全量{len(to_fetch)}条入库;SSR限额{ssr_limit}条补详情,"
+                    f"其余{len(list_only_items)}条仅列表入库(渐补)"
+                )
+                ordered_items = ssr_items + list_only_items
+                tasks = (
+                    [process_detail_tracked(it) for it in ssr_items]
+                    + [process_detail_tracked(it, list_only=True) for it in list_only_items]
+                )
+            else:
+                ordered_items = list(to_fetch)
+                tasks = [process_detail_tracked(item) for item in to_fetch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # 统计结果并按城市归类
             for idx, result in enumerate(results):
-                # 获取该item对应的城市
-                item_city = to_fetch[idx].city if idx < len(to_fetch) and hasattr(to_fetch[idx], 'city') and to_fetch[idx].city else None
+                # 获取该item对应的城市(ordered_items 与 tasks/results 顺序一致)
+                item_city = ordered_items[idx].city if idx < len(ordered_items) and hasattr(ordered_items[idx], 'city') and ordered_items[idx].city else None
 
                 if isinstance(result, Exception):
                     platform_stats["failed"] += 1
