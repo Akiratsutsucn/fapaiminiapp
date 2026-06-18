@@ -69,6 +69,19 @@ class PlaywrightBrowserManager:
         launch_kwargs = {
             "headless": settings.PLAYWRIGHT_HEADLESS,
             "slow_mo": settings.PLAYWRIGHT_SLOW_MO_MS,
+            # 省内存启动参数:这台服务器内存有限,SSR 并发开多个 page 时易 OOM。
+            # 这些参数大幅降低 Chromium 每实例/每页的内存占用。
+            "args": [
+                "--disable-dev-shm-usage",   # 不用 /dev/shm(常太小),用 /tmp,避免崩溃
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-extensions",
+                "--disable-background-networking",
+                "--disable-background-timer-throttling",
+                "--disable-renderer-backgrounding",
+                "--disable-features=site-per-process,TranslateUI",  # 关闭每frame独立进程,省内存
+                "--js-flags=--max-old-space-size=256",  # 限制单页JS堆
+            ],
         }
 
         proxy = self._pick_proxy()

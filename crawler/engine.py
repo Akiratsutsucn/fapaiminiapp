@@ -7,6 +7,7 @@ Flow:
   4. Log summary
 """
 import asyncio
+import os
 import time
 from datetime import datetime
 
@@ -359,14 +360,14 @@ class CrawlEngine:
                     logger.warning(f"[{platform_name}] 开抓前预切IP异常(忽略,继续): {e}")
 
             # Fetch details concurrently with semaphore
-            # 京东 getProductBasicInfo 接口限流宽松→并发5;
-            # 阿里 SSR(区县拆分后~2200条)串行~6h超时,改并发3(MTOP较敏感,保守;
-            #   page 改为每条独立新建,切IP用锁串行化,并发安全);
+            # 京东 getProductBasicInfo 接口限流宽松→并发5(httpx轻量,不占浏览器内存);
+            # 阿里 SSR 走 Chromium 多 page,内存重→并发2(并发3曾把小内存服务器OOM拖垮);
+            #   可用环境变量 ALI_SSR_CONCURRENCY 调整。
             # 公拍→串行1。
             if platform_name == "京东拍卖":
                 api_concurrency = 5
             elif platform_name == "阿里拍卖":
-                api_concurrency = 3
+                api_concurrency = int(os.getenv("ALI_SSR_CONCURRENCY", "2"))
             elif hasattr(crawler, 'fetch_detail_api') or platform_name == '公拍网':
                 api_concurrency = 1
             else:
