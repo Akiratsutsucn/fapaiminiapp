@@ -871,7 +871,6 @@ class CrawlEngine:
             # 周边配套（高德 POI 预处理）：给新增 / 缓存过期的房源补 amenities_cache
             try:
                 from datetime import datetime, timedelta
-                import os
                 amap_key = os.getenv("AMAP_API_KEY", "")
                 if amap_key:
                     from sqlalchemy import select as sql_select, or_
