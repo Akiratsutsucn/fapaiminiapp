@@ -540,15 +540,18 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
     )
 
     async def _switch_ip_and_restart(self, reason: str) -> bool:
-        """切换住宅IP并重启爬虫浏览器,让阿里SSR用上新IP。返回是否切换成功。
+        """切换住宅IP(不重启浏览器)。返回是否切换成功。
 
-        计划性切换和熔断兜底共用此逻辑。并发(SSR并发3)下用 _switch_lock 串行化:
-        同一时刻只允许一个切换;若进锁时计数已被别的任务清零(说明刚切过),则跳过,
-        避免并发触发多次切IP(浪费额度+互相打断浏览器)。切IP会重置住宅隧道使所有
-        page 连接失效,故切后 restart_with_new_proxy 重启浏览器;调用方各自持有的 page
-        会失效,_extract_from_ssr 每次新建 page 故自动用到新IP。
+        关键:浏览器走稳定的本地 socks 桥(127.0.0.1:11080),切IP只换桥的上游出口、
+        桥地址不变。SSR 每条都新建独立 page,切IP后新建的 page 自动经桥走新出口IP——
+        因此**无需重启浏览器**。
+        (历史教训:之前切后调 restart_with_new_proxy 重启浏览器,在 SSR 并发3 下与其他
+         正在用浏览器的并发任务冲突→stop browser 把别人的 page 拔掉→死锁卡死1.5h被杀。
+         去掉重启即根除死锁;切IP瞬间个别在途 page 可能失败,降级走列表数据兜底,可接受。)
+
+        并发下用 _switch_lock 串行化:同一时刻只允许一个切换;计划性切换进锁后若发现
+        计数已被别的任务清零(刚切过),则跳过,避免重复切IP浪费额度。
         """
-        # 计划性切换:进锁前先看是否已被并发的其他任务刚切过(计数清零)→ 跳过
         is_proactive = reason.startswith("ali-proactive")
         async with self._switch_lock:
             if is_proactive and self._ssr_success_since_switch < self._PROACTIVE_SWITCH_EVERY:
@@ -562,15 +565,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             if not rot.get("rotated"):
                 logger.warning(f"[TaobaoPaiMai] 换IP未成功({reason}): {rot.get('message')}")
                 return False
-            # 切成功 → 等隧道稳定,重启浏览器走新IP
+            # 切成功 → 仅等隧道稳定,不重启浏览器(新 page 经本地桥自动走新IP)
             await asyncio.sleep(8)
-            self._page = None
-            try:
-                await browser_manager.restart_with_new_proxy()
-                logger.info(f"[TaobaoPaiMai] 换IP成功+浏览器已重启({reason}),SSR用新IP继续")
-            except Exception as re:
-                logger.warning(f"[TaobaoPaiMai] 换IP后重启浏览器失败: {re}")
             self._ssr_success_since_switch = 0  # 重置计划性计数
+            logger.info(f"[TaobaoPaiMai] 换IP成功({reason}),后续新page自动走新IP")
         return True
 
     @retry_on_failure(max_retries=2, backoff_factor=3.0, base_delay=3.0)
