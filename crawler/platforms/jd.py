@@ -126,21 +126,28 @@ class JDAuctionCrawler(AbstractBrokerCrawler):
 
         page.on("response", lambda r: asyncio.create_task(on_resp(r)))
 
-        # 首屏加载（带重试）：京东列表接口偶发空响应（反爬限流），重载+加长等待重试。
-        async def _load_until_data(max_attempts: int = 3) -> bool:
+        # 首屏加载（带重试）：京东列表接口偶发空响应（反爬限流）或 socks 隧道瞬断
+        # (ERR_SOCKS_CONNECTION_FAILED，常因阿里那边切IP重置隧道)，重载+加长等待重试。
+        async def _load_until_data(max_attempts: int = 4) -> bool:
             for attempt in range(max_attempts):
                 try:
                     await page.goto(url, wait_until="domcontentloaded",
                                     timeout=settings.LIST_PAGE_TIMEOUT_MS)
                 except PlaywrightTimeout:
                     logger.warning(f"[JD] 列表页加载超时(第{attempt+1}次): {url}")
+                except Exception as e:
+                    # socks 连接失败/隧道瞬断等：等桥恢复后重试,不放弃整个城市
+                    logger.warning(f"[JD] 列表页加载异常(第{attempt+1}次,疑似socks/隧道瞬断): {type(e).__name__}: {str(e)[:80]}")
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(10)  # 等 socks 桥/隧道恢复
+                        continue
                 # 等接口返回；逐步加长等待
                 for _ in range(6 + attempt * 4):
                     await asyncio.sleep(1.5)
                     if captured:
                         return True
                 if attempt < max_attempts - 1:
-                    # 限流恢复需要时间，重试前冷却递增（15s, 30s）
+                    # 限流恢复需要时间，重试前冷却递增（15s, 30s, 45s）
                     cool = 15 + attempt * 15
                     logger.info(f"[JD] {city} 首屏无数据，冷却 {cool}s 后重载重试({attempt+2}/{max_attempts})")
                     await asyncio.sleep(cool)
