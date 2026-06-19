@@ -14,7 +14,10 @@ from ...schemas import PaginatedResponse, AdminPropertyCreate, PropertyDetail
 
 router = APIRouter()
 
-ALLOWED_STATUS_SORT = ("starting_price", "appraisal_price", "area", "created_at")
+ALLOWED_STATUS_SORT = (
+    "starting_price", "appraisal_price", "area", "created_at",
+    "build_year", "auction_start_time",
+)
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -29,6 +32,8 @@ async def list_properties_admin(
     area_max: float | None = Query(None),
     keyword: str | None = Query(None),
     property_type: str | None = Query(None),
+    auction_platform: str | None = Query(None),
+    has_elevator: str | None = Query(None),
     auction_status: str | None = Query(None),
     auction_round: str | None = Query(None),
     sort_by: str | None = Query(None),
@@ -54,6 +59,11 @@ async def list_properties_admin(
         conditions.append(Property.title.contains(keyword))
     if property_type:
         conditions.append(Property.property_type == property_type)
+    if auction_platform:
+        conditions.append(Property.auction_platform == auction_platform)
+    if has_elevator is not None and has_elevator != "":
+        # 前端传 "1"/"0" → 有/无电梯
+        conditions.append(Property.has_elevator == (has_elevator in ("1", "true", "有")))
     if auction_status:
         # 按实时计算状态筛选，与小程序端口径一致
         conditions.append(effective_status_sql() == auction_status)

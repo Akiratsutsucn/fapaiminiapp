@@ -26,6 +26,15 @@
           <t-option value="商业" label="商业" />
           <t-option value="工业" label="工业" />
         </t-select>
+        <t-select v-model="filters.auction_platform" placeholder="平台" clearable style="width:120px" @change="onSearch">
+          <t-option value="阿里拍卖" label="阿里" />
+          <t-option value="京东拍卖" label="京东" />
+          <t-option value="公拍网" label="公拍" />
+        </t-select>
+        <t-select v-model="filters.has_elevator" placeholder="电梯" clearable style="width:100px" @change="onSearch">
+          <t-option value="1" label="有电梯" />
+          <t-option value="0" label="无电梯" />
+        </t-select>
         <t-select v-model="filters.auction_round" placeholder="拍卖轮次" clearable style="width:120px" @change="onSearch">
           <t-option value="一拍" label="一拍" />
           <t-option value="二拍" label="二拍" />
@@ -51,8 +60,11 @@
         <t-button variant="outline" @click="() => onExport('xlsx')">导出 Excel</t-button>
         <t-button variant="outline" @click="() => onExport('csv')">导出 CSV</t-button>
         <t-button variant="outline" @click="showColumnPicker = true">列设置</t-button>
+        <t-button variant="outline" :theme="sortState.sort_by === 'created_at' ? 'primary' : 'default'" @click="onSortByCreatedAt">
+          入库时间{{ sortState.sort_by === 'created_at' ? (sortState.sort_order === 'desc' ? ' ↓' : ' ↑') : '' }}
+        </t-button>
       </div>
-      <t-table :data="list" :columns="visibleColumns" :loading="loading" row-key="id" :pagination="pagination" @page-change="onPageChange" :max-height="680" bordered>
+      <t-table :data="list" :columns="visibleColumns" :loading="loading" row-key="id" :pagination="pagination" :sort="tableSort" @sort-change="onSortChange" @page-change="onPageChange" :max-height="680" bordered>
         <template #source_link="{ row }">
           <a v-if="row.source_url" :href="toPcUrl(row.source_url, row.auction_platform)" target="_blank" class="source-link" :class="'link-' + platformKey(row.auction_platform)">{{ platformShort(row.auction_platform) }}</a>
           <span v-else class="no-link">--</span>
@@ -100,9 +112,13 @@ const list = ref<any[]>([])
 const filters = reactive({
   keyword: '', auction_status: '', property_type: '', city_id: 0,
   district: '', auction_round: '',
+  auction_platform: '', has_elevator: '',
   area_range: '', area_min: undefined as number | undefined, area_max: undefined as number | undefined,
   price_range: '', price_min: undefined as number | undefined, price_max: undefined as number | undefined,
 })
+
+// 排序状态(传给后端 sort_by/sort_order;后端白名单:area/build_year/starting_price/auction_start_time/created_at)
+const sortState = reactive({ sort_by: '' as string, sort_order: 'desc' as 'asc' | 'desc' })
 
 // 区市下拉：根据当前城市动态切换
 // 注意：杭州的「下城区」「江干区」、宁波的「江东区」是合并前的旧区，按用户要求保留在筛选项中。
@@ -137,15 +153,15 @@ const ALL_COLUMNS = [
   { colKey: 'address', title: '地址', ellipsis: true, width: 200 },
   { colKey: 'community_name', title: '小区名', ellipsis: true, width: 140 },
   { colKey: 'property_type', title: '物业类型', width: 90 },
-  { colKey: 'area', title: '面积(m2)', width: 90 },
+  { colKey: 'area', title: '面积(m2)', width: 90, sorter: true },
   { colKey: 'layout', title: '户型', width: 80 },
   { colKey: 'floor_info', title: '楼层', width: 70 },
   { colKey: 'total_floors', title: '总楼层', width: 70 },
   { colKey: 'has_elevator', title: '电梯', width: 60 },
   { colKey: 'orientation', title: '朝向', width: 70 },
   { colKey: 'decoration', title: '装修', width: 70 },
-  { colKey: 'build_year', title: '建筑年代', width: 80 },
-  { colKey: 'starting_price_wan', title: '起拍价(万)', width: 100 },
+  { colKey: 'build_year', title: '建筑年代', width: 80, sorter: true },
+  { colKey: 'starting_price_wan', title: '起拍价(万)', width: 100, sorter: true, sortKey: 'starting_price' },
   { colKey: 'starting_unit_price', title: '起拍单价', width: 90 },
   { colKey: 'appraisal_price_wan', title: '评估价(万)', width: 100 },
   { colKey: 'court_discount_rate', title: '法院折扣率', width: 90 },
@@ -163,7 +179,7 @@ const ALL_COLUMNS = [
   { colKey: 'beike_latest_deal_time', title: '贝壳成交时间', width: 130 },
   { colKey: 'auction_round', title: '拍卖轮次', width: 80 },
   { colKey: 'auction_status', title: '拍卖状态', width: 90 },
-  { colKey: 'auction_start_time', title: '开拍时间', width: 160 },
+  { colKey: 'auction_start_time', title: '开拍时间', width: 160, sorter: true },
   { colKey: 'auction_end_time', title: '结束时间', width: 160 },
   { colKey: 'court_name', title: '拍卖法院', ellipsis: true, width: 140 },
   { colKey: 'case_number', title: '案号', width: 120 },
@@ -244,6 +260,9 @@ async function loadData() {
     if (filters.area_max !== undefined) params.area_max = filters.area_max
     if (filters.price_min !== undefined) params.price_min = filters.price_min
     if (filters.price_max !== undefined) params.price_max = filters.price_max
+    if (filters.auction_platform) params.auction_platform = filters.auction_platform
+    if (filters.has_elevator !== '') params.has_elevator = filters.has_elevator
+    if (sortState.sort_by) { params.sort_by = sortState.sort_by; params.sort_order = sortState.sort_order }
     const data = await listProperties(params)
     list.value = data.items.map((p: any) => ({
       ...p,
@@ -263,6 +282,39 @@ async function loadData() {
 }
 
 function onSearch() { pagination.current = 1; loadData() }
+
+// TDesign t-table 的 sort 双向绑定:把后端 sort_by(可能是 sortKey 映射后的值)反查回列的 colKey
+const tableSort = computed(() => {
+  if (!sortState.sort_by || sortState.sort_by === 'created_at') return undefined
+  const col = ALL_COLUMNS.find((c: any) => (c.sortKey || c.colKey) === sortState.sort_by)
+  return col ? { sortBy: col.colKey, descending: sortState.sort_order === 'desc' } : undefined
+})
+
+// 表头点击排序:sortInfo = { sortBy: colKey, descending } 或 null(取消排序)
+function onSortChange(sortInfo: any) {
+  if (!sortInfo || !sortInfo.sortBy) {
+    sortState.sort_by = ''
+  } else {
+    const col: any = ALL_COLUMNS.find((c: any) => c.colKey === sortInfo.sortBy)
+    sortState.sort_by = (col && col.sortKey) ? col.sortKey : sortInfo.sortBy
+    sortState.sort_order = sortInfo.descending ? 'desc' : 'asc'
+  }
+  pagination.current = 1
+  loadData()
+}
+
+// 入库时间排序按钮:首次点降序,再点升序,第三次取消
+function onSortByCreatedAt() {
+  if (sortState.sort_by !== 'created_at') {
+    sortState.sort_by = 'created_at'; sortState.sort_order = 'desc'
+  } else if (sortState.sort_order === 'desc') {
+    sortState.sort_order = 'asc'
+  } else {
+    sortState.sort_by = ''
+  }
+  pagination.current = 1
+  loadData()
+}
 
 // 切换城市时清掉「区市」选择，避免出现宁波下选了上海的区
 function onCityChange() {
