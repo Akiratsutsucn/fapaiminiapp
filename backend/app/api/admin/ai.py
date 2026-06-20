@@ -24,8 +24,20 @@ from .ai_tools import (
 
 router = APIRouter()
 
-# Deepseek API
+# AI 服务商配置(支持切换:小米MiMo / DeepSeek,均兼容OpenAI接口)
+# AI_PROVIDER=xiaomi 用小米MiMo(更便宜);默认 deepseek 兼容旧配置。
+AI_PROVIDER = os.getenv("AI_PROVIDER", "deepseek").lower().strip()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+XIAOMI_API_KEY = os.getenv("XIAOMI_API_KEY", "")
+
+if AI_PROVIDER == "xiaomi":
+    AI_API_KEY = XIAOMI_API_KEY
+    AI_BASE_URL = os.getenv("XIAOMI_BASE_URL", "https://api.mimo.mi.com/v1")
+    AI_MODEL = os.getenv("XIAOMI_MODEL", "mimo-v2.5-pro")
+else:
+    AI_API_KEY = DEEPSEEK_API_KEY
+    AI_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    AI_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
 # 系统提示词
 SYSTEM_PROMPT = """你是法拍者联盟管理后台的AI助手。你可以帮助管理员：
@@ -145,21 +157,21 @@ async def _stream_chat(
     """流式聊天生成器（SSE格式）- 使用Deepseek V3。"""
     try:
         # 检查API Key
-        if not DEEPSEEK_API_KEY:
-            yield f"data: {json.dumps({'type': 'error', 'error': 'DEEPSEEK_API_KEY未配置'}, ensure_ascii=False)}\n\n"
+        if not AI_API_KEY:
+            yield f"data: {json.dumps({'type': 'error', 'error': f'{AI_PROVIDER} API Key未配置'}, ensure_ascii=False)}\n\n"
             return
 
-        # 导入OpenAI SDK（Deepseek兼容OpenAI接口）
+        # 导入OpenAI SDK（小米MiMo/Deepseek 均兼容OpenAI接口）
         try:
             from openai import AsyncOpenAI
         except ImportError:
             yield f"data: {json.dumps({'type': 'error', 'error': '请安装openai包: pip install openai'}, ensure_ascii=False)}\n\n"
             return
 
-        # 创建Deepseek客户端
+        # 创建AI客户端(provider 由 AI_PROVIDER 决定)
         client = AsyncOpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url="https://api.deepseek.com"
+            api_key=AI_API_KEY,
+            base_url=AI_BASE_URL,
         )
 
         # 获取会话历史（从数据库）
@@ -264,7 +276,7 @@ async def _stream_chat(
 
             try:
                 stream = await client.chat.completions.create(
-                    model="deepseek-chat",
+                    model=AI_MODEL,
                     messages=messages,
                     tools=tools if use_tools else None,
                     stream=True,
