@@ -829,17 +829,39 @@ class CrawlEngine:
 
             # 阿里:列表全量入库 + SSR限量渐补。超出SSR限额的房源走 list_only 快速入库
             # (起拍价/面积/地址等列表字段已全,不开浏览器、不占内存、不超时);
-            # 深度字段(评估价)留待后续轮次SSR渐补。打乱顺序使每轮SSR覆盖不同房源,多天累积补全。
+            # 深度字段(面积/评估价)留待SSR渐补。
+            # SSR名额优先给「库里缺面积或缺正文」的房源(它们最需要SSR补全,面积修复依赖详情正文);
+            # 已有面积+正文的排后面。同优先级内打乱,使覆盖均衡、多轮累积补全。
             ssr_limit = int(os.getenv("ALI_SSR_DETAIL_LIMIT", "400"))
             if platform_name == "阿里拍卖" and len(to_fetch) > ssr_limit:
                 import random as _random
-                shuffled = list(to_fetch)
-                _random.shuffle(shuffled)
-                ssr_items = shuffled[:ssr_limit]
-                list_only_items = shuffled[ssr_limit:]
+                # 查库里已有面积且有正文的 source_url(这些不急着SSR,排后面)
+                urls = [it.source_url for it in to_fetch if it.source_url]
+                complete_urls: set[str] = set()
+                if urls:
+                    try:
+                        from sqlalchemy import select as _sql_select
+                        from app.models.property import Property as _PropModel
+                        rows = (await db.execute(
+                            _sql_select(_PropModel.source_url).where(
+                                _PropModel.source_url.in_(urls),
+                                _PropModel.area.isnot(None), _PropModel.area > 0,
+                                _PropModel.description.isnot(None), _PropModel.description != "",
+                            )
+                        )).scalars().all()
+                        complete_urls = set(rows)
+                    except Exception as e:
+                        logger.warning(f"[阿里拍卖] 查询已完整房源失败(降级随机): {e}")
+                need_ssr = [it for it in to_fetch if it.source_url not in complete_urls]
+                already_ok = [it for it in to_fetch if it.source_url in complete_urls]
+                _random.shuffle(need_ssr)
+                _random.shuffle(already_ok)
+                prioritized = need_ssr + already_ok  # 缺面积/缺正文的优先
+                ssr_items = prioritized[:ssr_limit]
+                list_only_items = prioritized[ssr_limit:]
                 logger.info(
-                    f"[阿里拍卖] 列表全量{len(to_fetch)}条入库;SSR限额{ssr_limit}条补详情,"
-                    f"其余{len(list_only_items)}条仅列表入库(渐补)"
+                    f"[阿里拍卖] 列表全量{len(to_fetch)}条入库;SSR限额{ssr_limit}条优先补"
+                    f"{len(need_ssr)}条缺面积/正文的;其余{len(list_only_items)}条仅列表入库(渐补)"
                 )
                 ordered_items = ssr_items + list_only_items
                 tasks = (
