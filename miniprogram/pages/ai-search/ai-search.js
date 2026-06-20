@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const property_1 = require("../../services/property");
 const request_1 = require("../../utils/request");
+const user_1 = require("../../services/user");
 const plugin = requirePlugin('WechatSI');
 const manager = plugin.getRecordRecognitionManager();
 Page({
@@ -15,9 +16,93 @@ Page({
         recording: false,
         list: [],
         total: 0,
+        contactReady: false,
+        showContactModal: false,
+        contactForm: { surname: '', phone: '' },
+        savingContact: false,
+        pendingAction: '',
     },
     onLoad() {
         this.initVoice();
+        this.refreshContactStatus();
+    },
+    async refreshContactStatus() {
+        const app = getApp();
+        if (!app.isLoggedIn()) {
+            this.setData({ contactReady: false });
+            return;
+        }
+        try {
+            const profile = await (0, user_1.getUserProfile)();
+            const ready = !!(profile && profile.phone && profile.nickname);
+            this.setData({
+                contactReady: ready,
+                'contactForm.surname': (profile === null || profile === void 0 ? void 0 : profile.nickname) || '',
+                'contactForm.phone': (profile === null || profile === void 0 ? void 0 : profile.phone) || '',
+            });
+        }
+        catch (e) {
+            this.setData({ contactReady: false });
+        }
+    },
+    ensureContact(action) {
+        const app = getApp();
+        if (!app.isLoggedIn()) {
+            wx.showModal({
+                title: '请先登录',
+                content: '使用 AI 找房需要先登录',
+                confirmText: '去登录',
+                success: (res) => {
+                    if (res.confirm)
+                        wx.navigateTo({ url: '/pages/login/login' });
+                },
+            });
+            return false;
+        }
+        if (this.data.contactReady)
+            return true;
+        this.setData({ showContactModal: true, pendingAction: action });
+        return false;
+    },
+    onContactInput(e) {
+        const field = e.currentTarget.dataset.field;
+        this.setData({ [`contactForm.${field}`]: e.detail.value });
+    },
+    onCloseContactModal() {
+        this.setData({ showContactModal: false, pendingAction: '' });
+    },
+    async onSubmitContact() {
+        const surname = (this.data.contactForm.surname || '').trim();
+        const phone = (this.data.contactForm.phone || '').trim();
+        if (!surname) {
+            wx.showToast({ title: '请填写姓氏', icon: 'none' });
+            return;
+        }
+        if (!/^1\d{10}$/.test(phone)) {
+            wx.showToast({ title: '请填写正确的手机号', icon: 'none' });
+            return;
+        }
+        this.setData({ savingContact: true });
+        try {
+            await (0, user_1.updateUserProfile)({ nickname: surname, phone });
+            this.setData({
+                contactReady: true,
+                showContactModal: false,
+                savingContact: false,
+            });
+            wx.showToast({ title: '已保存', icon: 'success' });
+            const action = this.data.pendingAction;
+            this.setData({ pendingAction: '' });
+            if (action === 'voice')
+                this.startVoiceFlow();
+            else if (action === 'search')
+                this.onSearch();
+        }
+        catch (e) {
+            console.error('保存联系方式失败:', e);
+            wx.showToast({ title: '保存失败,请重试', icon: 'none' });
+            this.setData({ savingContact: false });
+        }
     },
     initVoice() {
         manager.onRecognize = (res) => {
@@ -44,6 +129,11 @@ Page({
         this.setData({ query: text });
     },
     onVoiceInput() {
+        if (!this.ensureContact('voice'))
+            return;
+        this.startVoiceFlow();
+    },
+    startVoiceFlow() {
         wx.authorize({
             scope: 'scope.record',
             success: () => {
@@ -76,6 +166,8 @@ Page({
             wx.showToast({ title: '请输入或说出您的需求', icon: 'none' });
             return;
         }
+        if (!this.ensureContact('search'))
+            return;
         this.setData({ searching: true });
         try {
             const parseResult = await (0, request_1.request)({

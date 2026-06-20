@@ -184,3 +184,81 @@
   color: #b0b3b8;
   letter-spacing: 1rpx;
 }
+
+/* 联系方式门禁弹窗 */
+.contact-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.contact-modal {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 48rpx 40rpx 40rpx;
+  box-sizing: border-box;
+}
+.contact-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+.contact-tip {
+  font-size: 26rpx;
+  color: #8a8a8a;
+  margin-top: 16rpx;
+  margin-bottom: 32rpx;
+  line-height: 1.5;
+}
+.contact-field {
+  margin-bottom: 28rpx;
+}
+.contact-label {
+  font-size: 28rpx;
+  color: #333;
+  display: block;
+  margin-bottom: 12rpx;
+}
+.contact-req {
+  color: #ff4d4f;
+}
+.contact-input {
+  width: 100%;
+  height: 84rpx;
+  background: #f5f6f8;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  font-size: 30rpx;
+}
+.contact-btns {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 40rpx;
+}
+.contact-btn {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  text-align: center;
+  padding: 0;
+}
+.contact-btn-cancel {
+  background: #f0f0f0;
+  color: #666;
+}
+.contact-btn-ok {
+  background: #ff6b35;
+  color: #fff;
+}
+.contact-btn-ok::after,
+.contact-btn-cancel::after {
+  border: none;
+}

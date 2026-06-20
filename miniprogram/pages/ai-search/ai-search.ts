@@ -1,5 +1,6 @@
 import { getProperties } from '../../services/property';
 import { request } from '../../utils/request';
+import { getUserProfile, updateUserProfile } from '../../services/user';
 
 const plugin = requirePlugin('WechatSI');
 const manager = plugin.getRecordRecognitionManager();
@@ -15,10 +16,99 @@ Page({
     recording: false,
     list: [] as PropertyItem[],
     total: 0,
+    // 联系方式门禁:使用语音/搜索前必须填写手机号+姓氏(关联用户表)
+    contactReady: false,        // 用户资料是否已含手机号+昵称
+    showContactModal: false,    // 是否显示填写弹窗
+    contactForm: { surname: '', phone: '' },
+    savingContact: false,
+    pendingAction: '' as '' | 'voice' | 'search',  // 填完后要继续执行的动作
   },
 
   onLoad() {
     this.initVoice();
+    this.refreshContactStatus();
+  },
+
+  // 读取用户资料,判断是否已填手机号+昵称(姓氏)
+  async refreshContactStatus() {
+    const app = getApp<IAppOption>();
+    if (!app.isLoggedIn()) {
+      this.setData({ contactReady: false });
+      return;
+    }
+    try {
+      const profile = await getUserProfile();
+      const ready = !!(profile && profile.phone && profile.nickname);
+      this.setData({
+        contactReady: ready,
+        'contactForm.surname': profile?.nickname || '',
+        'contactForm.phone': profile?.phone || '',
+      });
+    } catch (e) {
+      this.setData({ contactReady: false });
+    }
+  },
+
+  // 门禁:确保已填手机号+姓氏。已填→返回 true;未填→弹窗并暂存待执行动作,返回 false
+  ensureContact(action: 'voice' | 'search'): boolean {
+    const app = getApp<IAppOption>();
+    if (!app.isLoggedIn()) {
+      wx.showModal({
+        title: '请先登录',
+        content: '使用 AI 找房需要先登录',
+        confirmText: '去登录',
+        success: (res) => {
+          if (res.confirm) wx.navigateTo({ url: '/pages/login/login' });
+        },
+      });
+      return false;
+    }
+    if (this.data.contactReady) return true;
+    // 未填手机号/姓氏 → 弹窗
+    this.setData({ showContactModal: true, pendingAction: action });
+    return false;
+  },
+
+  onContactInput(e: any) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({ [`contactForm.${field}`]: e.detail.value });
+  },
+
+  onCloseContactModal() {
+    this.setData({ showContactModal: false, pendingAction: '' });
+  },
+
+  // 提交手机号+姓氏 → 存入用户表(关联管理后台用户管理)
+  async onSubmitContact() {
+    const surname = (this.data.contactForm.surname || '').trim();
+    const phone = (this.data.contactForm.phone || '').trim();
+    if (!surname) {
+      wx.showToast({ title: '请填写姓氏', icon: 'none' });
+      return;
+    }
+    if (!/^1\d{10}$/.test(phone)) {
+      wx.showToast({ title: '请填写正确的手机号', icon: 'none' });
+      return;
+    }
+    this.setData({ savingContact: true });
+    try {
+      await updateUserProfile({ nickname: surname, phone } as any);
+      this.setData({
+        contactReady: true,
+        showContactModal: false,
+        savingContact: false,
+      });
+      wx.showToast({ title: '已保存', icon: 'success' });
+      // 继续之前被拦截的动作
+      const action = this.data.pendingAction;
+      this.setData({ pendingAction: '' });
+      if (action === 'voice') this.startVoiceFlow();
+      else if (action === 'search') this.onSearch();
+    } catch (e) {
+      console.error('保存联系方式失败:', e);
+      wx.showToast({ title: '保存失败,请重试', icon: 'none' });
+      this.setData({ savingContact: false });
+    }
   },
 
   initVoice() {
@@ -51,6 +141,12 @@ Page({
   },
 
   onVoiceInput() {
+    // 门禁:使用语音输入前必须先填手机号+姓氏
+    if (!this.ensureContact('voice')) return;
+    this.startVoiceFlow();
+  },
+
+  startVoiceFlow() {
     wx.authorize({
       scope: 'scope.record',
       success: () => {
@@ -86,6 +182,8 @@ Page({
       wx.showToast({ title: '请输入或说出您的需求', icon: 'none' });
       return;
     }
+    // 门禁:使用搜索前必须先填手机号+姓氏
+    if (!this.ensureContact('search')) return;
 
     this.setData({ searching: true });
 
