@@ -11,7 +11,7 @@
     <view class="card-title">{{title}}</view>
     <view class="card-meta">
       <view class="biz-tag" wx:if="{{subDistrict}}">
-        <text class="biz-tag-icon">📍</text>
+        <view class="biz-tag-pin"></view>
         <text class="biz-tag-text">{{subDistrict}}</text>
       </view>
       <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
@@ -29,7 +29,7 @@
         <text class="sub-label">评估价</text>
         <text class="sub-value">{{appraisalPriceWan}} 万</text>
       </view>
-      <view class="platform-tag platform-{{platformKey}}" wx:if="{{platformKey}}" catchtap="onTapPlatform">{{platformLabel}} ›</view>
+      <view class="platform-tag platform-{{platformKey}}" wx:if="{{platformKey}}" catchtap="onTapPlatform">{{platformLabel}}</view>
     </view>
     <view class="card-time" wx:if="{{auctionTime}}">
       <view class="time-dot"></view>
