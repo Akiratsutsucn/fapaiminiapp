@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const format_1 = require("../../utils/format");
+const contact_gate_1 = require("../../utils/contact-gate");
 function priceNumberOnly(price) {
     if (!price || price === 0)
         return '--';
@@ -14,6 +15,16 @@ const PLATFORM_KEY_MAP = {
     '阿里拍卖': 'ali',
     '公拍网': 'gpai',
 };
+function toAccessUrl(sourceUrl, platform) {
+    if (!sourceUrl)
+        return '';
+    if (platform && (platform.indexOf('阿里') >= 0 || platform.indexOf('淘宝') >= 0)) {
+        const m = sourceUrl.match(/itemId=(\d+)/);
+        if (m)
+            return `https://sf-item.taobao.com/sf_item/${m[1]}.htm`;
+    }
+    return sourceUrl;
+}
 Component({
     properties: {
         property: {
@@ -33,16 +44,8 @@ Component({
             const savingWan = saving > 0 ? priceNumberOnly(saving) : '';
             const rate = p.court_discount_rate || 0;
             const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
-            // 从images数组提取封面图（兼容详情接口未返回cover_image的情况）
-            let coverImage = p.cover_image;
-            if (!coverImage && p.images && p.images.length > 0) {
-                const coverImg = p.images.find(img => img.is_cover) || p.images[0];
-                coverImage = coverImg.thumb_url || coverImg.image_url;
-            }
-            // 使用绝对路径确保默认图片在所有页面都能正确显示
-            const defaultImage = 'https://xcxapi.fapaizhelianmeng.cn/images/properties/default-placeholder.webp';
             this.setData({
-                coverImage: coverImage || defaultImage,
+                coverImage: p.cover_image || '/images/default-house.png',
                 statusLabel: (0, format_1.statusLabel)(p.auction_status),
                 statusTagClass: (0, format_1.statusTagClass)(p.auction_status),
                 startingPriceWan: startingNum,
@@ -80,6 +83,9 @@ Component({
         auctionTime: '',
         platformLabel: '',
         platformKey: '',
+        showContactModal: false,
+        contactForm: { surname: '', phone: '' },
+        savingContact: false,
     },
     methods: {
         onTap() {
@@ -87,6 +93,67 @@ Component({
             if (p && p.id) {
                 wx.navigateTo({ url: `/pages/property-detail/property-detail?id=${p.id}` });
             }
+        },
+        async onTapPlatform() {
+            const p = this.properties.property;
+            if (!p || !p.source_url) {
+                wx.showToast({ title: '暂无平台链接', icon: 'none' });
+                return;
+            }
+            const status = await (0, contact_gate_1.checkContactStatus)();
+            if (status === 'nologin') {
+                wx.showModal({
+                    title: '请先登录',
+                    content: '查看房源在拍卖平台的链接需要先登录',
+                    confirmText: '去登录',
+                    success: (res) => {
+                        if (res.confirm)
+                            wx.navigateTo({ url: '/pages/login/login' });
+                    },
+                });
+                return;
+            }
+            if (status === 'need') {
+                this.setData({ showContactModal: true });
+                return;
+            }
+            this.openPlatformLink();
+        },
+        onContactInput(e) {
+            const field = e.currentTarget.dataset.field;
+            this.setData({ [`contactForm.${field}`]: e.detail.value });
+        },
+        onCloseContactModal() {
+            this.setData({ showContactModal: false });
+        },
+        noop() { },
+        async onSubmitContact() {
+            this.setData({ savingContact: true });
+            const ok = await (0, contact_gate_1.saveContact)(this.data.contactForm.surname, this.data.contactForm.phone);
+            this.setData({ savingContact: false });
+            if (ok) {
+                this.setData({ showContactModal: false });
+                this.openPlatformLink();
+            }
+        },
+        openPlatformLink() {
+            const p = this.properties.property;
+            const url = toAccessUrl(p.source_url, p.auction_platform);
+            if (!url) {
+                wx.showToast({ title: '暂无平台链接', icon: 'none' });
+                return;
+            }
+            wx.setClipboardData({
+                data: url,
+                success: () => {
+                    wx.showModal({
+                        title: '链接已复制',
+                        content: '应微信官方安全规范要求,小程序无法直接跳转到外部网站。链接已为您复制,请打开手机浏览器粘贴访问,即可查看该房源在拍卖平台的页面。',
+                        showCancel: false,
+                        confirmText: '我知道了',
+                    });
+                },
+            });
         },
     },
 });
