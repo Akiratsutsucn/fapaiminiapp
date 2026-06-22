@@ -212,11 +212,13 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._token: str | None = None
         self._cookie_str: str = ""
         self._row_cache: dict[str, dict] = {}  # itemId → raw list API row
-        # SSR 熔断：当前IP若被阿里风控，SSR 会连续返回骨架(每条白耗~35s)。
-        # 连续失败达阈值即熔断，后续直接走列表数据兜底(每条几百ms)，避免空耗。
+        # SSR 熔断：当前IP若被阿里风控，SSR 会连续返回骨架(每条白耗~50s)。
+        # 连续失败达阈值即熔断，后续直接走列表数据兜底(每条几百ms)，避免空耗超时。
+        # 阈值设 6：#97 事故中阈值 12 太晚——IP被风控后白耗 12 条×50s≈10分钟才止损,
+        # 且后半段持续风控使整轮拖满 4h 超时。降到 6 更早止损。
         self._ssr_consecutive_fails = 0
         self._ssr_circuit_open = False
-        self._SSR_FAIL_THRESHOLD = 12
+        self._SSR_FAIL_THRESHOLD = 6
         # 计划性换IP(预防式,优于熔断后补救):每成功抓 N 条阿里详情就主动切一个新IP,
         # 让阿里来不及把某IP盯到风控阈值。比熔断被动切更省时、更不易被风控。
         self._ssr_success_since_switch = 0
@@ -756,7 +758,8 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     return {"_source": "skeleton"}
             try:
                 # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
-                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # 超时 20s(原30s):压缩失败路径耗时,IP被风控时不空等
+                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
             except Exception as e:
                 logger.warning(f"[TaobaoPaiMai] SSR goto failed (attempt {attempt}): {e}")
                 if attempt < SSR_MAX_ATTEMPTS - 1:
@@ -764,9 +767,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 return None
 
             # 轮询提取 initData（不依赖渲染，注入 HTML 后即可读）：每 1.5s 检测一次，
-            # 最多 ~12s。实测就绪后 consultPrice(评估价)/foregiftPrice(保证金) 等字段齐全。
+            # 最多 ~7.5s(5轮)。实测就绪后 consultPrice(评估价)/foregiftPrice(保证金) 等字段齐全。
+            # 原 8 轮(12s),压缩到 5 轮:正常页面 1.5-4.5s 就绪足够,失败页面少空等。
             init_data = None
-            for _ in range(8):
+            for _ in range(5):
                 await asyncio.sleep(1.5)
                 try:
                     full_html = await page.content()
