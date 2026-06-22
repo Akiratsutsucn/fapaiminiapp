@@ -64,8 +64,11 @@ _RE_CASE_NUMBER = re.compile(
     r"民(?:初|辖|执|终)\s*\d+\s*号"
 )
 
-# 板块（街道/镇/乡）
+# 板块（街道/镇/乡）。板块名取「街道/镇/乡」前 2-4 个汉字,
+# 但需剔除行政前缀(省/市/区/县/自治区等),避免提到「市松江区泗泾镇」这种脏值。
 _RE_SUB_DISTRICT = re.compile(r"([一-龥]{2,6}(?:街道|镇|乡))")
+# 板块名里若残留行政区前缀,贪婪匹配到最后一个「区/市/县」,之后才是真正的板块名。
+_RE_ADMIN_PREFIX = re.compile(r"^.*[市区县旗盟]")
 
 # Chinese number to int
 _CN_NUM = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
@@ -287,13 +290,34 @@ def extract_case_number(text: str) -> Optional[str]:
     return m.group(0).replace("（", "(").replace("）", ")").replace(" ", "")
 
 
+def clean_sub_district(value: Optional[str]) -> Optional[str]:
+    """清洗板块名:剔除残留的行政区前缀(省/市/区/县),只保留真正的板块名。
+    例: '市松江区泗泾镇' → '泗泾镇';'宁波市镇' → None(无效);'良渚街道' → '良渚街道'。
+    """
+    if not value:
+        return None
+    v = value.strip()
+    # 从最后一个「市/区/县/旗/盟」之后截取(去掉省市区前缀)
+    m = _RE_ADMIN_PREFIX.match(v)
+    if m:
+        v = v[m.end():]
+    v = v.strip()
+    # 截完若为空、或不再以街道/镇/乡结尾(说明原值就是脏的,如"宁波市镇")→ 视为无效
+    if not v or not v.endswith(("街道", "镇", "乡")):
+        return None
+    # 板块名长度合理性:2-6 字
+    if len(v) < 2 or len(v) > 6:
+        return None
+    return v
+
+
 def extract_sub_district(text: str) -> Optional[str]:
     if not text:
         return None
     m = _RE_SUB_DISTRICT.search(text)
     if not m:
         return None
-    return m.group(1)
+    return clean_sub_district(m.group(1))
 
 
 def enrich_property(p) -> dict:
