@@ -23,7 +23,7 @@ from loguru import logger  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
 from app.models.property import Property  # noqa: E402
-from crawler.storage.db import get_session  # noqa: E402
+from crawler.storage.db import get_session, engine  # noqa: E402
 from crawler.cleaners.text_extractor import clean_sub_district, extract_sub_district  # noqa: E402
 
 
@@ -72,6 +72,8 @@ async def main():
             logger.warning("** dry-run:未写库,加 --commit 落库 **")
     finally:
         await db.close()
+        # 显式释放连接池,避免 asyncio.run 退出时报 "Event loop is closed"
+        await engine.dispose()
 
 
 if __name__ == "__main__":
