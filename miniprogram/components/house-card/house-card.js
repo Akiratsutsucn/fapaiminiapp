@@ -1,7 +1,39 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const format_1 = require("../../utils/format");
-const contact_gate_1 = require("../../utils/contact-gate");
+const user_1 = require("../../services/user");
+async function checkContactStatus() {
+    const app = getApp();
+    if (!app.isLoggedIn())
+        return 'nologin';
+    try {
+        const profile = await (0, user_1.getUserProfile)();
+        return profile && profile.phone && profile.nickname ? 'ok' : 'need';
+    }
+    catch (e) {
+        return 'need';
+    }
+}
+async function saveContact(surname, phone) {
+    const s = (surname || '').trim();
+    const p = (phone || '').trim();
+    if (!s) {
+        wx.showToast({ title: '请填写姓氏', icon: 'none' });
+        return false;
+    }
+    if (!/^1\d{10}$/.test(p)) {
+        wx.showToast({ title: '请填写正确的手机号', icon: 'none' });
+        return false;
+    }
+    try {
+        await (0, user_1.updateUserProfile)({ nickname: s, phone: p });
+        return true;
+    }
+    catch (e) {
+        wx.showToast({ title: '保存失败,请重试', icon: 'none' });
+        return false;
+    }
+}
 function priceNumberOnly(price) {
     if (!price || price === 0)
         return '--';
@@ -52,6 +84,7 @@ Component({
                 startingUnit: showAsYi ? '亿起' : '万起',
                 appraisalPriceWan: priceNumberOnly(p.appraisal_price),
                 district: p.district || '',
+                subDistrict: p.sub_district || '',
                 propertyType: p.property_type || '',
                 auctionRound: p.auction_round || '',
                 area: p.area ? String(Math.round(p.area)) : '',
@@ -73,6 +106,7 @@ Component({
         startingUnit: '万起',
         appraisalPriceWan: '',
         district: '',
+        subDistrict: '',
         propertyType: '',
         auctionRound: '',
         area: '',
@@ -100,7 +134,7 @@ Component({
                 wx.showToast({ title: '暂无平台链接', icon: 'none' });
                 return;
             }
-            const status = await (0, contact_gate_1.checkContactStatus)();
+            const status = await checkContactStatus();
             if (status === 'nologin') {
                 wx.showModal({
                     title: '请先登录',
@@ -129,7 +163,7 @@ Component({
         noop() { },
         async onSubmitContact() {
             this.setData({ savingContact: true });
-            const ok = await (0, contact_gate_1.saveContact)(this.data.contactForm.surname, this.data.contactForm.phone);
+            const ok = await saveContact(this.data.contactForm.surname, this.data.contactForm.phone);
             this.setData({ savingContact: false });
             if (ok) {
                 this.setData({ showContactModal: false });

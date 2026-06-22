@@ -1,5 +1,39 @@
 import { formatPriceWan, formatDiscount, formatDate, statusLabel, statusTagClass } from '../../utils/format';
-import { checkContactStatus, saveContact } from '../../utils/contact-gate';
+import { getUserProfile, updateUserProfile } from '../../services/user';
+
+// 检查联系方式是否齐全:'ok'已填 | 'need'缺 | 'nologin'未登录
+// (内联在组件内,不经中间 util——惰性加载 requiredComponents 下组件的二级依赖易丢失)
+async function checkContactStatus(): Promise<'ok' | 'need' | 'nologin'> {
+  const app = getApp<IAppOption>();
+  if (!app.isLoggedIn()) return 'nologin';
+  try {
+    const profile = await getUserProfile();
+    return profile && profile.phone && profile.nickname ? 'ok' : 'need';
+  } catch (e) {
+    return 'need';
+  }
+}
+
+// 校验并保存姓氏+手机号(姓氏→nickname, 手机号→phone)
+async function saveContact(surname: string, phone: string): Promise<boolean> {
+  const s = (surname || '').trim();
+  const p = (phone || '').trim();
+  if (!s) {
+    wx.showToast({ title: '请填写姓氏', icon: 'none' });
+    return false;
+  }
+  if (!/^1\d{10}$/.test(p)) {
+    wx.showToast({ title: '请填写正确的手机号', icon: 'none' });
+    return false;
+  }
+  try {
+    await updateUserProfile({ nickname: s, phone: p } as any);
+    return true;
+  } catch (e) {
+    wx.showToast({ title: '保存失败,请重试', icon: 'none' });
+    return false;
+  }
+}
 
 function priceNumberOnly(price: number): string {
   if (!price || price === 0) return '--';
@@ -53,6 +87,7 @@ Component({
         startingUnit: showAsYi ? '亿起' : '万起',
         appraisalPriceWan: priceNumberOnly(p.appraisal_price),
         district: p.district || '',
+        subDistrict: p.sub_district || '',
         propertyType: p.property_type || '',
         auctionRound: p.auction_round || '',
         area: p.area ? String(Math.round(p.area)) : '',
@@ -75,6 +110,7 @@ Component({
     startingUnit: '万起',
     appraisalPriceWan: '',
     district: '',
+    subDistrict: '',
     propertyType: '',
     auctionRound: '',
     area: '',

@@ -102,16 +102,6 @@ function request(options) {
                             reject(new Error('请先登录'));
                         }
                     }
-                    else if (res.statusCode === 404) {
-                        // 404不显示toast，静默处理
-                        const msg = ((_a = res.data) === null || _a === void 0 ? void 0 : _a.detail) || '资源不存在';
-                        reject(new Error(msg));
-                    }
-                    else if (res.statusCode === 503) {
-                        // 503限流，静默处理，避免用户感知
-                        console.warn('服务暂时繁忙:', fullUrl);
-                        reject(new Error('服务暂时繁忙'));
-                    }
                     else {
                         const msg = ((_a = res.data) === null || _a === void 0 ? void 0 : _a.detail) || ((_b = res.data) === null || _b === void 0 ? void 0 : _b.message) || '请求失败';
                         wx.showToast({ title: msg, icon: 'none' });
@@ -120,12 +110,12 @@ function request(options) {
                 },
                 fail(err) {
                     if (retriesLeft > 0) {
-                        setTimeout(() => doRequest(token, retriesLeft - 1), (3 - retriesLeft) * 1000);
+                        setTimeout(() => doRequest(token, retriesLeft - 1), (3 - retriesLeft) * 400);
                         return;
                     }
                     if (showLoading)
                         wx.hideLoading();
-                    console.error('请求失败:', fullUrl, err);
+                    wx.showToast({ title: '网络异常', icon: 'none' });
                     reject(err);
                 },
             });

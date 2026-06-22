@@ -10,6 +10,10 @@
   <view class="card-body">
     <view class="card-title">{{title}}</view>
     <view class="card-meta">
+      <view class="biz-tag" wx:if="{{subDistrict}}">
+        <text class="biz-tag-icon">📍</text>
+        <text class="biz-tag-text">{{subDistrict}}</text>
+      </view>
       <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
       <text class="meta-tag" wx:if="{{propertyType}}">{{propertyType}}</text>
       <text class="meta-tag" wx:if="{{auctionRound}}">{{auctionRound}}</text>
