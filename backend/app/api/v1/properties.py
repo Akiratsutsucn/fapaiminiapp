@@ -213,7 +213,9 @@ async def list_properties(
             id=p.id,
             title=p.title,
             district=p.district,
+            sub_district=p.sub_district,
             community_name=p.community_name,
+            source_url=p.source_url or "",
             area=p.area,
             layout=p.layout,
             starting_price=p.starting_price,
@@ -267,6 +269,7 @@ async def recommend_properties(
         cover = _list_cover(p)
         items.append(PropertyListItem(
             id=p.id, title=p.title, district=p.district, community_name=p.community_name,
+            sub_district=p.sub_district, source_url=p.source_url or "",
             area=p.area, layout=p.layout, starting_price=p.starting_price,
             starting_unit_price=p.starting_unit_price, appraisal_price=p.appraisal_price,
             court_discount_rate=p.court_discount_rate, auction_round=p.auction_round,

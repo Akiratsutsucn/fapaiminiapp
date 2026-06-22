@@ -121,7 +121,9 @@ class PropertyListItem(BaseModel):
     id: int
     title: str = ""
     district: str = ""
+    sub_district: Optional[str] = None
     community_name: str = ""
+    source_url: str = ""
     area: float = 0.0
     layout: Optional[str] = None
     starting_price: int = 0
