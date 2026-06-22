@@ -87,9 +87,10 @@
     </view>
   </view>
 
-  <!-- 合规提示：AI 生成内容声明 -->
+  <!-- 合规提示：AI 生成内容声明 + 麦克风权限说明 -->
   <view class="as-ai-notice">
-    <text>包含人工智能生成合成内容</text>
+    <text class="as-ai-notice-main">包含人工智能生成合成内容</text>
+    <text class="as-ai-notice-sub">使用语音输入时，小程序需要获得麦克风的权限</text>
   </view>
 
   <!-- 联系方式门禁弹窗:使用 AI 找房前必须填写手机号+姓氏 -->

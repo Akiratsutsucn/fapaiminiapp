@@ -256,25 +256,12 @@
   line-height: 1;
 }
 
-.login-btn-icon {
-  width: 40rpx;
-  height: 40rpx;
-  flex-shrink: 0;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
 .login-btn-text {
   font-size: 32rpx;
   font-weight: 800;
   letter-spacing: 4rpx;
   color: #fff;
   line-height: 1;
-}
-
-.wechat-icon {
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik02NjQgMzU3Yy0xMjggMC0yMzIgODctMjMyIDE5NiAwIDYwIDMyIDExMyA4NCAxNDkgNCAzIDYgOCA1IDEzbC0xMSA0MWMtMSA0IDMgOCA3IDZsNTItMzBjNC0yIDgtMyAxMi0yIDI2IDcgNTMgMTEgODIgMTEgMTI4IDAgMjMyLTg3IDIzMi0xOTZTNzkyIDM1NyA2NjQgMzU3em0tNzcgMTYxYTI2IDI2IDAgMSAxIDAtNTIgMjYgMjYgMCAwIDEgMCA1MnptMTU0IDBhMjYgMjYgMCAxIDEgMC01MiAyNiAyNiAwIDAgMSAwIDUyeiIvPjxwYXRoIGQ9Ik00MDAgMTI4QzIzOSAxMjggMTA4IDI0MCAxMDggMzc4YzAgNzYgNDAgMTQ0IDEwMyAxODkgNSA0IDggMTAgNiAxNmwtMTQgNTNjLTIgNyA1IDEzIDExIDlsNjctMzljNS0zIDExLTQgMTYtMiAzMSA5IDY0IDE0IDk5IDE0IDYgMCAxMyAwIDE5LTEtMTItMjYtMTktNTQtMTktODQgMC0xMzAgMTI0LTIzNSAyNzctMjM1aDdjLTMxLTEwNC0xNDEtMTgzLTMwNy0xODN6bS05NSAyMDFhMzEgMzEgMCAxIDEgMC02MiAzMSAzMSAwIDAgMSAwIDYyem0xOTAgMGEzMSAzMSAwIDEgMSAwLTYyIDMxIDMxIDAgMCAxIDAgNjJ6Ii8+PC9zdmc+");
 }
 
 .privacy-agreement {
@@ -357,4 +344,24 @@
   letter-spacing: 1rpx;
   display: block;
   margin-top: 8rpx;
+}
+
+/* 服务范围声明(合规:仅信息聚合,不提供拍卖服务) */
+.service-statement {
+  margin-top: 24rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 107, 53, 0.1);
+  border: 1rpx solid rgba(255, 107, 53, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.service-statement-text {
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #FF8A4C;
+  text-align: center;
+  letter-spacing: 0.5rpx;
 }

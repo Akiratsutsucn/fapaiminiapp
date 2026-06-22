@@ -50,8 +50,7 @@
   <view class="login-actions">
     <button class="login-btn" bindtap="onLogin" loading="{{loading}}">
       <view class="login-btn-content">
-        <view class="login-btn-icon wechat-icon"></view>
-        <text class="login-btn-text">一键登录</text>
+        <text class="login-btn-text">开始体验</text>
       </view>
     </button>
 
@@ -62,6 +61,11 @@
       <text class="privacy-text">
         已阅读并同意<text class="privacy-link" catchtap="onViewTerms">《用户协议》</text>和<text class="privacy-link" catchtap="onViewPrivacy">《隐私政策》</text>
       </text>
+    </view>
+
+    <view class="service-statement">
+      <text class="service-statement-text">本小程序仅提供法拍房源信息聚合与展示服务</text>
+      <text class="service-statement-text">不提供任何拍卖、竞拍、交易服务及功能</text>
     </view>
   </view>
 
