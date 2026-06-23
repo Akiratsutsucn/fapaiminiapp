@@ -560,7 +560,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 return True  # 别的并发任务刚切过,无需重复
             try:
                 from .. import ip_rotator
-                rot = await ip_rotator.request_ip_rotation_async(reason=reason)
+                # 换IP内部要操作云镜面板(起浏览器),曾卡在 launch 超时180s×多次拖满4h。
+                # 加 90s 硬超时:换IP卡住即放弃(熔断保持、走列表兜底),不再拖死整轮。
+                rot = await asyncio.wait_for(
+                    ip_rotator.request_ip_rotation_async(reason=reason), timeout=90
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"[TaobaoPaiMai] 换IP超时90s放弃({reason}),保持熔断走列表兜底")
+                return False
             except Exception as e:
                 logger.warning(f"[TaobaoPaiMai] 换IP调用异常({reason}): {e}")
                 return False
