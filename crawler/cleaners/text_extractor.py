@@ -104,6 +104,23 @@ def classify_by_use(description: str) -> str:
     return ""
 
 
+# 商用细分:在「商业/办公」大类下,按标题+用途细分为 商铺/写字楼/商住房/其他。
+# 仅作展示与筛选用,不改主 property_type。
+def classify_commercial_subtype(title: str, description: str = "") -> str:
+    """把商用房细分:商铺 / 写字楼 / 商住房 / 其他。判不出归「其他」。"""
+    text = f"{title or ''} {description or ''}"
+    # 商铺:沿街店铺/门面/商铺/档口
+    if any(k in text for k in ("商铺", "店铺", "门面", "门市", "档口", "商业用房", "底商")):
+        return "商铺"
+    # 写字楼:办公/写字楼/写字间
+    if any(k in text for k in ("写字楼", "写字间", "办公楼", "办公用房", "办公室", "办公")):
+        return "写字楼"
+    # 商住房:商住两用/公寓/loft/酒店式公寓
+    if any(k in text for k in ("商住", "公寓", "loft", "LOFT", "酒店式", "商务公寓")):
+        return "商住房"
+    return "其他"
+
+
 def refine_property_type(property_type: str, title: str, description: str = "") -> str:
     """修正房产类型,优先级:① 详情「用途」字段(权威) ② 标题强商业特征(兜底)。
     用途字段能明确判定时直接采用(可纠正任意误判);否则用标题特征做「→商业」单向兜底。

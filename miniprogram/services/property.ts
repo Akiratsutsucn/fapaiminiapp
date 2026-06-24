@@ -65,8 +65,41 @@ export async function getCities(): Promise<CityItem[]> {
   return request<CityItem[]>({ url: '/cities' });
 }
 
-export async function getMapMarkers(cityId: number = 310000): Promise<any[]> {
-  return request<any[]>({ url: `/properties/map-markers?city_id=${cityId}` });
+export interface MapFilterParams {
+  city_id?: number;
+  district?: string;
+  sub_district?: string;
+  property_type?: string;
+  price_min?: number;
+  price_max?: number;
+  area_min?: number;
+  area_max?: number;
+  keyword?: string;
+}
+
+function buildQs(params: Record<string, any>): string {
+  return Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v as any)}`)
+    .join('&');
+}
+
+export async function getMapMarkers(params: MapFilterParams): Promise<any[]> {
+  return request<any[]>({ url: `/properties/map-markers?${buildQs(params)}` });
+}
+
+export interface MapAggItem {
+  name: string;
+  count: number;
+  center_lat: number | null;
+  center_lng: number | null;
+}
+
+export async function getMapAggregate(
+  level: 'district' | 'sub_district',
+  params: MapFilterParams
+): Promise<MapAggItem[]> {
+  return request<MapAggItem[]>({ url: `/properties/map-aggregate?level=${level}&${buildQs(params)}` });
 }
 
 export async function getDistrictAnalysis(propertyId: number): Promise<DistrictAnalysis> {

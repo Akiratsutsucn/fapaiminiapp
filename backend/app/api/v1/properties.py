@@ -91,6 +91,9 @@ async def list_properties(
     price_max: int | None = Query(None),
     keyword: str | None = Query(None),
     property_type: str | None = Query(None),
+    sub_district: str | None = Query(None, description="商圈/板块筛选"),
+    area_min: float | None = Query(None, description="面积下限㎡"),
+    area_max: float | None = Query(None, description="面积上限㎡"),
     auction_status: str | None = Query(None),
     auction_round: str | None = Query(None),
     discount_min: float | None = Query(None, description="折扣下限(如0.1)，捡漏入口用"),
@@ -122,6 +125,12 @@ async def list_properties(
         conditions.append(Property.starting_price <= price_max)
     if keyword:
         conditions.append(Property.title.contains(keyword))
+    if sub_district:
+        conditions.append(Property.sub_district == sub_district)
+    if area_min is not None:
+        conditions.append(Property.area >= area_min)
+    if area_max is not None:
+        conditions.append(Property.area <= area_max)
 
     # 物业类型 / 拍卖轮次：支持逗号分隔多选
     ptypes = _multi(property_type)
@@ -286,20 +295,43 @@ async def recommend_properties(
 async def map_markers(
     db: AsyncSession = Depends(get_session),
     city_id: int = Query(310000),
+    district: str | None = Query(None),
+    sub_district: str | None = Query(None),
+    property_type: str | None = Query(None, description="逗号分隔多选"),
+    price_min: int | None = Query(None),
+    price_max: int | None = Query(None),
+    area_min: float | None = Query(None),
+    area_max: float | None = Query(None),
+    keyword: str | None = Query(None),
 ):
     """Return properties with real geo coordinates for map display."""
-    q = (
-        select(Property)
-        .where(
-            Property.city_id == city_id,
-            Property.lat.isnot(None),
-            Property.lng.isnot(None),
-            Property.is_deleted == 0,
-            # 地图仅展示可参拍房源（不含近72h结束的）——窗口仅作用于「全部房源」列表。
-            effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
-        )
-        .limit(200)
-    )
+    conds = [
+        Property.city_id == city_id,
+        Property.lat.isnot(None),
+        Property.lng.isnot(None),
+        Property.is_deleted == 0,
+        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+    ]
+    if district:
+        conds.append(Property.district == district)
+    if sub_district:
+        conds.append(Property.sub_district == sub_district)
+    if property_type:
+        ptypes = [s.strip() for s in property_type.split(",") if s.strip()]
+        if ptypes:
+            conds.append(Property.property_type.in_(ptypes))
+    if price_min is not None:
+        conds.append(Property.starting_price >= price_min)
+    if price_max is not None:
+        conds.append(Property.starting_price <= price_max)
+    if area_min is not None:
+        conds.append(Property.area >= area_min)
+    if area_max is not None:
+        conds.append(Property.area <= area_max)
+    if keyword:
+        conds.append(Property.title.contains(keyword))
+
+    q = select(Property).where(*conds).limit(1000)
     rows = (await db.execute(q)).scalars().all()
     return [{
         "id": r.id,
@@ -311,7 +343,73 @@ async def map_markers(
         "property_type": r.property_type,
         "area": r.area,
         "district": r.district,
+        "sub_district": r.sub_district,
+        "community_name": r.community_name,
+        "cover_image": _list_cover(r),
     } for r in rows]
+
+
+@router.get("/map-aggregate")
+async def map_aggregate(
+    db: AsyncSession = Depends(get_session),
+    city_id: int = Query(310000),
+    level: str = Query("district", description="district | sub_district"),
+    property_type: str | None = Query(None),
+    price_min: int | None = Query(None),
+    price_max: int | None = Query(None),
+    area_min: float | None = Query(None),
+    area_max: float | None = Query(None),
+    keyword: str | None = Query(None),
+    district: str | None = Query(None, description="level=sub_district时限定区县"),
+):
+    """地图气泡聚合:按区县或商圈分组,返回 {name,count,center_lat,center_lng}。
+    count 含无坐标房源(全量计数);center 取该组有坐标房源的质心(无坐标组 center 为 None)。
+    """
+    conds = [
+        Property.city_id == city_id,
+        Property.is_deleted == 0,
+        effective_status_sql().in_(MOBILE_VISIBLE_STATUSES),
+    ]
+    if property_type:
+        ptypes = [s.strip() for s in property_type.split(",") if s.strip()]
+        if ptypes:
+            conds.append(Property.property_type.in_(ptypes))
+    if price_min is not None:
+        conds.append(Property.starting_price >= price_min)
+    if price_max is not None:
+        conds.append(Property.starting_price <= price_max)
+    if area_min is not None:
+        conds.append(Property.area >= area_min)
+    if area_max is not None:
+        conds.append(Property.area <= area_max)
+    if keyword:
+        conds.append(Property.title.contains(keyword))
+
+    group_col = Property.sub_district if level == "sub_district" else Property.district
+    if level == "sub_district" and district:
+        conds.append(Property.district == district)
+    # 排除分组键为空的
+    conds.append(group_col.isnot(None))
+    conds.append(group_col != "")
+
+    # count 全量;center 仅对有坐标的取平均(avg 自动忽略 NULL)
+    q = (
+        select(
+            group_col.label("name"),
+            func.count(Property.id).label("cnt"),
+            func.avg(Property.lat).label("clat"),
+            func.avg(Property.lng).label("clng"),
+        )
+        .where(and_(*conds))
+        .group_by(group_col)
+    )
+    rows = (await db.execute(q)).all()
+    return [{
+        "name": r.name,
+        "count": r.cnt,
+        "center_lat": float(r.clat) if r.clat is not None else None,
+        "center_lng": float(r.clng) if r.clng is not None else None,
+    } for r in rows if r.name]
 
 
 @router.get("/{property_id}/analysis")

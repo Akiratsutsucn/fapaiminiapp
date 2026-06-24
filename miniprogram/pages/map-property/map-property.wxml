@@ -1,15 +1,33 @@
 <view class="page">
-  <!-- 顶部筛选栏：区县板块 + 起拍价 -->
-  <view class="map-filter-bar">
+  <!-- 关键字搜索栏 -->
+  <view class="map-search-bar">
+    <view class="ms-input-wrap">
+      <view class="ms-search-icon"></view>
+      <input class="ms-input" placeholder="搜索小区/标题关键字" value="{{keyword}}"
+        bindinput="onKeywordInput" bindconfirm="onKeywordConfirm" confirm-type="search" />
+      <view class="ms-clear" wx:if="{{keyword}}" bindtap="onKeywordClear">×</view>
+    </view>
+  </view>
+
+  <!-- 顶部筛选栏:区县板块 + 起拍价 + 类型 + 面积 -->
+  <scroll-view class="map-filter-bar" scroll-x="{{true}}">
     <view class="mf-chip {{activePanel === 'district' || selectedDistrict ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="district">
       <text>{{selectedDistrict || '区县板块'}}</text>
+      <view class="mf-arrow"></view>
+    </view>
+    <view class="mf-chip {{activePanel === 'type' || typeLabel ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="type">
+      <text>{{typeLabel || '类型'}}</text>
       <view class="mf-arrow"></view>
     </view>
     <view class="mf-chip {{activePanel === 'price' || priceLabel ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="price">
       <text>{{priceLabel || '起拍价'}}</text>
       <view class="mf-arrow"></view>
     </view>
-  </view>
+    <view class="mf-chip {{activePanel === 'area' || areaLabel ? 'active' : ''}}" bindtap="onTogglePanel" data-panel="area">
+      <text>{{areaLabel || '面积'}}</text>
+      <view class="mf-arrow"></view>
+    </view>
+  </scroll-view>
 
   <!-- 筛选下拉面板 -->
   <view class="mf-panel" wx:if="{{activePanel}}">
@@ -19,11 +37,26 @@
         <view class="mf-opt {{!selectedDistrict ? 'sel' : ''}}" bindtap="onSelectDistrict" data-value="">全部区县</view>
         <view class="mf-opt {{selectedDistrict === item ? 'sel' : ''}}" wx:for="{{districtOptions}}" wx:key="*this" bindtap="onSelectDistrict" data-value="{{item}}">{{item}}</view>
       </block>
+      <block wx:if="{{activePanel === 'type'}}">
+        <view class="mf-opt {{!selectedType ? 'sel' : ''}}" bindtap="onSelectType" data-value="" data-label="">不限类型</view>
+        <view class="mf-opt {{selectedType === item.value ? 'sel' : ''}}" wx:for="{{typeOptions}}" wx:key="value" bindtap="onSelectType" data-value="{{item.value}}" data-label="{{item.label}}">{{item.label}}</view>
+      </block>
       <block wx:if="{{activePanel === 'price'}}">
         <view class="mf-opt {{!priceRange ? 'sel' : ''}}" bindtap="onSelectPrice" data-value="" data-label="">不限</view>
         <view class="mf-opt {{priceRange === item.value ? 'sel' : ''}}" wx:for="{{priceRanges}}" wx:key="value" bindtap="onSelectPrice" data-value="{{item.value}}" data-label="{{item.label}}">{{item.label}}</view>
       </block>
+      <block wx:if="{{activePanel === 'area'}}">
+        <view class="mf-opt {{!areaRange ? 'sel' : ''}}" bindtap="onSelectArea" data-value="" data-label="">不限</view>
+        <view class="mf-opt {{areaRange === item.value ? 'sel' : ''}}" wx:for="{{areaRanges}}" wx:key="value" bindtap="onSelectArea" data-value="{{item.value}}" data-label="{{item.label}}">{{item.label}}</view>
+      </block>
     </view>
+  </view>
+
+  <!-- 图例 -->
+  <view class="map-legend" wx:if="{{viewLevel === 'property'}}">
+    <view class="lg-item"><view class="lg-dot lg-red"></view><text>住宅</text></view>
+    <view class="lg-item"><view class="lg-dot lg-blue"></view><text>商用</text></view>
+    <view class="lg-item"><view class="lg-dot lg-gray"></view><text>其他</text></view>
   </view>
 
   <map

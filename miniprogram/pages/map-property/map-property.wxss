@@ -9,8 +9,96 @@
   height: 100%;
 }
 
+/* ===== 关键字搜索栏 ===== */
+.map-search-bar {
+  position: absolute;
+  top: 20rpx;
+  left: 20rpx;
+  right: 20rpx;
+  z-index: 21;
+}
+.ms-input-wrap {
+  display: flex;
+  align-items: center;
+  height: 72rpx;
+  background: #fff;
+  border-radius: 36rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.12);
+  padding: 0 24rpx;
+}
+.ms-search-icon {
+  width: 28rpx;
+  height: 28rpx;
+  border: 3rpx solid #999;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 12rpx;
+}
+.ms-search-icon::after {
+  content: '';
+  position: absolute;
+  right: -8rpx;
+  bottom: -6rpx;
+  width: 12rpx;
+  height: 3rpx;
+  background: #999;
+  transform: rotate(45deg);
+}
+.ms-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #333;
+}
+.ms-clear {
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 32rpx;
+  text-align: center;
+  color: #999;
+  font-size: 32rpx;
+}
+
 /* ===== 顶部筛选栏 ===== */
 .map-filter-bar {
+  position: absolute;
+  top: 108rpx;
+  left: 20rpx;
+  right: 20rpx;
+  z-index: 20;
+  white-space: nowrap;
+}
+.map-filter-bar .mf-chip {
+  display: inline-flex;
+  flex: none;
+  width: auto;
+  padding: 0 24rpx;
+  margin-right: 16rpx;
+  vertical-align: top;
+}
+
+/* ===== 图例 ===== */
+.map-legend {
+  position: absolute;
+  left: 20rpx;
+  bottom: 40rpx;
+  z-index: 20;
+  background: rgba(255,255,255,0.95);
+  border-radius: 12rpx;
+  padding: 12rpx 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.lg-item { display: flex; align-items: center; font-size: 22rpx; color: #555; }
+.lg-dot { width: 18rpx; height: 18rpx; border-radius: 50%; margin-right: 8rpx; }
+.lg-red { background: #E53935; }
+.lg-blue { background: #1E88E5; }
+.lg-gray { background: #787880; }
+
+/* ===== 顶部筛选栏(原) ===== */
+.map-filter-bar-legacy {
   position: absolute;
   top: 20rpx;
   left: 20rpx;

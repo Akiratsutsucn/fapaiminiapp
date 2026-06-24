@@ -17,110 +17,187 @@ const PRICE_RANGES = [
     { label: '300-500万', value: '3000000-5000000' },
     { label: '500万以上', value: '5000000-' },
 ];
+const AREA_RANGES = [
+    { label: '50㎡以下', value: '0-50' },
+    { label: '50-90㎡', value: '50-90' },
+    { label: '90-140㎡', value: '90-140' },
+    { label: '140㎡以上', value: '140-' },
+];
+const TYPE_OPTIONS = [
+    { label: '住宅', value: 'zhuzhai', ptype: '住宅' },
+    { label: '商铺', value: 'shangpu', ptype: '商业', sub: ['商铺', '店铺', '门面', '门市', '档口', '底商'] },
+    { label: '写字楼', value: 'xiezilou', ptype: '商业,办公', sub: ['写字楼', '写字间', '办公'] },
+    { label: '商住房', value: 'shangzhu', ptype: '商业', sub: ['商住', '公寓', 'loft', 'LOFT', '酒店式'] },
+    { label: '工业用房', value: 'gongye', ptype: '工业' },
+    { label: '其他商用', value: 'qita', ptype: '商业,办公,其他' },
+];
+const SCALE_DISTRICT = 11;
+const SCALE_SUBDIST = 13;
 Page({
     data: {
         latitude: 31.2304,
         longitude: 121.4737,
-        scale: 12,
+        scale: 11,
         markers: [],
         properties: [],
-        allProperties: [],
         selectedProperty: null,
         loading: false,
+        viewLevel: 'district',
         activePanel: '',
         districtOptions: [],
         selectedDistrict: '',
         priceRanges: PRICE_RANGES,
         priceRange: '',
         priceLabel: '',
+        areaRanges: AREA_RANGES,
+        areaRange: '',
+        areaLabel: '',
+        typeOptions: TYPE_OPTIONS,
+        selectedType: '',
+        typeLabel: '',
+        keyword: '',
     },
+    _cityId: 310000,
     onLoad() {
         const app = getApp();
         const cityId = app.globalData.currentCityId || 310000;
+        this._cityId = cityId;
+        const center = CITY_CENTERS[cityId] || CITY_CENTERS[310000];
         this.setData({
-            districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000]
+            latitude: center.lat,
+            longitude: center.lng,
+            districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000],
         });
-        this.loadMarkers();
+        this.refresh();
     },
-    async loadMarkers() {
-        this.setData({ loading: true });
+    buildFilters() {
+        const { selectedDistrict, priceRange, areaRange, selectedType, keyword } = this.data;
+        const f = { city_id: this._cityId };
+        if (selectedDistrict)
+            f.district = selectedDistrict;
+        if (priceRange) {
+            const [mn, mx] = priceRange.split('-');
+            if (mn)
+                f.price_min = parseInt(mn);
+            if (mx)
+                f.price_max = parseInt(mx);
+        }
+        if (areaRange) {
+            const [mn, mx] = areaRange.split('-');
+            if (mn)
+                f.area_min = parseInt(mn);
+            if (mx)
+                f.area_max = parseInt(mx);
+        }
+        if (selectedType) {
+            const t = TYPE_OPTIONS.find(o => o.value === selectedType);
+            if (t)
+                f.property_type = t.ptype;
+        }
+        if (keyword)
+            f.keyword = keyword;
+        return f;
+    },
+    refresh() {
+        const scale = this.data.scale;
+        if (scale < SCALE_DISTRICT) {
+            this.loadAggregate('district');
+        }
+        else if (scale < SCALE_SUBDIST) {
+            this.loadAggregate('sub_district');
+        }
+        else {
+            this.loadProperties();
+        }
+    },
+    async loadAggregate(level) {
+        this.setData({ loading: true, viewLevel: level });
         try {
-            const app = getApp();
-            const cityId = app.globalData.currentCityId || 310000;
-            const items = await (0, property_1.getMapMarkers)(cityId);
-            const center = CITY_CENTERS[cityId];
-            if (center) {
-                this.setData({ latitude: center.lat, longitude: center.lng });
+            const filters = this.buildFilters();
+            if (level === 'sub_district' && this.data.selectedDistrict) {
+                filters.district = this.data.selectedDistrict;
             }
-            this.setData({
-                allProperties: items,
-                properties: items,
-            });
-            this.updateMarkers(items);
+            const groups = await (0, property_1.getMapAggregate)(level, filters);
+            const markers = groups
+                .filter(g => g.center_lat && g.center_lng)
+                .map((g, idx) => ({
+                id: 1000000 + idx,
+                latitude: g.center_lat,
+                longitude: g.center_lng,
+                iconPath: level === 'district' ? '/images/bubble-district.png' : '/images/bubble-subdistrict.png',
+                width: 48,
+                height: 48,
+                _aggName: g.name,
+                _aggLevel: level,
+                label: {
+                    content: `${g.name}\n${g.count}套`,
+                    color: '#FFFFFF',
+                    fontSize: 11,
+                    anchorX: 0,
+                    anchorY: 0,
+                    textAlign: 'center',
+                    bgColor: '#00000000',
+                    padding: 2,
+                },
+                callout: {
+                    content: `${g.name} · ${g.count}套`,
+                    fontSize: 12,
+                    borderRadius: 8,
+                    padding: 6,
+                    display: 'BYCLICK',
+                },
+            }));
+            this.setData({ markers, properties: [], selectedProperty: null });
         }
         catch (e) {
-            console.error('加载地图标记失败:', e);
+            console.error('加载聚合失败:', e);
         }
         finally {
             this.setData({ loading: false });
         }
     },
-    applyFilters() {
-        const { allProperties, selectedDistrict, priceRange } = this.data;
-        let filtered = allProperties;
-        if (selectedDistrict) {
-            filtered = filtered.filter((p) => p.district === selectedDistrict);
+    async loadProperties() {
+        this.setData({ loading: true, viewLevel: 'property' });
+        try {
+            const items = await (0, property_1.getMapMarkers)(this.buildFilters());
+            const filtered = this.applySubtypeFilter(items);
+            this.setData({ properties: filtered });
+            this.updatePropertyMarkers(filtered);
         }
-        if (priceRange) {
-            const [min, max] = priceRange.split('-').map(s => s ? parseInt(s) : null);
-            filtered = filtered.filter((p) => {
-                const price = p.starting_price || 0;
-                if (min && price < min)
-                    return false;
-                if (max && price > max)
-                    return false;
-                return true;
-            });
+        catch (e) {
+            console.error('加载房源点失败:', e);
         }
-        this.setData({ properties: filtered });
-        this.updateMarkers(filtered);
+        finally {
+            this.setData({ loading: false });
+        }
     },
-    onTogglePanel(e) {
-        const panel = e.currentTarget.dataset.panel;
-        this.setData({ activePanel: this.data.activePanel === panel ? '' : panel });
-    },
-    onClosePanel() {
-        this.setData({ activePanel: '' });
-    },
-    onSelectDistrict(e) {
-        const value = e.currentTarget.dataset.value;
-        this.setData({
-            selectedDistrict: value,
-            activePanel: '',
+    applySubtypeFilter(items) {
+        const t = TYPE_OPTIONS.find(o => o.value === this.data.selectedType);
+        if (!t || !t.sub)
+            return items;
+        const subs = t.sub;
+        return items.filter(p => {
+            const text = `${p.title || ''}`;
+            return subs.some(k => text.includes(k));
         });
-        this.applyFilters();
     },
-    onSelectPrice(e) {
-        const value = e.currentTarget.dataset.value;
-        const label = e.currentTarget.dataset.label;
-        this.setData({
-            priceRange: value,
-            priceLabel: label,
-            activePanel: '',
-        });
-        this.applyFilters();
+    markerIcon(ptype) {
+        if (ptype === '住宅')
+            return '/images/marker-residential.png';
+        if (ptype === '商业' || ptype === '办公')
+            return '/images/marker-commercial.png';
+        return '/images/marker-other.png';
     },
-    updateMarkers(items) {
+    updatePropertyMarkers(items) {
         const markers = items
             .filter(p => p.lat && p.lng)
             .map(p => ({
             id: p.id,
             latitude: p.lat,
             longitude: p.lng,
-            width: 32,
-            height: 32,
-            iconPath: p.auction_status === '进行中' ? '/images/marker-active.png' : '/images/marker-default.png',
-            title: p.title,
+            iconPath: this.markerIcon(p.property_type),
+            width: 30,
+            height: 36,
             callout: {
                 content: `${p.title}\n${(p.starting_price / 10000).toFixed(0)}万`,
                 fontSize: 12,
@@ -133,36 +210,89 @@ Page({
     },
     onMarkerTap(e) {
         const id = e.detail.markerId;
-        const prop = this.data.properties.find(p => p.id === id);
+        if (id >= 1000000) {
+            const m = this.data.markers.find((x) => x.id === id);
+            if (!m)
+                return;
+            if (m._aggLevel === 'district') {
+                this.setData({
+                    selectedDistrict: m._aggName,
+                    latitude: m.latitude,
+                    longitude: m.longitude,
+                    scale: SCALE_DISTRICT + 1,
+                });
+                this.loadAggregate('sub_district');
+            }
+            else {
+                this.setData({ latitude: m.latitude, longitude: m.longitude, scale: SCALE_SUBDIST + 1 });
+                this.loadProperties();
+            }
+            return;
+        }
+        const prop = this.data.properties.find((p) => p.id === id);
         if (prop) {
             this.setData({
-                selectedProperty: {
-                    ...prop,
-                    starting_price: (prop.starting_price / 10000).toFixed(0),
-                },
+                selectedProperty: { ...prop, starting_price: (prop.starting_price / 10000).toFixed(0) },
             });
         }
     },
-    onCloseCard() {
-        this.setData({ selectedProperty: null });
-    },
+    onCloseCard() { this.setData({ selectedProperty: null }); },
     onCardTap() {
         if (this.data.selectedProperty) {
             wx.navigateTo({ url: `/pages/property-detail/property-detail?id=${this.data.selectedProperty.id}` });
         }
     },
     onZoomIn() {
-        this.setData({ scale: Math.min(20, this.data.scale + 2) });
+        const scale = Math.min(20, this.data.scale + 2);
+        this.setData({ scale });
+        this.onScaleChanged(scale);
     },
     onZoomOut() {
-        this.setData({ scale: Math.max(3, this.data.scale - 2) });
+        const scale = Math.max(3, this.data.scale - 2);
+        this.setData({ scale });
+        this.onScaleChanged(scale);
     },
     onLocate() {
-        const mapCtx = wx.createMapContext('propertyMap');
-        mapCtx.moveToLocation();
+        wx.createMapContext('propertyMap').moveToLocation({});
     },
-    onRegionChange(e) {
-        if (e.type === 'end' && e.causedBy === 'drag') {
+    _lastLevel: '',
+    onScaleChanged(scale) {
+        const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
+        if (level !== this.data.viewLevel) {
+            this.refresh();
         }
     },
+    onRegionChange(e) {
+        if (e.type === 'end') {
+            const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+            if (scale !== this.data.scale) {
+                this.setData({ scale });
+                this.onScaleChanged(scale);
+            }
+        }
+    },
+    onTogglePanel(e) {
+        const panel = e.currentTarget.dataset.panel;
+        this.setData({ activePanel: this.data.activePanel === panel ? '' : panel });
+    },
+    onClosePanel() { this.setData({ activePanel: '' }); },
+    onSelectDistrict(e) {
+        this.setData({ selectedDistrict: e.currentTarget.dataset.value, activePanel: '' });
+        this.refresh();
+    },
+    onSelectPrice(e) {
+        this.setData({ priceRange: e.currentTarget.dataset.value, priceLabel: e.currentTarget.dataset.label, activePanel: '' });
+        this.refresh();
+    },
+    onSelectArea(e) {
+        this.setData({ areaRange: e.currentTarget.dataset.value, areaLabel: e.currentTarget.dataset.label, activePanel: '' });
+        this.refresh();
+    },
+    onSelectType(e) {
+        this.setData({ selectedType: e.currentTarget.dataset.value, typeLabel: e.currentTarget.dataset.label, activePanel: '' });
+        this.refresh();
+    },
+    onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
+    onKeywordConfirm() { this.refresh(); },
+    onKeywordClear() { this.setData({ keyword: '' }); this.refresh(); },
 });

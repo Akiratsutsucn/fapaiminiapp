@@ -1,4 +1,4 @@
-import { getMapMarkers } from '../../services/property';
+import { getMapMarkers, getMapAggregate, MapFilterParams } from '../../services/property';
 
 const CITY_CENTERS: Record<number, { lat: number; lng: number }> = {
   310000: { lat: 31.2304, lng: 121.4737 },
@@ -19,128 +19,193 @@ const PRICE_RANGES = [
   { label: '500万以上', value: '5000000-' },
 ];
 
+const AREA_RANGES = [
+  { label: '50㎡以下', value: '0-50' },
+  { label: '50-90㎡', value: '50-90' },
+  { label: '90-140㎡', value: '90-140' },
+  { label: '140㎡以上', value: '140-' },
+];
+
+// 类型筛选(住宅/商用细分/工业)。商用细分通过 property_type=商业 + 标题关键词在前端二次过滤。
+const TYPE_OPTIONS = [
+  { label: '住宅', value: 'zhuzhai', ptype: '住宅' },
+  { label: '商铺', value: 'shangpu', ptype: '商业', sub: ['商铺', '店铺', '门面', '门市', '档口', '底商'] },
+  { label: '写字楼', value: 'xiezilou', ptype: '商业,办公', sub: ['写字楼', '写字间', '办公'] },
+  { label: '商住房', value: 'shangzhu', ptype: '商业', sub: ['商住', '公寓', 'loft', 'LOFT', '酒店式'] },
+  { label: '工业用房', value: 'gongye', ptype: '工业' },
+  { label: '其他商用', value: 'qita', ptype: '商业,办公,其他' },
+];
+
+// scale 阈值:决定显示哪一级
+const SCALE_DISTRICT = 11;   // < 11 区县气泡
+const SCALE_SUBDIST = 13;    // 11~13 商圈气泡; >13 房源点
+
 Page({
   data: {
     latitude: 31.2304,
     longitude: 121.4737,
-    scale: 12,
+    scale: 11,
     markers: [] as any[],
-    properties: [] as any[],
-    allProperties: [] as any[], // 保存全部数据用于筛选
+    properties: [] as any[],       // 当前房源点(scale>13时)
     selectedProperty: null as any,
     loading: false,
-    // 筛选相关
-    activePanel: '', // 'district' | 'price' | ''
+    viewLevel: 'district' as 'district' | 'sub_district' | 'property',
+    // 筛选
+    activePanel: '',               // district | price | type | area | ''
     districtOptions: [] as string[],
     selectedDistrict: '',
     priceRanges: PRICE_RANGES,
     priceRange: '',
     priceLabel: '',
+    areaRanges: AREA_RANGES,
+    areaRange: '',
+    areaLabel: '',
+    typeOptions: TYPE_OPTIONS,
+    selectedType: '',
+    typeLabel: '',
+    keyword: '',
   },
+
+  _cityId: 310000,
 
   onLoad() {
     const app = getApp<IAppOption>();
     const cityId = app.globalData.currentCityId || 310000;
+    this._cityId = cityId;
+    const center = CITY_CENTERS[cityId] || CITY_CENTERS[310000];
     this.setData({
-      districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000]
+      latitude: center.lat,
+      longitude: center.lng,
+      districtOptions: DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000],
     });
-    this.loadMarkers();
+    this.refresh();
   },
 
-  async loadMarkers() {
-    this.setData({ loading: true });
+  // 组装当前筛选参数(传给后端)
+  buildFilters(): MapFilterParams {
+    const { selectedDistrict, priceRange, areaRange, selectedType, keyword } = this.data;
+    const f: MapFilterParams = { city_id: this._cityId };
+    if (selectedDistrict) f.district = selectedDistrict;
+    if (priceRange) {
+      const [mn, mx] = priceRange.split('-');
+      if (mn) f.price_min = parseInt(mn);
+      if (mx) f.price_max = parseInt(mx);
+    }
+    if (areaRange) {
+      const [mn, mx] = areaRange.split('-');
+      if (mn) f.area_min = parseInt(mn);
+      if (mx) f.area_max = parseInt(mx);
+    }
+    if (selectedType) {
+      const t = TYPE_OPTIONS.find(o => o.value === selectedType);
+      if (t) f.property_type = t.ptype;
+    }
+    if (keyword) f.keyword = keyword;
+    return f;
+  },
+
+  // 根据当前 scale 决定层级并刷新
+  refresh() {
+    const scale = this.data.scale;
+    if (scale < SCALE_DISTRICT) {
+      this.loadAggregate('district');
+    } else if (scale < SCALE_SUBDIST) {
+      this.loadAggregate('sub_district');
+    } else {
+      this.loadProperties();
+    }
+  },
+
+  // 加载聚合气泡(区县 / 商圈)
+  async loadAggregate(level: 'district' | 'sub_district') {
+    this.setData({ loading: true, viewLevel: level });
     try {
-      const app = getApp<IAppOption>();
-      const cityId = app.globalData.currentCityId || 310000;
-      const items = await getMapMarkers(cityId);
-
-      // 不再获取用户定位，地图始终居中到当前所选城市中心
-      const center = CITY_CENTERS[cityId];
-      if (center) {
-        this.setData({ latitude: center.lat, longitude: center.lng });
+      const filters = this.buildFilters();
+      // 商圈级:若已选区县,限定该区县;否则按当前选中区县或全部
+      if (level === 'sub_district' && this.data.selectedDistrict) {
+        filters.district = this.data.selectedDistrict;
       }
-
-      this.setData({
-        allProperties: items,
-        properties: items,
-      });
-      this.updateMarkers(items);
+      const groups = await getMapAggregate(level, filters);
+      const markers = groups
+        .filter(g => g.center_lat && g.center_lng)
+        .map((g, idx) => ({
+          id: 1000000 + idx,         // 聚合marker用大id区分,避免和房源id冲突
+          latitude: g.center_lat,
+          longitude: g.center_lng,
+          iconPath: level === 'district' ? '/images/bubble-district.png' : '/images/bubble-subdistrict.png',
+          width: 48,
+          height: 48,
+          _aggName: g.name,
+          _aggLevel: level,
+          label: {
+            content: `${g.name}\n${g.count}套`,
+            color: '#FFFFFF',
+            fontSize: 11,
+            anchorX: 0,
+            anchorY: 0,
+            textAlign: 'center',
+            bgColor: '#00000000',
+            padding: 2,
+          },
+          callout: {
+            content: `${g.name} · ${g.count}套`,
+            fontSize: 12,
+            borderRadius: 8,
+            padding: 6,
+            display: 'BYCLICK',
+          },
+        }));
+      this.setData({ markers, properties: [], selectedProperty: null });
     } catch (e) {
-      console.error('加载地图标记失败:', e);
+      console.error('加载聚合失败:', e);
     } finally {
       this.setData({ loading: false });
     }
   },
 
-  // 应用筛选条件
-  applyFilters() {
-    const { allProperties, selectedDistrict, priceRange } = this.data;
-    let filtered = allProperties;
-
-    // 区县筛选
-    if (selectedDistrict) {
-      filtered = filtered.filter((p: any) => p.district === selectedDistrict);
+  // 加载具体房源点(scale > 13)
+  async loadProperties() {
+    this.setData({ loading: true, viewLevel: 'property' });
+    try {
+      const items = await getMapMarkers(this.buildFilters());
+      const filtered = this.applySubtypeFilter(items);
+      this.setData({ properties: filtered });
+      this.updatePropertyMarkers(filtered);
+    } catch (e) {
+      console.error('加载房源点失败:', e);
+    } finally {
+      this.setData({ loading: false });
     }
-
-    // 价格筛选
-    if (priceRange) {
-      const [min, max] = priceRange.split('-').map(s => s ? parseInt(s) : null);
-      filtered = filtered.filter((p: any) => {
-        const price = p.starting_price || 0;
-        if (min && price < min) return false;
-        if (max && price > max) return false;
-        return true;
-      });
-    }
-
-    this.setData({ properties: filtered });
-    this.updateMarkers(filtered);
   },
 
-  // 切换筛选面板
-  onTogglePanel(e: any) {
-    const panel = e.currentTarget.dataset.panel;
-    this.setData({ activePanel: this.data.activePanel === panel ? '' : panel });
-  },
-
-  // 关闭筛选面板
-  onClosePanel() {
-    this.setData({ activePanel: '' });
-  },
-
-  // 选择区县
-  onSelectDistrict(e: any) {
-    const value = e.currentTarget.dataset.value;
-    this.setData({
-      selectedDistrict: value,
-      activePanel: '',
+  // 商用细分:后端按大类(商业/办公)筛,前端再按标题关键词细分
+  applySubtypeFilter(items: any[]): any[] {
+    const t = TYPE_OPTIONS.find(o => o.value === this.data.selectedType);
+    if (!t || !t.sub) return items;
+    const subs = t.sub;
+    return items.filter(p => {
+      const text = `${p.title || ''}`;
+      return subs.some(k => text.includes(k));
     });
-    this.applyFilters();
   },
 
-  // 选择价格
-  onSelectPrice(e: any) {
-    const value = e.currentTarget.dataset.value;
-    const label = e.currentTarget.dataset.label;
-    this.setData({
-      priceRange: value,
-      priceLabel: label,
-      activePanel: '',
-    });
-    this.applyFilters();
+  // 商业蓝 / 住宅红 / 其他灰
+  markerIcon(ptype: string): string {
+    if (ptype === '住宅') return '/images/marker-residential.png';
+    if (ptype === '商业' || ptype === '办公') return '/images/marker-commercial.png';
+    return '/images/marker-other.png';
   },
 
-  updateMarkers(items: any[]) {
+  updatePropertyMarkers(items: any[]) {
     const markers = items
       .filter(p => p.lat && p.lng)
       .map(p => ({
         id: p.id,
         latitude: p.lat,
         longitude: p.lng,
-        width: 32,
-        height: 32,
-        iconPath: p.auction_status === '进行中' ? '/images/marker-active.png' : '/images/marker-default.png',
-        title: p.title,
+        iconPath: this.markerIcon(p.property_type),
+        width: 30,
+        height: 36,
         callout: {
           content: `${p.title}\n${(p.starting_price / 10000).toFixed(0)}万`,
           fontSize: 12,
@@ -154,20 +219,36 @@ Page({
 
   onMarkerTap(e: any) {
     const id = e.detail.markerId;
-    const prop = this.data.properties.find(p => p.id === id);
+    // 聚合marker:点击下钻
+    if (id >= 1000000) {
+      const m = this.data.markers.find((x: any) => x.id === id);
+      if (!m) return;
+      if (m._aggLevel === 'district') {
+        // 下钻到该区县的商圈级
+        this.setData({
+          selectedDistrict: m._aggName,
+          latitude: m.latitude,
+          longitude: m.longitude,
+          scale: SCALE_DISTRICT + 1,
+        });
+        this.loadAggregate('sub_district');
+      } else {
+        // 商圈级 → 房源点
+        this.setData({ latitude: m.latitude, longitude: m.longitude, scale: SCALE_SUBDIST + 1 });
+        this.loadProperties();
+      }
+      return;
+    }
+    // 房源点:显示底部卡片
+    const prop = this.data.properties.find((p: any) => p.id === id);
     if (prop) {
       this.setData({
-        selectedProperty: {
-          ...prop,
-          starting_price: (prop.starting_price / 10000).toFixed(0),
-        },
+        selectedProperty: { ...prop, starting_price: (prop.starting_price / 10000).toFixed(0) },
       });
     }
   },
 
-  onCloseCard() {
-    this.setData({ selectedProperty: null });
-  },
+  onCloseCard() { this.setData({ selectedProperty: null }); },
 
   onCardTap() {
     if (this.data.selectedProperty) {
@@ -176,21 +257,64 @@ Page({
   },
 
   onZoomIn() {
-    this.setData({ scale: Math.min(20, this.data.scale + 2) });
+    const scale = Math.min(20, this.data.scale + 2);
+    this.setData({ scale });
+    this.onScaleChanged(scale);
   },
 
   onZoomOut() {
-    this.setData({ scale: Math.max(3, this.data.scale - 2) });
+    const scale = Math.max(3, this.data.scale - 2);
+    this.setData({ scale });
+    this.onScaleChanged(scale);
   },
 
   onLocate() {
-    const mapCtx = wx.createMapContext('propertyMap');
-    mapCtx.moveToLocation();
+    wx.createMapContext('propertyMap').moveToLocation({} as any);
+  },
+
+  // scale 跨越阈值时切换层级
+  _lastLevel: '' as string,
+  onScaleChanged(scale: number) {
+    const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
+    if (level !== this.data.viewLevel) {
+      this.refresh();
+    }
   },
 
   onRegionChange(e: any) {
-    if (e.type === 'end' && e.causedBy === 'drag') {
-      // future: reload properties in new viewport
+    if (e.type === 'end') {
+      const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+      if (scale !== this.data.scale) {
+        this.setData({ scale });
+        this.onScaleChanged(scale);
+      }
     }
   },
+
+  // ===== 筛选交互 =====
+  onTogglePanel(e: any) {
+    const panel = e.currentTarget.dataset.panel;
+    this.setData({ activePanel: this.data.activePanel === panel ? '' : panel });
+  },
+  onClosePanel() { this.setData({ activePanel: '' }); },
+
+  onSelectDistrict(e: any) {
+    this.setData({ selectedDistrict: e.currentTarget.dataset.value, activePanel: '' });
+    this.refresh();
+  },
+  onSelectPrice(e: any) {
+    this.setData({ priceRange: e.currentTarget.dataset.value, priceLabel: e.currentTarget.dataset.label, activePanel: '' });
+    this.refresh();
+  },
+  onSelectArea(e: any) {
+    this.setData({ areaRange: e.currentTarget.dataset.value, areaLabel: e.currentTarget.dataset.label, activePanel: '' });
+    this.refresh();
+  },
+  onSelectType(e: any) {
+    this.setData({ selectedType: e.currentTarget.dataset.value, typeLabel: e.currentTarget.dataset.label, activePanel: '' });
+    this.refresh();
+  },
+  onKeywordInput(e: any) { this.setData({ keyword: e.detail.value }); },
+  onKeywordConfirm() { this.refresh(); },
+  onKeywordClear() { this.setData({ keyword: '' }); this.refresh(); },
 });
