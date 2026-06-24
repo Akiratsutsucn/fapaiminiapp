@@ -126,33 +126,31 @@ Page({
         filters.district = this.data.selectedDistrict;
       }
       const groups = await getMapAggregate(level, filters);
+      const bg = level === 'district' ? '#009688' : '#FF8A00';
       const markers = groups
         .filter(g => g.center_lat && g.center_lng)
         .map((g, idx) => ({
           id: 1000000 + idx,         // 聚合marker用大id区分,避免和房源id冲突
           latitude: g.center_lat,
           longitude: g.center_lng,
-          iconPath: level === 'district' ? '/images/bubble-district.png' : '/images/bubble-subdistrict.png',
-          width: 48,
-          height: 48,
+          iconPath: '/images/marker-blank.png',  // 透明占位,气泡本体由label实色背景呈现
+          width: 1,
+          height: 1,
+          anchor: { x: 0.5, y: 0.5 },
           _aggName: g.name,
           _aggLevel: level,
           label: {
-            content: `${g.name}\n${g.count}套`,
+            content: `${g.name} ${g.count}套`,
             color: '#FFFFFF',
-            fontSize: 11,
-            anchorX: 0,
-            anchorY: 0,
-            textAlign: 'center',
-            bgColor: '#00000000',
-            padding: 2,
-          },
-          callout: {
-            content: `${g.name} · ${g.count}套`,
             fontSize: 12,
-            borderRadius: 8,
-            padding: 6,
-            display: 'BYCLICK',
+            bgColor: bg,
+            borderRadius: 24,
+            borderWidth: 2,
+            borderColor: '#FFFFFF',
+            textAlign: 'center',
+            padding: 10,
+            anchorX: -36,   // 横向左移,使气泡大致以坐标点为中心
+            anchorY: -16,
           },
         }));
       this.setData({ markers, properties: [], selectedProperty: null });
