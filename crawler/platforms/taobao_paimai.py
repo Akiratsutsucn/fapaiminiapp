@@ -620,7 +620,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         if row:
             logger.info(f"[TaobaoPaiMai] Using list API data for {item_id}")
             detail = self._build_detail_from_row(row)
-            await self._enrich_notice(item_id, detail)
+            # 熔断开启(IP被风控)时跳过抓公告——_enrich_notice 每条要发网络请求(数秒),
+            # 风控下大概率失败/超时,1500+条全走兜底会拖满4h超时。熔断时只用列表数据快速入库。
+            if not self._ssr_circuit_open:
+                await self._enrich_notice(item_id, detail)
             return detail
 
         logger.warning(f"[TaobaoPaiMai] No data for {item_id}")
