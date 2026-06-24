@@ -36,6 +36,10 @@ class ImageProcessor:
         self._extra_headers = extra_headers or {}
         # 图片下载代理（如住宅 socks5h://），用于规避 img.alicdn.com 对机房IP的 420 限流。
         self._proxy = proxy
+        # 420 限流熔断:连续 N 次 420 → 进入冷却期,期间图片下载直接跳过(秒级返回),
+        # 避免每张图重试5次×退避(~35s)在 IP 被风控时把整轮拖到 4h 超时。图片后续渐补。
+        self._consec_420 = 0
+        self._cooldown_until = 0.0   # time.monotonic() 时间戳,< 它则跳过下载
         self._cookies = {}
         if cookies_str:
             for pair in cookies_str.split(";"):
@@ -75,6 +79,11 @@ class ImageProcessor:
         （实测住宅 socks5 对 alicdn 不稳定，仅作最后兜底，不作首选。）
         """
         import httpx
+        import time as _time
+
+        # 处于 420 冷却期:直接跳过下载(图片后续渐补),不再重试拖慢整轮
+        if _time.monotonic() < self._cooldown_until:
+            return None
 
         last_error = None
         for attempt in range(max_retries + 1):
@@ -95,15 +104,26 @@ class ImageProcessor:
                         async with httpx.AsyncClient(**client_kwargs) as c:
                             resp = await c.get(url)
                     if resp.status_code == 200 and resp.content:
+                        self._consec_420 = 0   # 成功 → 重置 420 计数
                         return resp.content
                     last_error = f"HTTP {resp.status_code}"
             except Exception as e:
                 last_error = str(e)
 
+            # 连续 420 累计:CDN 在限流本 IP,继续重试无意义 → 触发冷却,后续图片直接跳过
+            if last_error == "HTTP 420":
+                self._consec_420 += 1
+                if self._consec_420 >= 8:
+                    self._cooldown_until = _time.monotonic() + 600  # 冷却10分钟
+                    logger.warning("[ImageProcessor] 连续420限流,图片下载冷却10分钟(图片后续渐补)")
+                    return None
+            else:
+                self._consec_420 = 0
+
             if attempt < max_retries:
-                # 420 限流退避更久（2s,4s,7s,11s...），普通错误用较短退避
+                # 420 限流:短退避即可(很快会触发冷却跳过);普通错误用较短退避
                 is_420 = last_error == "HTTP 420"
-                delay = (2.0 + attempt * 2.5) if is_420 else (1.5 * (attempt + 1))
+                delay = (1.0 + attempt * 0.8) if is_420 else (1.5 * (attempt + 1))
                 logger.debug(f"Image retry {attempt + 1}/{max_retries} after {delay:.0f}s "
                              f"(err={last_error}): {url[:70]}")
                 await asyncio.sleep(delay)
