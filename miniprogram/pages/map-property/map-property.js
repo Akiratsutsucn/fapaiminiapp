@@ -240,15 +240,23 @@ Page({
             wx.navigateTo({ url: `/pages/property-detail/property-detail?id=${this.data.selectedProperty.id}` });
         }
     },
+    _applyScale(scale) {
+        wx.createMapContext('propertyMap').getCenterLocation({
+            success: (res) => {
+                this.setData({ scale, latitude: res.latitude, longitude: res.longitude });
+                this.onScaleChanged(scale);
+            },
+            fail: () => {
+                this.setData({ scale });
+                this.onScaleChanged(scale);
+            },
+        });
+    },
     onZoomIn() {
-        const scale = Math.min(20, this.data.scale + 2);
-        this.setData({ scale });
-        this.onScaleChanged(scale);
+        this._applyScale(Math.min(20, this.data.scale + 2));
     },
     onZoomOut() {
-        const scale = Math.max(3, this.data.scale - 2);
-        this.setData({ scale });
-        this.onScaleChanged(scale);
+        this._applyScale(Math.max(3, this.data.scale - 2));
     },
     onLocate() {
         wx.createMapContext('propertyMap').moveToLocation({});
@@ -262,11 +270,24 @@ Page({
     },
     onRegionChange(e) {
         if (e.type === 'end') {
-            const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-            if (scale !== this.data.scale) {
-                this.setData({ scale });
-                this.onScaleChanged(scale);
-            }
+            wx.createMapContext('propertyMap').getCenterLocation({
+                success: (res) => {
+                    const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+                    const patch = { latitude: res.latitude, longitude: res.longitude };
+                    if (scale !== this.data.scale)
+                        patch.scale = scale;
+                    this.setData(patch);
+                    if (scale !== this.data.scale)
+                        this.onScaleChanged(scale);
+                },
+                fail: () => {
+                    const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+                    if (scale !== this.data.scale) {
+                        this.setData({ scale });
+                        this.onScaleChanged(scale);
+                    }
+                },
+            });
         }
     },
     onTogglePanel(e) {

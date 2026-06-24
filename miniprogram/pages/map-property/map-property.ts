@@ -254,16 +254,26 @@ Page({
     }
   },
 
+  // 改 scale 前先同步当前中心,避免 setData 把地图拉回旧中心
+  _applyScale(scale: number) {
+    wx.createMapContext('propertyMap').getCenterLocation({
+      success: (res: any) => {
+        this.setData({ scale, latitude: res.latitude, longitude: res.longitude });
+        this.onScaleChanged(scale);
+      },
+      fail: () => {
+        this.setData({ scale });
+        this.onScaleChanged(scale);
+      },
+    } as any);
+  },
+
   onZoomIn() {
-    const scale = Math.min(20, this.data.scale + 2);
-    this.setData({ scale });
-    this.onScaleChanged(scale);
+    this._applyScale(Math.min(20, this.data.scale + 2));
   },
 
   onZoomOut() {
-    const scale = Math.max(3, this.data.scale - 2);
-    this.setData({ scale });
-    this.onScaleChanged(scale);
+    this._applyScale(Math.max(3, this.data.scale - 2));
   },
 
   onLocate() {
@@ -281,11 +291,24 @@ Page({
 
   onRegionChange(e: any) {
     if (e.type === 'end') {
-      const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-      if (scale !== this.data.scale) {
-        this.setData({ scale });
-        this.onScaleChanged(scale);
-      }
+      // 关键:把地图当前真实中心同步回 data,否则后续 setData(scale/markers)
+      // 会让 <map> 用旧的 latitude/longitude(城市中心)强制把视野拉回去。
+      wx.createMapContext('propertyMap').getCenterLocation({
+        success: (res: any) => {
+          const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+          const patch: any = { latitude: res.latitude, longitude: res.longitude };
+          if (scale !== this.data.scale) patch.scale = scale;
+          this.setData(patch);
+          if (scale !== this.data.scale) this.onScaleChanged(scale);
+        },
+        fail: () => {
+          const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
+          if (scale !== this.data.scale) {
+            this.setData({ scale });
+            this.onScaleChanged(scale);
+          }
+        },
+      } as any);
     }
   },
 
