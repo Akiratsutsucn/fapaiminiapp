@@ -1015,10 +1015,22 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                         "象山", "宁海", "余姚", "慈溪", "宁波")
         hz_districts = ("上城", "下城", "江干", "拱墅", "西湖", "滨江", "萧山", "余杭",
                         "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德", "杭州")
+        # 市名(非区)——只作兜底,绝不优先于真正的区名。
+        # 历史bug:市名混在区名列表里且取第一个匹配,benefits中"杭州"常排在"钱塘"前,
+        # 导致742条district被错存成"杭州"而非具体区,C端按区筛不到。
+        _city_names = ("上海", "宁波", "杭州")
+        _all_districts = sh_districts + nb_districts + hz_districts
+        # 第一遍:只认真正的区(排除市名)
         for b in benefits:
-            if isinstance(b, str) and (b in sh_districts or b in nb_districts or b in hz_districts):
+            if isinstance(b, str) and b in _all_districts and b not in _city_names:
                 district = b
                 break
+        # 第二遍兜底:没匹配到区才退而用市名
+        if not district:
+            for b in benefits:
+                if isinstance(b, str) and b in _city_names:
+                    district = b
+                    break
         # City from benefits
         city_from_benefits = ""
         for b in benefits:
@@ -1034,6 +1046,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         cat_map = {"50025969": "住宅", "200782003": "商业", "200788003": "工业",
                     "200798003": "其他", "50025970": "土地"}
         property_type = cat_map.get(cat_id, extra.get("fcatV4ButtomName", ""))
+        # 阿里 category 偶尔把商业用房标成住宅(如世贸江滨商业中心/国际大厦);
+        # 用标题强特征兜底修正,避免 C 端按「商业」筛不到。
+        from ..cleaners.text_extractor import refine_property_type
+        property_type = refine_property_type(property_type, row.get("title", ""))
 
         # Status mapping: list API 'status' → bidStatus
         status_map = {"ing": 3, "end": 4, "sold": 5, "upcoming": 1}

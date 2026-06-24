@@ -70,6 +70,31 @@ _RE_SUB_DISTRICT = re.compile(r"([一-龥]{2,6}(?:街道|镇|乡))")
 # 板块名里若残留行政区前缀,贪婪匹配到最后一个「区/市/县」,之后才是真正的板块名。
 _RE_ADMIN_PREFIX = re.compile(r"^.*[市区县旗盟]")
 
+# 商业地产强特征词:标题命中这些词,即使平台 category 标成「住宅」也应修正为商业。
+# 保守口径——只收歧义低的强信号词,避免把真住宅误判成商业。
+_RE_COMMERCIAL_TITLE = re.compile(
+    r"商业中心|商务中心|写字楼|商务楼|商业楼|商铺|店铺|门面|档口|"
+    r"办公楼|办公用房|写字间|商业用房|商业房|loft|LOFT|"
+    r"国际大厦|金座|银座|商城|购物中心|商业广场|商业街"
+)
+
+
+def refine_property_type(property_type: str, title: str) -> str:
+    """用标题强特征修正房产类型:当类型为「住宅/其他/空」但标题含明确商业信号时,改判「商业」。
+    仅做「→商业」单向修正(高置信),不动其他类型,避免误伤。
+    """
+    if not title:
+        return property_type
+    pt = (property_type or "").strip()
+    # 车位/车库优先:标题含车位特征时不改判商业(避免「XX银座地下车位」被误判)
+    if "车位" in title or "车库" in title:
+        return property_type
+    # 只对「住宅 / 其他 / 空」这几类做兜底修正(商业/工业/车位等已明确的不动)
+    if pt in ("", "住宅", "其他") and _RE_COMMERCIAL_TITLE.search(title):
+        return "商业"
+    return property_type
+
+
 # Chinese number to int
 _CN_NUM = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
 
