@@ -32,15 +32,12 @@ async def main():
     fixed = 0
     try:
         rows = (await db.execute(
-            select(Property).where(
-                Property.is_deleted == 0,
-                Property.property_type.in_(["住宅", "其他"]),
-            )
+            select(Property).where(Property.is_deleted == 0)
         )).scalars().all()
-        logger.info(f"扫描 {len(rows)} 条住宅/其他房源")
+        logger.info(f"扫描 {len(rows)} 条房源(用用途字段+标题重判)")
 
         for p in rows:
-            new = refine_property_type(p.property_type, p.title or "")
+            new = refine_property_type(p.property_type, p.title or "", p.description or "")
             if new != p.property_type:
                 logger.info(f"[修正] id={p.id} {p.property_type}→{new} | {(p.title or '')[:32]}")
                 p.property_type = new

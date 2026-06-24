@@ -78,19 +78,48 @@ _RE_COMMERCIAL_TITLE = re.compile(
     r"国际大厦|金座|银座|商城|购物中心|商业广场|商业街"
 )
 
+# 「用途」字段(标的调查表/权证里的土地用途·房屋用途)——分类的最高权威依据。
+# 详情正文里形如:「土地用途:工业用地」「地类(用途):工业用地」「房屋用途:店铺」
+# 「用途:其他商服用地」等。匹配「用途」附近的值,映射到标准房产类型。
+_RE_USE_FIELD = re.compile(r"(?:土地用途|房屋用途|地类[（(]?用途[）)]?|用途)[：:\s]*([一-龥/]{2,12})")
 
-def refine_property_type(property_type: str, title: str) -> str:
-    """用标题强特征修正房产类型:当类型为「住宅/其他/空」但标题含明确商业信号时,改判「商业」。
-    仅做「→商业」单向修正(高置信),不动其他类型,避免误伤。
+
+def classify_by_use(description: str) -> str:
+    """从详情正文的「用途」字段判定房产类型。返回标准类型或 ""(无法判定)。
+    优先级最高——这是标的调查表/不动产权证里的权威用途。
     """
-    if not title:
-        return property_type
+    if not description:
+        return ""
+    for m in _RE_USE_FIELD.finditer(description):
+        val = m.group(1)
+        # 工业
+        if "工业" in val:
+            return "工业"
+        # 商服/商业/办公/店铺 → 商业
+        if any(k in val for k in ("商服", "商业", "办公", "店铺", "商务", "市场")):
+            return "商业"
+        # 住宅(城镇住宅/普通住宅/住宅用地)
+        if "住宅" in val:
+            return "住宅"
+    return ""
+
+
+def refine_property_type(property_type: str, title: str, description: str = "") -> str:
+    """修正房产类型,优先级:① 详情「用途」字段(权威) ② 标题强商业特征(兜底)。
+    用途字段能明确判定时直接采用(可纠正任意误判);否则用标题特征做「→商业」单向兜底。
+    """
     pt = (property_type or "").strip()
-    # 车位/车库优先:标题含车位特征时不改判商业(避免「XX银座地下车位」被误判)
-    if "车位" in title or "车库" in title:
+    # 车位/车库:标题明确是车位的,保持不动(用途字段对车位常缺失/误导)
+    if title and ("车位" in title or "车库" in title):
         return property_type
-    # 只对「住宅 / 其他 / 空」这几类做兜底修正(商业/工业/车位等已明确的不动)
-    if pt in ("", "住宅", "其他") and _RE_COMMERCIAL_TITLE.search(title):
+
+    # ① 最高优先级:详情「用途」字段
+    by_use = classify_by_use(description)
+    if by_use:
+        return by_use
+
+    # ② 兜底:标题强商业特征(仅对 住宅/其他/空 做 →商业 单向修正)
+    if title and pt in ("", "住宅", "其他") and _RE_COMMERCIAL_TITLE.search(title):
         return "商业"
     return property_type
 

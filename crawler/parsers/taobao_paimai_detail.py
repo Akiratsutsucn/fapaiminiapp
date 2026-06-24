@@ -648,6 +648,12 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
 
         item.description = "\n".join(parts)[:8000]
 
+        # description 组装完毕(已含公告/标的调查正文里的「用途」字段)后,
+        # 用「用途字段(权威)+标题」重判房产类型,纠正 catId 把商服/工业误标住宅的情况。
+        from ..cleaners.text_extractor import refine_property_type
+        item.property_type = refine_property_type(
+            item.property_type, item.title or "", item.description or "")
+
     # ============================================================
     # Computed fields
     # ============================================================
