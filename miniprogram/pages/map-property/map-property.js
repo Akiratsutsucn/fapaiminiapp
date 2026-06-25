@@ -24,12 +24,12 @@ const AREA_RANGES = [
     { label: '140㎡以上', value: '140-' },
 ];
 const TYPE_OPTIONS = [
-    { label: '住宅', value: 'zhuzhai', ptype: '住宅' },
-    { label: '商铺', value: 'shangpu', ptype: '商业', sub: ['商铺', '店铺', '门面', '门市', '档口', '底商'] },
-    { label: '写字楼', value: 'xiezilou', ptype: '商业,办公', sub: ['写字楼', '写字间', '办公'] },
-    { label: '商住房', value: 'shangzhu', ptype: '商业', sub: ['商住', '公寓', 'loft', 'LOFT', '酒店式'] },
-    { label: '工业用房', value: 'gongye', ptype: '工业' },
-    { label: '其他商用', value: 'qita', ptype: '商业,办公,其他' },
+    { label: '住宅', value: '住宅', ptype: '住宅' },
+    { label: '商铺', value: '商铺', ptype: '商铺' },
+    { label: '写字楼', value: '写字楼', ptype: '写字楼' },
+    { label: '商住房', value: '商住房', ptype: '商住房' },
+    { label: '其他商用', value: '其他商用', ptype: '其他商用' },
+    { label: '工业用房', value: '工业', ptype: '工业' },
 ];
 const SCALE_DISTRICT = 11;
 const SCALE_SUBDIST = 13;
@@ -158,9 +158,8 @@ Page({
         this.setData({ loading: true, viewLevel: 'property' });
         try {
             const items = await (0, property_1.getMapMarkers)(this.buildFilters());
-            const filtered = this.applySubtypeFilter(items);
-            this.setData({ properties: filtered });
-            this.updatePropertyMarkers(filtered);
+            this.setData({ properties: items });
+            this.updatePropertyMarkers(items);
         }
         catch (e) {
             console.error('加载房源点失败:', e);
@@ -169,21 +168,12 @@ Page({
             this.setData({ loading: false });
         }
     },
-    applySubtypeFilter(items) {
-        const t = TYPE_OPTIONS.find(o => o.value === this.data.selectedType);
-        if (!t || !t.sub)
-            return items;
-        const subs = t.sub;
-        return items.filter(p => {
-            const text = `${p.title || ''}`;
-            return subs.some(k => text.includes(k));
-        });
-    },
     markerIcon(ptype) {
         if (ptype === '住宅')
             return '/images/marker-residential.png';
-        if (ptype === '商业' || ptype === '办公')
+        if (['商铺', '写字楼', '商住房', '其他商用', '商业', '办公'].indexOf(ptype) >= 0) {
             return '/images/marker-commercial.png';
+        }
         return '/images/marker-other.png';
     },
     updatePropertyMarkers(items) {

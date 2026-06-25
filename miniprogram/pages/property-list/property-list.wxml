@@ -81,9 +81,11 @@ module.exports.has = function (arr, val) {
           <view class="option-row">
             <view class="option-item multi {{pendingPropertyTypes.length === 0 ? 'selected' : ''}}" bindtap="onClearPropertyTypes">全部</view>
             <view class="option-item multi {{m.has(pendingPropertyTypes, '住宅') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="住宅">住宅</view>
-            <view class="option-item multi {{m.has(pendingPropertyTypes, '商业') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="商业">商业</view>
+            <view class="option-item multi {{m.has(pendingPropertyTypes, '商铺') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="商铺">商铺</view>
+            <view class="option-item multi {{m.has(pendingPropertyTypes, '写字楼') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="写字楼">写字楼</view>
+            <view class="option-item multi {{m.has(pendingPropertyTypes, '商住房') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="商住房">商住房</view>
+            <view class="option-item multi {{m.has(pendingPropertyTypes, '其他商用') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="其他商用">其他商用</view>
             <view class="option-item multi {{m.has(pendingPropertyTypes, '工业') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="工业">工业</view>
-            <view class="option-item multi {{m.has(pendingPropertyTypes, '办公') ? 'selected' : ''}}" bindtap="onTogglePropertyType" data-value="办公">办公</view>
           </view>
         </view>
         <view class="filter-group">
