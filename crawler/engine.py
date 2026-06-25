@@ -942,6 +942,19 @@ class CrawlEngine:
                 except Exception:
                     pass
 
+            # 用小区清单(community_info)给缺商圈的房源回填 sub_district。
+            # 集成到每轮抓取后,新房源自动补商圈(小区名匹配 community_name/title)。
+            try:
+                sub_filled = await DataEnricher.backfill_sub_districts(db, limit=2000)
+                if sub_filled:
+                    logger.info(f"[{platform_name}] 商圈回填 {sub_filled} 条房源")
+            except Exception as e:
+                logger.warning(f"[{platform_name}] 商圈回填失败: {e}")
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+
             # 给本批次新爬到的、缺坐标的房源补 lat/lng（高德 geocoding）
             try:
                 from .pipelines.geocoder import geocode_property
