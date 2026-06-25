@@ -102,13 +102,25 @@
   margin-bottom: 16rpx;
 }
 
-/* 用途类型标签:柔和蓝填充作为类别徽章。用双类选择器提高优先级,
-   覆盖全局 .meta-tag 的浅蓝底(否则同权重下被全局样式覆盖,标签显示成普通浅蓝)。 */
+/* 组件默认 styleIsolation:isolated,全局 app.wxss 的 .meta-tag 进不来,
+   故在组件内定义基础标签样式,保证 区县/轮次/面积/用途 整排风格一致。 */
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 22rpx;
+  line-height: 1.4;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  background: #F0F4F9;
+  color: #51617A;
+  font-weight: 500;
+}
+
+/* 用途类型标签:淡蓝底深蓝字,作为类别轻标识,与其它标签同体量不抢眼 */
 .meta-tag.meta-tag-type {
-  background: linear-gradient(135deg, #3D6FB5 0%, #2D4A7A 100%);
-  color: #fff;
+  background: #E8F1FB;
+  color: #2D5B9E;
   font-weight: 600;
-  letter-spacing: 0.5rpx;
 }
 
 .card-price-row {

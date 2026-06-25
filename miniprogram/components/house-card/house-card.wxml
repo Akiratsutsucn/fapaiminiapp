@@ -13,10 +13,10 @@
       <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
       <text class="meta-tag" wx:if="{{auctionRound}}">{{auctionRound}}</text>
       <text class="meta-tag" wx:if="{{area}}">{{area}}㎡</text>
-      <text class="meta-tag" wx:if="{{propertyType}}" style="background:#EAF2FC;color:#2D4A7A;border:1rpx solid #BBD3EF;font-weight:600;">{{propertyType}}</text>
-      <view class="biz-tag" wx:if="{{subDistrict}}" style="display:inline-flex;align-items:center;gap:5rpx;padding:4rpx 14rpx 4rpx 10rpx;border-radius:8rpx;background:#FDF1E7;border:1rpx solid #F2D2B6;max-width:220rpx;">
+      <text class="meta-tag meta-tag-type" wx:if="{{propertyType}}">{{propertyType}}</text>
+      <view class="biz-tag" wx:if="{{subDistrict}}">
         <view class="biz-tag-pin"></view>
-        <text class="biz-tag-text" style="color:#C8410D;font-size:22rpx;line-height:1.4;font-weight:500;">{{subDistrict}}</text>
+        <text class="biz-tag-text">{{subDistrict}}</text>
       </view>
       <text class="meta-tag" wx:if="{{layout}}">{{layout}}</text>
     </view>
