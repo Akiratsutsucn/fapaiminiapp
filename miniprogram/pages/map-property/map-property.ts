@@ -254,34 +254,7 @@ Page({
     }
   },
 
-  // 改 scale 前先同步当前中心,避免 setData 把地图拉回旧中心
-  _applyScale(scale: number) {
-    wx.createMapContext('propertyMap').getCenterLocation({
-      success: (res: any) => {
-        this.setData({ scale, latitude: res.latitude, longitude: res.longitude });
-        this.onScaleChanged(scale);
-      },
-      fail: () => {
-        this.setData({ scale });
-        this.onScaleChanged(scale);
-      },
-    } as any);
-  },
-
-  onZoomIn() {
-    this._applyScale(Math.min(20, this.data.scale + 2));
-  },
-
-  onZoomOut() {
-    this._applyScale(Math.max(3, this.data.scale - 2));
-  },
-
-  onLocate() {
-    wx.createMapContext('propertyMap').moveToLocation({} as any);
-  },
-
   // scale 跨越阈值时切换层级
-  _lastLevel: '' as string,
   onScaleChanged(scale: number) {
     const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
     if (level !== this.data.viewLevel) {
@@ -289,27 +262,31 @@ Page({
     }
   },
 
+  // 地图移动/缩放(含手势)结束:主动查真实 scale 和中心,触发层级切换。
+  // 用 getScale() 而非 e.detail.scale —— 后者在手势缩放时不可靠/缺失,导致手势放大不切层级。
   onRegionChange(e: any) {
-    if (e.type === 'end') {
-      // 关键:把地图当前真实中心同步回 data,否则后续 setData(scale/markers)
-      // 会让 <map> 用旧的 latitude/longitude(城市中心)强制把视野拉回去。
-      wx.createMapContext('propertyMap').getCenterLocation({
-        success: (res: any) => {
-          const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-          const patch: any = { latitude: res.latitude, longitude: res.longitude };
-          if (scale !== this.data.scale) patch.scale = scale;
-          this.setData(patch);
-          if (scale !== this.data.scale) this.onScaleChanged(scale);
-        },
-        fail: () => {
-          const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-          if (scale !== this.data.scale) {
-            this.setData({ scale });
-            this.onScaleChanged(scale);
-          }
-        },
-      } as any);
-    }
+    if (e.type !== 'end') return;
+    const ctx = wx.createMapContext('propertyMap');
+    ctx.getScale({
+      success: (sr: any) => {
+        const scale = Math.round(sr.scale);
+        ctx.getCenterLocation({
+          success: (cr: any) => {
+            const patch: any = { latitude: cr.latitude, longitude: cr.longitude };
+            if (scale !== this.data.scale) patch.scale = scale;
+            this.setData(patch);
+            if (scale !== this.data.scale) this.onScaleChanged(scale);
+          },
+          fail: () => {
+            if (scale !== this.data.scale) {
+              this.setData({ scale });
+              this.onScaleChanged(scale);
+            }
+          },
+        } as any);
+      },
+      fail: () => {},
+    } as any);
   },
 
   // ===== 筛选交互 =====

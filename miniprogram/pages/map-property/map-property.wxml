@@ -72,15 +72,6 @@
   >
   </map>
 
-  <!-- 地图控制按钮(同层渲染,用view替代cover-view) -->
-  <view class="map-controls">
-    <view class="ctrl-btn ctrl-btn-text" bindtap="onZoomIn">+</view>
-    <view class="ctrl-btn ctrl-btn-text" bindtap="onZoomOut">-</view>
-    <view class="ctrl-btn" bindtap="onLocate">
-      <image class="ctrl-btn-icon" src="/images/icon-locate.png" />
-    </view>
-  </view>
-
   <!-- 底部房源卡片 -->
   <view class="bottom-card" wx:if="{{selectedProperty}}" bindtap="onCardTap">
     <view class="bc-close" bindtap="onCloseCard" catchtap="onCloseCard">

@@ -240,28 +240,6 @@ Page({
             wx.navigateTo({ url: `/pages/property-detail/property-detail?id=${this.data.selectedProperty.id}` });
         }
     },
-    _applyScale(scale) {
-        wx.createMapContext('propertyMap').getCenterLocation({
-            success: (res) => {
-                this.setData({ scale, latitude: res.latitude, longitude: res.longitude });
-                this.onScaleChanged(scale);
-            },
-            fail: () => {
-                this.setData({ scale });
-                this.onScaleChanged(scale);
-            },
-        });
-    },
-    onZoomIn() {
-        this._applyScale(Math.min(20, this.data.scale + 2));
-    },
-    onZoomOut() {
-        this._applyScale(Math.max(3, this.data.scale - 2));
-    },
-    onLocate() {
-        wx.createMapContext('propertyMap').moveToLocation({});
-    },
-    _lastLevel: '',
     onScaleChanged(scale) {
         const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
         if (level !== this.data.viewLevel) {
@@ -269,26 +247,31 @@ Page({
         }
     },
     onRegionChange(e) {
-        if (e.type === 'end') {
-            wx.createMapContext('propertyMap').getCenterLocation({
-                success: (res) => {
-                    const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-                    const patch = { latitude: res.latitude, longitude: res.longitude };
-                    if (scale !== this.data.scale)
-                        patch.scale = scale;
-                    this.setData(patch);
-                    if (scale !== this.data.scale)
-                        this.onScaleChanged(scale);
-                },
-                fail: () => {
-                    const scale = e.detail && e.detail.scale ? Math.round(e.detail.scale) : this.data.scale;
-                    if (scale !== this.data.scale) {
-                        this.setData({ scale });
-                        this.onScaleChanged(scale);
-                    }
-                },
-            });
-        }
+        if (e.type !== 'end')
+            return;
+        const ctx = wx.createMapContext('propertyMap');
+        ctx.getScale({
+            success: (sr) => {
+                const scale = Math.round(sr.scale);
+                ctx.getCenterLocation({
+                    success: (cr) => {
+                        const patch = { latitude: cr.latitude, longitude: cr.longitude };
+                        if (scale !== this.data.scale)
+                            patch.scale = scale;
+                        this.setData(patch);
+                        if (scale !== this.data.scale)
+                            this.onScaleChanged(scale);
+                    },
+                    fail: () => {
+                        if (scale !== this.data.scale) {
+                            this.setData({ scale });
+                            this.onScaleChanged(scale);
+                        }
+                    },
+                });
+            },
+            fail: () => { },
+        });
     },
     onTogglePanel(e) {
         const panel = e.currentTarget.dataset.panel;
