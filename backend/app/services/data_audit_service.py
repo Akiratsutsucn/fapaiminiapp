@@ -10,6 +10,11 @@ from ..models.data_audit import AuditRule, AuditTask, AuditViolation, AuditRepor
 from ..models.property import Property
 
 
+# 删除量熔断阈值:单次审核删除数超过此值即中止回滚(防规则误删大规模房源)。
+# 正常每轮真正的非房产删除量很小(几十条),200 给足余量。
+_DELETE_SAFETY_LIMIT = 200
+
+
 class DataAuditService:
     """数据审核服务"""
 
@@ -64,6 +69,20 @@ class DataAuditService:
             deleted_count = 0
 
             for idx, property_obj in enumerate(properties):
+                # 删除量熔断:单次审核删除数超过安全阈值即中止并回滚,
+                # 防止任何规则/代码bug再次大规模误删(曾因循环变量bug误删1500+条在拍房源)。
+                if deleted_count > _DELETE_SAFETY_LIMIT:
+                    logger.error(
+                        f"[DataAudit] 删除量({deleted_count})超过安全阈值"
+                        f"({_DELETE_SAFETY_LIMIT}),疑似规则误删,中止审核并回滚本次删除"
+                    )
+                    await self.db.rollback()
+                    task.status = "failed"
+                    task.error_message = (
+                        f"删除量超过安全阈值{_DELETE_SAFETY_LIMIT},已中止(疑似规则误删)"
+                    )
+                    await self.db.commit()
+                    return
                 # 对每条房源应用所有规则
                 property_violations = []
                 for rule in rules:
@@ -74,6 +93,10 @@ class DataAuditService:
                 # 处理违规
                 if property_violations:
                     for violation_data in property_violations:
+                        # 取该违规对应的规则(不能用上面 for-rule 循环残留的 rule,
+                        # 否则所有违规都会被按 rules 最后一条规则执行动作——曾导致
+                        # 仅缺保证金的正常房源被按 delete 规则误删 1500+ 条)。
+                        v_rule = violation_data["_rule"]
                         # 创建违规记录
                         violation = AuditViolation(
                             task_id=task_id,
@@ -88,9 +111,9 @@ class DataAuditService:
                         )
                         self.db.add(violation)
 
-                        # 执行动作
+                        # 执行动作(用该违规自己的规则)
                         action_result = await self._execute_action(
-                            property_obj, rule, violation_data
+                            property_obj, v_rule, violation_data
                         )
 
                         if action_result == "deleted":
@@ -206,6 +229,7 @@ class DataAuditService:
                 "severity": rule.severity,
                 "action": rule.action,
                 "detail": violation,
+                "_rule": rule,   # 携带规则对象,供 _execute_action 使用(避免循环变量泄漏误用最后一条规则)
             }
 
         return None
