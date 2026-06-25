@@ -54,6 +54,15 @@ _re_other_province = _re_engine.compile(
     r"安乡|安化|云岩|郏县|新泰|高密|永城|商丘|开封|尉氏|睢阳|歙县|徽城)"
 )
 
+# 同上地名集合,但无 ^ 锚定,用于 search 扫描整个标题任意位置(district 为空时兜底)。
+_re_other_province_any = _re_engine.compile(
+    r"(河北|河南|山东|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
+    r"福建|安徽|江西|辽宁|吉林|黑龙江|云南|贵州|甘肃|内蒙古?|新疆|宁夏|青海|海南|西藏|"
+    r"淄博|唐山|周口|西安|昆明|福州|青岛|江阴|绍兴|启东|蒙自|十堰|滨州|阜阳|荆州|武威|"
+    r"黄山|北海|南充|东海|张家口|临邑|微山|盘州|库尔勒|日照|莱西|东明|清河|奇台|道真|"
+    r"安乡|安化|云岩|郏县|新泰|高密|永城|商丘|开封|尉氏|睢阳|歙县|徽城)"
+)
+
 # 股权/出资额/证券类「非不动产」拍卖（被执行人持有……股权/出资额/证券代码……）
 _re_equity_auction = _re_engine.compile(
     r"(股权|出资额|证券代码|证劵代码|股的|偿债|重整案件|注册资本|持股|股份)"
@@ -544,8 +553,16 @@ class CrawlEngine:
                         # 城市兜底覆盖（如阿里列表按 keyword=上海 搜出），真实外地信息只在 title 里
                         # （如「江阴市上海花园…」「绍兴市上虞区新上海花园…」）。
                         _title_head = (auction_item.title or "").strip()[:10]
+                        # 剥掉标题/地址开头的括号前缀(如「(法拍)」「【国有资产】」「(变卖)」),
+                        # 否则外省地名(莱西/青岛等)被前缀挤出开头,match 检测漏过
+                        # (如「(法拍)莱西上海路168号」被误判为上海)。
+                        _strip_prefix = _re_engine.compile(r"^[\s(（【\[]*(?:法拍|变卖|国有资产|拍卖|公告)?[)）】\]\s]*")
+                        _addr_head2 = _strip_prefix.sub("", addr_head)
+                        _title_head2 = _strip_prefix.sub("", _title_head)
                         _other_province = _re_other_province.match(addr_head) or \
-                                          _re_other_province.match(_title_head)
+                                          _re_other_province.match(_title_head) or \
+                                          _re_other_province.match(_addr_head2) or \
+                                          _re_other_province.match(_title_head2)
                         if _other_province:
                             logger.info(
                                 f"[{platform_name}] Skipping out-of-region (外省楼盘名含沪杭甬): "
@@ -597,6 +614,17 @@ class CrawlEngine:
                                 f"district={_dist}): {(auction_item.title or '')[:36]} — {item.source_url}"
                             )
                             return "skipped_city", None
+                        # district 为空的兜底兜底:标题任意位置含外省地名也拦(防「(法拍)莱西上海路」
+                        # 这类——含「上海」骗过城市判断、district 又没解析出、白名单拦不到)。
+                        if not _dist:
+                            _full = (auction_item.title or "") + " " + (auction_item.address or "")
+                            _op = _re_other_province_any.search(_full)
+                            if _op:
+                                logger.info(
+                                    f"[{platform_name}] Skipping out-of-region (district空+标题含外省地名 "
+                                    f"{_op.group(1)}): {(auction_item.title or '')[:36]} — {item.source_url}"
+                                )
+                                return "skipped_city", None
 
                         # Asset type filter: skip vehicles, equipment, goods (not real estate)
                         title = auction_item.title or ""
