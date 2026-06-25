@@ -213,16 +213,15 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._cookie_str: str = ""
         self._row_cache: dict[str, dict] = {}  # itemId → raw list API row
         # SSR 熔断：当前IP若被阿里风控，SSR 会连续返回骨架(每条白耗~50s)。
-        # 连续失败达阈值即熔断，后续直接走列表数据兜底(每条几百ms)，避免空耗超时。
-        # 阈值设 6：#97 事故中阈值 12 太晚——IP被风控后白耗 12 条×50s≈10分钟才止损,
-        # 且后半段持续风控使整轮拖满 4h 超时。降到 6 更早止损。
+        # 连续失败达阈值即熔断→换IP→重置继续抓。阈值3:IP额度充足(20+次/天且每天重置),
+        # 一被风控就尽快换新IP,别攒失败白耗。比保守攒6次更快恢复SSR成功率。
         self._ssr_consecutive_fails = 0
         self._ssr_circuit_open = False
-        self._SSR_FAIL_THRESHOLD = 6
+        self._SSR_FAIL_THRESHOLD = 3
         # 计划性换IP(预防式,优于熔断后补救):每成功抓 N 条阿里详情就主动切一个新IP,
         # 让阿里来不及把某IP盯到风控阈值。比熔断被动切更省时、更不易被风控。
         self._ssr_success_since_switch = 0
-        self._PROACTIVE_SWITCH_EVERY = 150  # 每150条主动切一次(全量~1500条约切10次,留足20次/天额度)
+        self._PROACTIVE_SWITCH_EVERY = 40  # 每40条主动切(IP额度每天20+次且当天重置,充足;勤换比省着用更有效)
         # SSR 并发(区县拆分后阿里全量~2200条,串行~6h超时;并发3约2h跑完)。
         # MTOP 较敏感,故并发保守=3。切IP/熔断/重启浏览器是全局动作,用锁串行化,
         # 避免并发下多个任务同时切IP(浪费额度+互相打断浏览器)。
