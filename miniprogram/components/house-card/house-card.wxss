@@ -102,8 +102,9 @@
   margin-bottom: 16rpx;
 }
 
-/* 用途类型标签:柔和蓝填充作为类别徽章,不用刺眼纯蓝;与其它标签等高协调 */
-.meta-tag-type {
+/* 用途类型标签:柔和蓝填充作为类别徽章。用双类选择器提高优先级,
+   覆盖全局 .meta-tag 的浅蓝底(否则同权重下被全局样式覆盖,标签显示成普通浅蓝)。 */
+.meta-tag.meta-tag-type {
   background: linear-gradient(135deg, #3D6FB5 0%, #2D4A7A 100%);
   color: #fff;
   font-weight: 600;
@@ -301,8 +302,8 @@
   align-items: center;
   gap: 5rpx;
   padding: 4rpx 14rpx 4rpx 10rpx;
-  border-radius: var(--radius-sm);
-  background: var(--accent-orange-soft);
+  border-radius: 8rpx;
+  background: #FFF1E6;
   max-width: 220rpx;
 }
 /* 纯 CSS 定位图标:水滴形(顶圆底尖)+ 内部空心圆,不用 emoji */
@@ -310,7 +311,7 @@
   position: relative;
   width: 13rpx;
   height: 13rpx;
-  background: var(--accent-orange-text);
+  background: #C8410D;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   flex-shrink: 0;
@@ -322,13 +323,13 @@
   left: 3rpx;
   width: 5rpx;
   height: 5rpx;
-  background: var(--accent-orange-soft);
+  background: #FFF1E6;
   border-radius: 50%;
 }
 .biz-tag-text {
   font-size: 22rpx;
   line-height: 1.4;
-  color: var(--accent-orange-text);
+  color: #C8410D;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
