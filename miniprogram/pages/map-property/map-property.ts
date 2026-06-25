@@ -254,37 +254,41 @@ Page({
     }
   },
 
-  // scale 跨越阈值时切换层级
-  onScaleChanged(scale: number) {
-    const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
-    if (level !== this.data.viewLevel) {
-      this.refresh(scale);
-    }
+  // scale → 层级
+  levelOf(scale: number): 'district' | 'sub_district' | 'property' {
+    return scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
   },
 
-  // 地图移动/缩放(含手势)结束:主动查真实 scale 和中心,触发层级切换。
-  // 用 getScale() 而非 e.detail.scale —— 后者在手势缩放时不可靠/缺失,导致手势放大不切层级。
+  // 地图移动/缩放(含手势)结束:取真实 scale,层级变了就切换并重载。
+  // 优先用事件自带 e.detail.scale(regionchange end 携带),getScale 作兜底;
+  // 拿到 scale 后只要算出的层级 != 当前 viewLevel 就刷新,不靠 scale 数值相等判断。
   onRegionChange(e: any) {
     if (e.type !== 'end') return;
-    const ctx = wx.createMapContext('propertyMap');
-    ctx.getScale({
-      success: (sr: any) => {
-        const scale = Math.round(sr.scale);
-        ctx.getCenterLocation({
-          success: (cr: any) => {
-            const patch: any = { latitude: cr.latitude, longitude: cr.longitude };
-            if (scale !== this.data.scale) patch.scale = scale;
-            this.setData(patch);
-            if (scale !== this.data.scale) this.onScaleChanged(scale);
-          },
-          fail: () => {
-            if (scale !== this.data.scale) {
-              this.setData({ scale });
-              this.onScaleChanged(scale);
-            }
-          },
-        } as any);
-      },
+    const applyScale = (scale: number) => {
+      if (!scale || isNaN(scale)) return;
+      const level = this.levelOf(scale);
+      console.log('[map] regionchange scale=', scale, 'level=', level, 'viewLevel=', this.data.viewLevel);
+      const ctx2 = wx.createMapContext('propertyMap');
+      ctx2.getCenterLocation({
+        success: (cr: any) => {
+          this.setData({ scale, latitude: cr.latitude, longitude: cr.longitude });
+          if (level !== this.data.viewLevel) this.refresh(scale);
+        },
+        fail: () => {
+          this.setData({ scale });
+          if (level !== this.data.viewLevel) this.refresh(scale);
+        },
+      } as any);
+    };
+    // 1) 优先事件自带 scale
+    const evScale = e.detail && e.detail.scale;
+    if (evScale && !isNaN(evScale)) {
+      applyScale(evScale);
+      return;
+    }
+    // 2) 兜底:主动查 getScale
+    wx.createMapContext('propertyMap').getScale({
+      success: (sr: any) => applyScale(sr.scale),
       fail: () => {},
     } as any);
   },

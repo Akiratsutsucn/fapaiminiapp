@@ -240,36 +240,38 @@ Page({
             wx.navigateTo({ url: `/pages/property-detail/property-detail?id=${this.data.selectedProperty.id}` });
         }
     },
-    onScaleChanged(scale) {
-        const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
-        if (level !== this.data.viewLevel) {
-            this.refresh(scale);
-        }
+    levelOf(scale) {
+        return scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
     },
     onRegionChange(e) {
         if (e.type !== 'end')
             return;
-        const ctx = wx.createMapContext('propertyMap');
-        ctx.getScale({
-            success: (sr) => {
-                const scale = Math.round(sr.scale);
-                ctx.getCenterLocation({
-                    success: (cr) => {
-                        const patch = { latitude: cr.latitude, longitude: cr.longitude };
-                        if (scale !== this.data.scale)
-                            patch.scale = scale;
-                        this.setData(patch);
-                        if (scale !== this.data.scale)
-                            this.onScaleChanged(scale);
-                    },
-                    fail: () => {
-                        if (scale !== this.data.scale) {
-                            this.setData({ scale });
-                            this.onScaleChanged(scale);
-                        }
-                    },
-                });
-            },
+        const applyScale = (scale) => {
+            if (!scale || isNaN(scale))
+                return;
+            const level = this.levelOf(scale);
+            console.log('[map] regionchange scale=', scale, 'level=', level, 'viewLevel=', this.data.viewLevel);
+            const ctx2 = wx.createMapContext('propertyMap');
+            ctx2.getCenterLocation({
+                success: (cr) => {
+                    this.setData({ scale, latitude: cr.latitude, longitude: cr.longitude });
+                    if (level !== this.data.viewLevel)
+                        this.refresh(scale);
+                },
+                fail: () => {
+                    this.setData({ scale });
+                    if (level !== this.data.viewLevel)
+                        this.refresh(scale);
+                },
+            });
+        };
+        const evScale = e.detail && e.detail.scale;
+        if (evScale && !isNaN(evScale)) {
+            applyScale(evScale);
+            return;
+        }
+        wx.createMapContext('propertyMap').getScale({
+            success: (sr) => applyScale(sr.scale),
             fail: () => { },
         });
     },
