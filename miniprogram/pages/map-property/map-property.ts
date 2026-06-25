@@ -259,36 +259,28 @@ Page({
     return scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
   },
 
-  // 地图移动/缩放(含手势)结束:取真实 scale,层级变了就切换并重载。
-  // 优先用事件自带 e.detail.scale(regionchange end 携带),getScale 作兜底;
-  // 拿到 scale 后只要算出的层级 != 当前 viewLevel 就刷新,不靠 scale 数值相等判断。
+  // 地图移动/缩放(含手势)结束:只读取真实 scale 判断层级,层级变了才重载 markers。
+  // 关键:绝不在这里 setData(scale/latitude/longitude)——map 的这些是绑定属性,
+  // 回写会强制地图跳到该值,与用户手势冲突,造成"放大又自动缩小、不平滑"。
+  // 当前 scale/中心由地图自身维护;只把它们记到非渲染的内部变量供下钻/筛选时用。
+  _curScale: 11 as number,
   onRegionChange(e: any) {
     if (e.type !== 'end') return;
-    const applyScale = (scale: number) => {
+    const handle = (scale: number) => {
       if (!scale || isNaN(scale)) return;
+      this._curScale = scale;
       const level = this.levelOf(scale);
-      console.log('[map] regionchange scale=', scale, 'level=', level, 'viewLevel=', this.data.viewLevel);
-      const ctx2 = wx.createMapContext('propertyMap');
-      ctx2.getCenterLocation({
-        success: (cr: any) => {
-          this.setData({ scale, latitude: cr.latitude, longitude: cr.longitude });
-          if (level !== this.data.viewLevel) this.refresh(scale);
-        },
-        fail: () => {
-          this.setData({ scale });
-          if (level !== this.data.viewLevel) this.refresh(scale);
-        },
-      } as any);
+      if (level !== this.data.viewLevel) {
+        this.refresh(scale);   // 只重载 markers,不动 scale/中心(避免打断手势)
+      }
     };
-    // 1) 优先事件自带 scale
     const evScale = e.detail && e.detail.scale;
     if (evScale && !isNaN(evScale)) {
-      applyScale(evScale);
+      handle(evScale);
       return;
     }
-    // 2) 兜底:主动查 getScale
     wx.createMapContext('propertyMap').getScale({
-      success: (sr: any) => applyScale(sr.scale),
+      success: (sr: any) => handle(sr.scale),
       fail: () => {},
     } as any);
   },

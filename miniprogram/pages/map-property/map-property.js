@@ -243,35 +243,26 @@ Page({
     levelOf(scale) {
         return scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
     },
+    _curScale: 11,
     onRegionChange(e) {
         if (e.type !== 'end')
             return;
-        const applyScale = (scale) => {
+        const handle = (scale) => {
             if (!scale || isNaN(scale))
                 return;
+            this._curScale = scale;
             const level = this.levelOf(scale);
-            console.log('[map] regionchange scale=', scale, 'level=', level, 'viewLevel=', this.data.viewLevel);
-            const ctx2 = wx.createMapContext('propertyMap');
-            ctx2.getCenterLocation({
-                success: (cr) => {
-                    this.setData({ scale, latitude: cr.latitude, longitude: cr.longitude });
-                    if (level !== this.data.viewLevel)
-                        this.refresh(scale);
-                },
-                fail: () => {
-                    this.setData({ scale });
-                    if (level !== this.data.viewLevel)
-                        this.refresh(scale);
-                },
-            });
+            if (level !== this.data.viewLevel) {
+                this.refresh(scale);
+            }
         };
         const evScale = e.detail && e.detail.scale;
         if (evScale && !isNaN(evScale)) {
-            applyScale(evScale);
+            handle(evScale);
             return;
         }
         wx.createMapContext('propertyMap').getScale({
-            success: (sr) => applyScale(sr.scale),
+            success: (sr) => handle(sr.scale),
             fail: () => { },
         });
     },
