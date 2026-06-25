@@ -22,7 +22,7 @@
     <t-card title="建筑信息" style="margin-top:16px">
       <t-form :data="form" label-width="110px">
         <t-row :gutter="24">
-          <t-col :span="3"><t-form-item label="物业类型"><t-select v-model="form.property_type"><t-option value="住宅" /><t-option value="商业" /><t-option value="工业" /><t-option value="办公" /><t-option value="土地" /></t-select></t-form-item></t-col>
+          <t-col :span="3"><t-form-item label="物业类型"><t-select v-model="form.property_type"><t-option value="住宅" /><t-option value="商铺" /><t-option value="写字楼" /><t-option value="商住房" /><t-option value="其他商用" /><t-option value="工业" /><t-option value="土地" /></t-select></t-form-item></t-col>
           <t-col :span="3"><t-form-item label="面积(m2)"><t-input-number v-model="form.area" :min="0" :decimal-places="2" /></t-form-item></t-col>
           <t-col :span="3"><t-form-item label="户型"><t-input v-model="form.layout" /></t-form-item></t-col>
           <t-col :span="3"><t-form-item label="楼层"><t-input v-model="form.floor_info" /></t-form-item></t-col>

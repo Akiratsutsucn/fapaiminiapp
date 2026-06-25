@@ -10,14 +10,14 @@
   <view class="card-body">
     <view class="card-title">{{title}}</view>
     <view class="card-meta">
+      <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
+      <text class="meta-tag" wx:if="{{auctionRound}}">{{auctionRound}}</text>
+      <text class="meta-tag" wx:if="{{area}}">{{area}}㎡</text>
+      <text class="meta-tag meta-tag-type" wx:if="{{propertyType}}">{{propertyType}}</text>
       <view class="biz-tag" wx:if="{{subDistrict}}">
         <view class="biz-tag-pin"></view>
         <text class="biz-tag-text">{{subDistrict}}</text>
       </view>
-      <text class="meta-tag" wx:if="{{district}}">{{district}}</text>
-      <text class="meta-tag" wx:if="{{propertyType}}">{{propertyType}}</text>
-      <text class="meta-tag" wx:if="{{auctionRound}}">{{auctionRound}}</text>
-      <text class="meta-tag" wx:if="{{area}}">{{area}}㎡</text>
       <text class="meta-tag" wx:if="{{layout}}">{{layout}}</text>
     </view>
     <view class="card-price-row">

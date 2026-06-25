@@ -23,7 +23,10 @@
         </t-select>
         <t-select v-model="filters.property_type" placeholder="物业类型" clearable style="width:120px" @change="onSearch">
           <t-option value="住宅" label="住宅" />
-          <t-option value="商业" label="商业" />
+          <t-option value="商铺" label="商铺" />
+          <t-option value="写字楼" label="写字楼" />
+          <t-option value="商住房" label="商住房" />
+          <t-option value="其他商用" label="其他商用" />
           <t-option value="工业" label="工业" />
         </t-select>
         <t-select v-model="filters.auction_platform" placeholder="平台" clearable style="width:120px" @change="onSearch">

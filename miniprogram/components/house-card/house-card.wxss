@@ -101,6 +101,13 @@
   margin-bottom: 16rpx;
 }
 
+/* 用途类型标签:实色蓝,作为类别徽章突出显示 */
+.meta-tag-type {
+  background: #1E88E5;
+  color: #fff;
+  font-weight: 600;
+}
+
 .card-price-row {
   display: flex;
   align-items: baseline;

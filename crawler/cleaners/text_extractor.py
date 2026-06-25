@@ -104,10 +104,9 @@ def classify_by_use(description: str) -> str:
     return ""
 
 
-# 商用细分:在「商业/办公」大类下,按标题+用途细分为 商铺/写字楼/商住房/其他。
-# 仅作展示与筛选用,不改主 property_type。
+# 商用细分:在「商业/办公」大类下,按标题+用途细分为 商铺/写字楼/商住房/其他商用。
 def classify_commercial_subtype(title: str, description: str = "") -> str:
-    """把商用房细分:商铺 / 写字楼 / 商住房 / 其他。判不出归「其他」。"""
+    """把商用房细分:商铺 / 写字楼 / 商住房 / 其他商用。判不出归「其他商用」。"""
     text = f"{title or ''} {description or ''}"
     # 商铺:沿街店铺/门面/商铺/档口
     if any(k in text for k in ("商铺", "店铺", "门面", "门市", "档口", "商业用房", "底商")):
@@ -118,27 +117,33 @@ def classify_commercial_subtype(title: str, description: str = "") -> str:
     # 商住房:商住两用/公寓/loft/酒店式公寓
     if any(k in text for k in ("商住", "公寓", "loft", "LOFT", "酒店式", "商务公寓")):
         return "商住房"
-    return "其他"
+    return "其他商用"
 
 
 def refine_property_type(property_type: str, title: str, description: str = "") -> str:
-    """修正房产类型,优先级:① 详情「用途」字段(权威) ② 标题强商业特征(兜底)。
-    用途字段能明确判定时直接采用(可纠正任意误判);否则用标题特征做「→商业」单向兜底。
+    """修正并细化房产类型。最终 property_type 取值:
+       住宅 / 商铺 / 写字楼 / 商住房 / 其他商用 / 工业 / 车位 / 土地 / 其他。
+    优先级:① 详情「用途」字段(权威大类) ② 标题强商业特征(兜底→商业)。
+    判为「商业/办公」大类后,进一步用 classify_commercial_subtype 细分到具体商用类型。
     """
     pt = (property_type or "").strip()
     # 车位/车库:标题明确是车位的,保持不动(用途字段对车位常缺失/误导)
     if title and ("车位" in title or "车库" in title):
         return property_type
 
-    # ① 最高优先级:详情「用途」字段
-    by_use = classify_by_use(description)
-    if by_use:
-        return by_use
+    # ① 最高优先级:详情「用途」字段判大类
+    big = classify_by_use(description)
+    if not big:
+        # ② 兜底:标题强商业特征(仅对 住宅/其他/空 做 →商业 单向修正)
+        if title and pt in ("", "住宅", "其他") and _RE_COMMERCIAL_TITLE.search(title):
+            big = "商业"
+        else:
+            big = pt
 
-    # ② 兜底:标题强商业特征(仅对 住宅/其他/空 做 →商业 单向修正)
-    if title and pt in ("", "住宅", "其他") and _RE_COMMERCIAL_TITLE.search(title):
-        return "商业"
-    return property_type
+    # 商业/办公大类 → 细分到 商铺/写字楼/商住房/其他商用
+    if big in ("商业", "办公"):
+        return classify_commercial_subtype(title, description)
+    return big or property_type
 
 
 # Chinese number to int
