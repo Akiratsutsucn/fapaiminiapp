@@ -62,6 +62,7 @@ async def main():
         rows = (await db.execute(q)).scalars().all()
         logger.info(f"待补抓 {len(rows)} 条(阿里在拍 deposit=0)")
 
+        consec_fail = 0
         for p in rows:
             scanned += 1
             m = re.search(r"itemId=(\d+)", p.source_url or "")
@@ -72,7 +73,20 @@ async def main():
                 api_data = await crawler.fetch_detail_api(item_id)
                 if not api_data:
                     failed += 1
+                    consec_fail += 1
+                    # 关键:fetch_detail_api 熔断后会让后续全部秒级跳过(全军覆没)。
+                    # 补抓是长任务,必须能从熔断恢复:连续失败时重置熔断状态 + 拉长等待,
+                    # 让 IP 轮换/风控冷却生效,后续条目重新真正尝试。
+                    if getattr(crawler, "_ssr_circuit_open", False) or consec_fail >= 3:
+                        crawler._ssr_circuit_open = False
+                        crawler._ssr_consecutive_fails = 0
+                        wait = min(60, 10 + consec_fail * 5)
+                        logger.warning(f"[熔断恢复] 连续失败{consec_fail},重置熔断+等待{wait}s让IP冷却")
+                        await asyncio.sleep(wait)
+                    else:
+                        await asyncio.sleep(2.5)
                     continue
+                consec_fail = 0
                 extra = {"area_text": "", "district": p.district or "", "address": ""}
                 parsed = await parser.parse(api_data, p.source_url, _city_id_of(p), extra=extra)
             except Exception as e:

@@ -863,7 +863,9 @@ class CrawlEngine:
             ssr_limit = int(os.getenv("ALI_SSR_DETAIL_LIMIT", "400"))
             if platform_name == "阿里拍卖" and len(to_fetch) > ssr_limit:
                 import random as _random
-                # 查库里已有面积且有正文的 source_url(这些不急着SSR,排后面)
+                # 查库里已「完整」的 source_url(有面积+有正文+有保证金,这些不急着SSR,排后面)。
+                # 把 deposit 也纳入完整判定:缺保证金的房源同样优先 SSR 补全
+                # (此前仅看面积/正文,导致大量「有面积有正文但缺保证金」的房源排后面、补不到)。
                 urls = [it.source_url for it in to_fetch if it.source_url]
                 complete_urls: set[str] = set()
                 if urls:
@@ -875,6 +877,7 @@ class CrawlEngine:
                                 _PropModel.source_url.in_(urls),
                                 _PropModel.area.isnot(None), _PropModel.area > 0,
                                 _PropModel.description.isnot(None), _PropModel.description != "",
+                                _PropModel.deposit.isnot(None), _PropModel.deposit > 0,
                             )
                         )).scalars().all()
                         complete_urls = set(rows)
