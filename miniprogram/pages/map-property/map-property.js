@@ -98,12 +98,12 @@ Page({
             f.keyword = keyword;
         return f;
     },
-    refresh() {
-        const scale = this.data.scale;
-        if (scale < SCALE_DISTRICT) {
+    refresh(scale) {
+        const s = scale !== undefined ? scale : this.data.scale;
+        if (s < SCALE_DISTRICT) {
             this.loadAggregate('district');
         }
-        else if (scale < SCALE_SUBDIST) {
+        else if (s < SCALE_SUBDIST) {
             this.loadAggregate('sub_district');
         }
         else {
@@ -265,7 +265,7 @@ Page({
     onScaleChanged(scale) {
         const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
         if (level !== this.data.viewLevel) {
-            this.refresh();
+            this.refresh(scale);
         }
     },
     onRegionChange(e) {

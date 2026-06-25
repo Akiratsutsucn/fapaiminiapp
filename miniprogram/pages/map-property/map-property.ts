@@ -36,9 +36,9 @@ const TYPE_OPTIONS = [
   { label: '其他商用', value: 'qita', ptype: '商业,办公,其他' },
 ];
 
-// scale 阈值:决定显示哪一级
+// scale 阈值:决定显示哪一级。微信地图 scale 3~20,放大手势约每次+1。
 const SCALE_DISTRICT = 11;   // < 11 区县气泡
-const SCALE_SUBDIST = 13;    // 11~13 商圈气泡; >13 房源点
+const SCALE_SUBDIST = 13;    // 11~12 商圈气泡; >=13 房源点(放大到13即切具体房源)
 
 Page({
   data: {
@@ -104,12 +104,12 @@ Page({
     return f;
   },
 
-  // 根据当前 scale 决定层级并刷新
-  refresh() {
-    const scale = this.data.scale;
-    if (scale < SCALE_DISTRICT) {
+  // 根据 scale 决定层级并刷新(显式传 scale,避免依赖异步的 this.data.scale)
+  refresh(scale?: number) {
+    const s = scale !== undefined ? scale : this.data.scale;
+    if (s < SCALE_DISTRICT) {
       this.loadAggregate('district');
-    } else if (scale < SCALE_SUBDIST) {
+    } else if (s < SCALE_SUBDIST) {
       this.loadAggregate('sub_district');
     } else {
       this.loadProperties();
@@ -285,7 +285,7 @@ Page({
   onScaleChanged(scale: number) {
     const level = scale < SCALE_DISTRICT ? 'district' : scale < SCALE_SUBDIST ? 'sub_district' : 'property';
     if (level !== this.data.viewLevel) {
-      this.refresh();
+      this.refresh(scale);
     }
   },
 
