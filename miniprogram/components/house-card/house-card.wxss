@@ -97,15 +97,17 @@
 .card-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8rpx;
   margin-bottom: 16rpx;
 }
 
-/* 用途类型标签:实色蓝,作为类别徽章突出显示 */
+/* 用途类型标签:柔和蓝填充作为类别徽章,不用刺眼纯蓝;与其它标签等高协调 */
 .meta-tag-type {
-  background: #1E88E5;
+  background: linear-gradient(135deg, #3D6FB5 0%, #2D4A7A 100%);
   color: #fff;
   font-weight: 600;
+  letter-spacing: 0.5rpx;
 }
 
 .card-price-row {
@@ -293,23 +295,22 @@
   border: none;
 }
 
-/* 商圈板块标签(数据来源贝壳找房,渐变胶囊+CSS定位图标) */
+/* 商圈板块标签(数据来源贝壳找房,柔和橙胶囊+CSS定位图标),与其它标签等高 */
 .biz-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6rpx;
-  padding: 4rpx 12rpx 4rpx 10rpx;
-  border-radius: 16rpx;
-  background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
-  border: 1rpx solid rgba(255, 138, 0, 0.25);
+  gap: 5rpx;
+  padding: 4rpx 14rpx 4rpx 10rpx;
+  border-radius: var(--radius-sm);
+  background: var(--accent-orange-soft);
   max-width: 220rpx;
 }
 /* 纯 CSS 定位图标:水滴形(顶圆底尖)+ 内部空心圆,不用 emoji */
 .biz-tag-pin {
   position: relative;
-  width: 14rpx;
-  height: 14rpx;
-  background: #E65100;
+  width: 13rpx;
+  height: 13rpx;
+  background: var(--accent-orange-text);
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   flex-shrink: 0;
@@ -319,15 +320,15 @@
   position: absolute;
   top: 3rpx;
   left: 3rpx;
-  width: 6rpx;
-  height: 6rpx;
-  background: #FFF3E0;
+  width: 5rpx;
+  height: 5rpx;
+  background: var(--accent-orange-soft);
   border-radius: 50%;
 }
 .biz-tag-text {
-  font-size: 20rpx;
-  line-height: 1.2;
-  color: #E65100;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: var(--accent-orange-text);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
