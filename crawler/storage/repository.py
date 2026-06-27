@@ -30,6 +30,13 @@ DYNAMIC_FIELDS = frozenset({
     "view_count", "participant_count",
 })
 
+# 动态字段中的「关键标识字段」:虽属动态(状态流转需更新),但新值为空时不可覆盖旧值——
+# 因为「空」不是有效状态/时间,而是解析失败(如列表API status字段缺失)。空值覆盖会让
+# 房源 auction_status 变空、从「在拍」列表消失(2026-06-27 超时被杀曾致1100条status清空)。
+_DYNAMIC_KEEP_IF_EMPTY = frozenset({
+    "auction_status", "auction_start_time", "auction_end_time", "online_auction_end_time",
+})
+
 # 永不参与 update 的字段(主键/创建时间/图片单独处理)。
 _UPSERT_EXCLUDE = frozenset({"image_urls", "id", "created_at"})
 
@@ -40,12 +47,17 @@ def build_update_data(item_dict: dict) -> dict:
     静态字段(面积/朝向/户型/地址/坐标等)新值为 None/0/"" 时保留旧值,
     避免某次解析抖动把已抓到的好数据清空。动态字段(价格/状态/时间)无条件以新值为准,
     确保每日重抓能正确反映价格调整、状态流转、下架清零。
+    例外:_DYNAMIC_KEEP_IF_EMPTY(状态/拍卖时间)新值为空时保留旧值(空=解析失败,非有效状态)。
     """
     out = {}
     for k, v in item_dict.items():
         if k in _UPSERT_EXCLUDE:
             continue
-        if k in DYNAMIC_FIELDS:
+        if k in _DYNAMIC_KEEP_IF_EMPTY:
+            # 关键标识动态字段:仅非空才覆盖(空值=解析失败,保留旧值)
+            if v is not None and v != "":
+                out[k] = v
+        elif k in DYNAMIC_FIELDS:
             out[k] = v  # 动态:无条件覆盖(含 None/0)
         elif v is not None and v != "" and v != 0:
             out[k] = v  # 静态:仅非空覆盖
