@@ -218,10 +218,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._ssr_consecutive_fails = 0
         self._ssr_circuit_open = False
         self._SSR_FAIL_THRESHOLD = 3
+        # 熔断不永久卡死:换IP失败/新IP仍被风控时,熔断后每隔 N 条兜底就「试探性」重置熔断、
+        # 重新尝试SSR+换IP(而非一次换IP失败就后续几百条全跳过SSR、再不换IP)。
+        self._ssr_circuit_skips = 0          # 熔断开启后已跳过的兜底条数
+        self._SSR_CIRCUIT_RETRY_EVERY = 25   # 每跳过25条就试探性解熔断重试一次
         # 计划性换IP(预防式,优于熔断后补救):每成功抓 N 条阿里详情就主动切一个新IP,
         # 让阿里来不及把某IP盯到风控阈值。比熔断被动切更省时、更不易被风控。
         self._ssr_success_since_switch = 0
-        self._PROACTIVE_SWITCH_EVERY = 40  # 每40条主动切(IP额度每天20+次且当天重置,充足;勤换比省着用更有效)
+        self._PROACTIVE_SWITCH_EVERY = 20  # 每20条主动切(IP额度每天20+次且当天重置,充足;勤换比省着用更有效)
         # SSR 并发(区县拆分后阿里全量~2200条,串行~6h超时;并发3约2h跑完)。
         # MTOP 较敏感,故并发保守=3。切IP/熔断/重启浏览器是全局动作,用锁串行化,
         # 避免并发下多个任务同时切IP(浪费额度+互相打断浏览器)。
@@ -586,7 +590,20 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         SSR 熔断：当前IP被风控时 SSR 连续返回骨架(每条白耗~35s)。连续失败达
         阈值即熔断，后续直接用列表数据(每条几百ms)，避免整轮空耗超时被杀。
         """
-        # 熔断已开启 → 跳过 SSR，直接走列表兜底
+        # 熔断已开启 → 原则上走列表兜底,但不永久卡死:每跳过 N 条就试探性解熔断,
+        # 重新尝试SSR(下面的失败分支会再换IP),让被风控的IP有机会随换IP/时段恢复。
+        if self._ssr_circuit_open:
+            self._ssr_circuit_skips += 1
+            if self._ssr_circuit_skips >= self._SSR_CIRCUIT_RETRY_EVERY:
+                self._ssr_circuit_skips = 0
+                self._ssr_circuit_open = False
+                self._ssr_consecutive_fails = 0
+                logger.info(
+                    f"[TaobaoPaiMai] 熔断已跳过{self._SSR_CIRCUIT_RETRY_EVERY}条,"
+                    f"试探性解熔断重试SSR(item={item_id})"
+                )
+
+        # 熔断关闭 → 尝试 SSR
         if not self._ssr_circuit_open:
             # Strategy 1: Try Playwright SSR page
             ssr_data = await self._extract_from_ssr(item_id)
@@ -608,11 +625,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     f"[TaobaoPaiMai] SSR连续失败{self._ssr_consecutive_fails}次,"
                     f"判定当前IP被风控,熔断SSR→尝试自动换IP恢复"
                 )
-                # 熔断兜底:也走同一套切IP+重启逻辑;切成功则重置熔断继续用新IP抓
+                # 熔断兜底:也走同一套切IP+重启逻辑;切成功则重置熔断继续用新IP抓。
+                # 切失败也不永久卡死:置 circuit_skips=0,由上方「每25条试探性解熔断」机制
+                # 在后续兜底中周期性重试SSR+再换IP(避免一次换IP失败就几百条全跳过)。
                 switched = await self._switch_ip_and_restart(reason="ali-ssr-circuit-open")
                 if switched:
                     self._ssr_circuit_open = False
                     self._ssr_consecutive_fails = 0
+                self._ssr_circuit_skips = 0
 
         # Strategy 2: Build from cached list API row
         row = self._row_cache.get(item_id)
