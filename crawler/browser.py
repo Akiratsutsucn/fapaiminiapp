@@ -39,7 +39,25 @@ class PlaywrightBrowserManager:
         self._current_proxy: Optional[str] = None
 
     def _pick_proxy(self) -> Optional[dict]:
-        """优先 PROXY_POOL，其次 PROXY_URL。"""
+        """优先 快代理隧道(KDL_TUNNEL)，其次 PROXY_POOL，再次 PROXY_URL。"""
+        # 快代理 TPS 隧道:每次浏览器会话生成随机「锁IP串」拼进密码,
+        # 该会话内固定一个住宅出口IP(够加载SSR页面),重启浏览器换新锁串=换新IP。
+        import os
+        import random
+        import string
+        kdl_tunnel = os.getenv("KDL_TUNNEL", "").strip()
+        kdl_user = os.getenv("KDL_USER", "").strip()
+        kdl_pass = os.getenv("KDL_PASS", "").strip()
+        if kdl_tunnel and kdl_user and kdl_pass:
+            lock = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+            self._current_proxy = f"kdl:{lock}"
+            logger.info(f"[browser] 使用快代理隧道 {kdl_tunnel} 锁IP串={lock}")
+            return {
+                "server": f"http://{kdl_tunnel}",
+                "username": kdl_user,
+                "password": f"{kdl_pass}:{lock}",  # 密码后加锁串,该会话固定一个IP
+            }
+
         # 从 anti_block 全局代理池拿一个
         try:
             from .anti_block import get_proxy_pool

@@ -561,6 +561,21 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         async with self._switch_lock:
             if is_proactive and self._ssr_success_since_switch < self._PROACTIVE_SWITCH_EVERY:
                 return True  # 别的并发任务刚切过,无需重复
+            # === 快代理隧道:重启浏览器换新锁串=换新住宅IP(快、无额度限制)===
+            import os as _os
+            if _os.getenv("KDL_TUNNEL", "").strip():
+                try:
+                    from ..browser import browser_manager
+                    await asyncio.wait_for(browser_manager.restart_with_new_proxy(), timeout=60)
+                    self._ssr_success_since_switch = 0
+                    logger.info(f"[TaobaoPaiMai] 快代理换IP({reason}):重启浏览器→新住宅IP")
+                    return True
+                except asyncio.TimeoutError:
+                    logger.warning(f"[TaobaoPaiMai] 快代理重启浏览器超时60s({reason})")
+                    return False
+                except Exception as e:
+                    logger.warning(f"[TaobaoPaiMai] 快代理换IP异常({reason}): {e}")
+                    return False
             try:
                 from .. import ip_rotator
                 # 换IP内部要操作云镜面板(起浏览器),曾卡在 launch 超时180s×多次拖满4h。
