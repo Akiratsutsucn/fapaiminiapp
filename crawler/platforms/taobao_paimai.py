@@ -230,6 +230,21 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         # MTOP 较敏感,故并发保守=3。切IP/熔断/重启浏览器是全局动作,用锁串行化,
         # 避免并发下多个任务同时切IP(浪费额度+互相打断浏览器)。
         self._switch_lock = asyncio.Lock()
+        # 快代理限 300次/分钟。单个SSR页约41个隧道请求,故限每分钟 ≤6 页(6×41=246<300 留余量)。
+        # 全局节流:每页 goto 前 acquire,保证两次 SSR 页加载间隔 ≥ _SSR_MIN_INTERVAL 秒。
+        self._ssr_throttle_lock = asyncio.Lock()
+        self._ssr_last_load_at = 0.0
+        self._SSR_MIN_INTERVAL = 10.0  # 秒/页 → 6页/分钟 ≈ 246请求/分钟
+
+    async def _throttle_ssr(self) -> None:
+        """SSR 页加载限流:确保经快代理隧道的请求速率不超 300次/分钟。"""
+        async with self._ssr_throttle_lock:
+            import time as _t
+            now = _t.monotonic()
+            wait = self._SSR_MIN_INTERVAL - (now - self._ssr_last_load_at)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._ssr_last_load_at = _t.monotonic()
 
     # ------------------------------------------------------------------
     # HTTP client
@@ -771,6 +786,26 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             logger.warning(f"[TaobaoPaiMai] 新建SSR page失败 {item_id}: {e}")
             return None
         try:
+            # 拦截非必要资源:SSR 只需 HTML+框架JS(initData 靠 g.alicdn.com 的JS注入)。
+            # 快代理限 300次/分钟 且按量计费,故尽量减少每页经隧道的请求:
+            # ①图片/CSS/字体/媒体一律 abort ②埋点统计(mmstat/umdc/ping)一律 abort。
+            # 保留 document/script(alicdn框架)/taobao API,保证 initData 能生成。
+            _BLOCK_TYPES = ("image", "stylesheet", "font", "media", "ping")
+            _BLOCK_HOSTS = ("mmstat.com", "umdcv", ".gif", "log.", "acs4baichuan")
+            async def _block_assets(route):
+                try:
+                    req = route.request
+                    url = req.url
+                    if req.resource_type in _BLOCK_TYPES or any(h in url for h in _BLOCK_HOSTS):
+                        await route.abort()
+                    else:
+                        await route.continue_()
+                except Exception:
+                    pass
+            try:
+                await page.route("**/*", _block_assets)
+            except Exception:
+                pass
             return await self._do_ssr_extract(page, item_id)
         finally:
             try:
@@ -801,6 +836,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 except Exception:
                     return {"_source": "skeleton"}
             try:
+                await self._throttle_ssr()  # 快代理300次/分钟限流:控制SSR页加载速率
                 # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
                 # 超时 20s(原30s):压缩失败路径耗时,IP被风控时不空等
                 await page.goto(url, wait_until="domcontentloaded", timeout=20000)
