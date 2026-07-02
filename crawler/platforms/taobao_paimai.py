@@ -552,22 +552,33 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
         district = ""
         benefits = row.get("auctionBenefits", [])
+        # 城市名(非区县):benefits 里可能同时含城市名和区名(如['上海','黄浦']),
+        # 优先取区名,城市名仅在无区名时兜底。
+        _city_names = ("上海", "宁波", "杭州")
+        _districts = (
+            # 上海
+            "黄浦", "徐汇", "长宁", "静安", "普陀", "虹口", "杨浦",
+            "浦东", "闵行", "宝山", "嘉定", "金山", "松江", "青浦",
+            "奉贤", "崇明",
+            # 宁波（含已撤并的「江东」旧区）
+            "海曙", "江北", "江东", "北仑", "镇海", "鄞州", "奉化",
+            "象山", "宁海", "余姚", "慈溪",
+            # 杭州（含已撤并的「下城」「江干」旧区）
+            "上城", "下城", "江干", "拱墅", "西湖", "滨江", "萧山", "余杭",
+            "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德",
+        )
         if isinstance(benefits, list):
+            _city_fallback = ""
             for b in benefits:
-                if isinstance(b, str) and b in (
-                    # 上海
-                    "黄浦", "徐汇", "长宁", "静安", "普陀", "虹口", "杨浦",
-                    "浦东", "闵行", "宝山", "嘉定", "金山", "松江", "青浦",
-                    "奉贤", "崇明", "上海",
-                    # 宁波（含已撤并的「江东」旧区）
-                    "海曙", "江北", "江东", "北仑", "镇海", "鄞州", "奉化",
-                    "象山", "宁海", "余姚", "慈溪", "宁波",
-                    # 杭州（含已撤并的「下城」「江干」旧区）
-                    "上城", "下城", "江干", "拱墅", "西湖", "滨江", "萧山", "余杭",
-                    "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德", "杭州",
-                ):
-                    district = b
+                if not isinstance(b, str):
+                    continue
+                if b in _districts:
+                    district = b  # 命中区名,优先
                     break
+                if b in _city_names and not _city_fallback:
+                    _city_fallback = b
+            if not district:
+                district = _city_fallback
 
         starting_price_text = ""
         if init_price:
@@ -575,7 +586,8 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         elif price:
             starting_price_text = f"当前价:{price}{price_unit}"
 
-        status_map = {"ing": "进行中", "end": "已结束", "sold": "已成交", "upcoming": "即将开拍"}
+        status_map = {"ing": "进行中", "end": "已结束", "sold": "已成交",
+                      "upcoming": "即将开拍", "before": "即将开拍"}
         auction_status = status_map.get(row.get("status", ""), "")
 
         area_text = ""
@@ -1196,7 +1208,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         property_type = refine_property_type(property_type, row.get("title", ""))
 
         # Status mapping: list API 'status' → bidStatus
-        status_map = {"ing": 3, "end": 4, "sold": 5, "upcoming": 1}
+        status_map = {"ing": 3, "end": 4, "sold": 5, "upcoming": 1, "before": 1}
         bid_status = status_map.get(row.get("status", ""), 3)
 
         # Images: headerPicUrls is pipe-separated
