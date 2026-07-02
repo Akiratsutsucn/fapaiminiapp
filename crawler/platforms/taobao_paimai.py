@@ -212,6 +212,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         self._token: str | None = None
         self._cookie_str: str = ""
         self._row_cache: dict[str, dict] = {}  # itemId → raw list API row
+        # 相似组(similarGroup)折叠捕获:淘宝搜索会把同址批量房源(如某楼盘41套)折叠成一组,
+        # 列表仅露出1-2个代表,其余藏在组里。捕获这些组,后续用精确关键词二次搜索展开。
+        # groupId → {"title": 代表标题, "cnt": 组内总数}
+        self._similar_groups: dict[str, dict] = {}
         # SSR 熔断：当前IP若被阿里风控，SSR 会连续返回骨架(每条白耗~50s)。
         # 连续失败达阈值即熔断→换IP→重置继续抓。阈值3:IP额度充足(20+次/天且每天重置),
         # 一被风控就尽快换新IP,别攒失败白耗。比保守攒6次更快恢复SSR成功率。
@@ -386,6 +390,20 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         items = list(merged.values())
         logger.info(f"[TaobaoPaiMai] {city} 整体+逐区去重合并完成: 共 {len(items)} 条 "
                     f"(用了 {len(keywords)} 个keyword)")
+
+        # 展开被折叠的相似组(同址批量房源,如某楼盘几十套)——补齐搜索列表遗漏的房源
+        try:
+            extra = await self._expand_similar_groups(client, max_pages)
+            for it in extra:
+                key = it.source_url or ""
+                if key and key not in merged:
+                    merged[key] = it
+            if extra:
+                items = list(merged.values())
+                logger.info(f"[TaobaoPaiMai] 含相似组展开后: 共 {len(items)} 条")
+        except Exception as e:
+            logger.warning(f"[TaobaoPaiMai] 相似组展开失败(不影响主流程): {e}")
+
         return items
 
     async def _collect_by_keyword(self, client, keyword: str, max_pages: int = 50) -> list[ListItem]:
@@ -426,6 +444,53 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
 
         return items
 
+    def _address_prefix(self, title: str) -> str:
+        """从房源标题提取地址前缀(去掉末尾室号/幢号等),用于展开相似组的精确搜索。
+        例:'中山南一路1065号2007室' → '中山南一路1065号'。"""
+        t = re.sub(r"^\(?法拍\)?", "", title or "").strip()
+        # 去掉末尾的 "NNN室/号房/单元..." 等房间标识,保留到 "号" 为止
+        m = re.match(r"(.*?号)", t)
+        if m:
+            return m.group(1)
+        # 无"号"则去掉末尾数字+室
+        return re.sub(r"\d+室?$", "", t).strip()
+
+    async def _expand_similar_groups(self, client, max_pages: int = 50) -> list[ListItem]:
+        """展开被淘宝折叠的相似组(同址批量房源)。
+
+        原理:淘宝搜索按「区分度」决定是否折叠——关键词越精确越不折叠。实测搜
+        '中山南一路1065号'只返回2套(折叠),但搜'中山南一路1065号2'返回40套(展开)。
+        故对每个捕获到的相似组,用其地址前缀 + 数字后缀(0-9)做精确搜索,把整组展开。
+        """
+        if not self._similar_groups:
+            return []
+        groups = dict(self._similar_groups)  # 快照,避免遍历中被二次搜索修改
+        logger.info(f"[TaobaoPaiMai] 检测到 {len(groups)} 个折叠相似组,开始展开")
+        expanded: dict[str, ListItem] = {}
+        for gid, info in groups.items():
+            prefix = self._address_prefix(info.get("title", ""))
+            if not prefix or len(prefix) < 4:
+                continue
+            group_hits = 0
+            # 地址前缀 + 0-9:覆盖各种室号首位数字(如1201室、2007室),把整组展开
+            for suffix in [""] + [str(d) for d in range(10)]:
+                kw = f"{prefix}{suffix}"
+                try:
+                    kw_items = await self._collect_by_keyword(client, kw, max_pages)
+                except Exception as e:
+                    logger.warning(f"[TaobaoPaiMai] 展开相似组 kw='{kw}' 失败: {e}")
+                    continue
+                for it in kw_items:
+                    key = it.source_url or ""
+                    if key and key not in expanded:
+                        expanded[key] = it
+                        group_hits += 1
+                await asyncio.sleep(0.8)
+            logger.info(f"[TaobaoPaiMai] 相似组'{prefix}'(标称{info.get('cnt')}套) "
+                        f"展开新增 {group_hits} 条")
+        logger.info(f"[TaobaoPaiMai] 相似组展开完成: 共新增 {len(expanded)} 条")
+        return list(expanded.values())
+
     def _parse_list_response(self, body: str) -> tuple[list[ListItem], bool]:
         try:
             data = _parse_jsonp(body)
@@ -448,6 +513,15 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             for sl in scene.get("schemeList", []):
                 has_next = sl.get("hasNextPage", False)
                 for row in sl.get("contentList", []):
+                    # 捕获相似组:cnt>3 说明该地址有一批房源被折叠,记录待展开
+                    sg = row.get("similarGroup")
+                    if isinstance(sg, dict) and sg.get("similarItemCnt", 0) > 3:
+                        gid = str(sg.get("similarGroupId", ""))
+                        if gid and gid not in self._similar_groups:
+                            self._similar_groups[gid] = {
+                                "title": row.get("auctionTitle", ""),
+                                "cnt": sg.get("similarItemCnt", 0),
+                            }
                     item = self._row_to_list_item(row)
                     if item.source_url:
                         items.append(item)
