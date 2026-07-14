@@ -432,6 +432,16 @@ Page({
     };
   },
 
+  // 分享到朋友圈
+  onShareTimeline() {
+    const p = this.data.property;
+    return {
+      title: p.title || '法拍者联盟 房源信息',
+      query: `id=${p.id}`,
+      imageUrl: (this.data as any).images?.[0] || '',
+    };
+  },
+
   onContact() {
     wx.navigateTo({ url: '/pages/customer-service/customer-service' });
   },

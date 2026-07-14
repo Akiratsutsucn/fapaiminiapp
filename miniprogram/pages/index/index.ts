@@ -208,4 +208,21 @@ Page({
   onScrollTop() {
     wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
+
+  // 转发给好友
+  onShareAppMessage() {
+    const city = this.data.currentCityName || '上海';
+    return {
+      title: `法拍者联盟 — ${city}法拍房源每日更新，捡漏低至骨折价`,
+      path: '/pages/index/index',
+    };
+  },
+
+  // 分享到朋友圈
+  onShareTimeline() {
+    const city = this.data.currentCityName || '上海';
+    return {
+      title: `法拍者联盟 — ${city}法拍房源每日更新，捡漏低至骨折价`,
+    };
+  },
 });

@@ -79,4 +79,13 @@ Page({
     onCancel() {
         wx.navigateBack();
     },
+
+    // 转发给好友
+    onShareAppMessage() {
+        return { title: '法拍者联盟 — 专业法拍顾问一对一服务', path: '/pages/customer-service/customer-service' };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return { title: '法拍者联盟 — 专业法拍顾问一对一服务' };
+    },
 });

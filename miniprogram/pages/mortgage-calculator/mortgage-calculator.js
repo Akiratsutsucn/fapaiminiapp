@@ -144,4 +144,13 @@ Page({
         const decrease = monthlyPrincipal * monthlyRate;
         return { first, decrease };
     },
+
+    // 转发给好友
+    onShareAppMessage() {
+        return { title: '法拍者联盟 — 房贷计算器', path: '/pages/mortgage-calculator/mortgage-calculator' };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return { title: '法拍者联盟 — 房贷计算器' };
+    },
 });

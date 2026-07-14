@@ -280,4 +280,13 @@ Page({
     onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
     onKeywordConfirm() { this.refresh(); },
     onKeywordClear() { this.setData({ keyword: '' }); this.refresh(); },
+
+    // 转发给好友
+    onShareAppMessage() {
+        return { title: '法拍者联盟 — 地图找法拍房，就近捡漏', path: '/pages/map-property/map-property' };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return { title: '法拍者联盟 — 地图找法拍房，就近捡漏' };
+    },
 });

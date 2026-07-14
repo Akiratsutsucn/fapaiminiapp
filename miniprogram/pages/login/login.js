@@ -64,4 +64,17 @@ Page({
     onViewPrivacy() {
         wx.navigateTo({ url: '/pages/privacy/privacy' });
     },
+    // 转发给好友
+    onShareAppMessage() {
+        return {
+            title: '法拍者联盟 — 做法拍，就上法拍者联盟',
+            path: '/pages/login/login',
+        };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return {
+            title: '法拍者联盟 — 上海/宁波/杭州法拍房源每日同步',
+        };
+    },
 });

@@ -395,6 +395,16 @@ Page({
             imageUrl: ((_a = this.data.images) === null || _a === void 0 ? void 0 : _a[0]) || '',
         };
     },
+    // 分享到朋友圈
+    onShareTimeline() {
+        var _a;
+        const p = this.data.property;
+        return {
+            title: p.title || '法拍者联盟 房源信息',
+            query: `id=${p.id}`,
+            imageUrl: ((_a = this.data.images) === null || _a === void 0 ? void 0 : _a[0]) || '',
+        };
+    },
     onContact() {
         wx.navigateTo({ url: '/pages/customer-service/customer-service' });
     },

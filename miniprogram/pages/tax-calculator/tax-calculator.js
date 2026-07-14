@@ -76,4 +76,13 @@ Page({
             },
         });
     },
+
+    // 转发给好友
+    onShareAppMessage() {
+        return { title: '法拍者联盟 — 法拍房税费计算器', path: '/pages/tax-calculator/tax-calculator' };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return { title: '法拍者联盟 — 法拍房税费计算器' };
+    },
 });

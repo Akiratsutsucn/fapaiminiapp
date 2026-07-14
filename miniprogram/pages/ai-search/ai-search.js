@@ -256,4 +256,13 @@ Page({
         }
         return '';
     },
+
+    // 转发给好友
+    onShareAppMessage() {
+        return { title: '法拍者联盟 — AI智能找法拍房', path: '/pages/ai-search/ai-search' };
+    },
+    // 分享到朋友圈
+    onShareTimeline() {
+        return { title: '法拍者联盟 — AI智能找法拍房' };
+    },
 });

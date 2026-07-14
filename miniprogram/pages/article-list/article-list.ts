@@ -48,4 +48,14 @@ Page({
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/article/article?id=${id}` });
   },
+
+  // 转发给好友
+  onShareAppMessage() {
+    return { title: '法拍者联盟 — 法拍房攻略与资讯', path: '/pages/article-list/article-list' };
+  },
+
+  // 分享到朋友圈
+  onShareTimeline() {
+    return { title: '法拍者联盟 — 法拍房攻略与资讯' };
+  },
 });

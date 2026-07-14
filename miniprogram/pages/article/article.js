@@ -104,5 +104,14 @@ Page({
             imageUrl: a.cover_image || '',
         };
     },
+    // 分享到朋友圈
+    onShareTimeline() {
+        const a = this.data.article;
+        return {
+            title: a.title || '法拍者联盟文章',
+            query: `id=${a.id}`,
+            imageUrl: a.cover_image || '',
+        };
+    },
     onContact() { wx.navigateTo({ url: '/pages/customer-service/customer-service' }); },
 });

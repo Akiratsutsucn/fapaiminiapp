@@ -365,4 +365,35 @@ Page({
     }
     this.loadList();
   },
+
+  // 组装带当前筛选的转发路径与标题,让打开分享的人看到同样的列表
+  buildShare() {
+    const d: any = this.data;
+    const parts: string[] = [];
+    if (d.currentCityId) parts.push(`city_id=${d.currentCityId}`);
+    if (d.keyword) parts.push(`keyword=${encodeURIComponent(d.keyword)}`);
+    if (d.selectedDistrict) parts.push(`district=${encodeURIComponent(d.selectedDistrict)}`);
+    if (d.selectedAuctionStatuses && d.selectedAuctionStatuses.length) {
+      parts.push(`auction_status=${encodeURIComponent(d.selectedAuctionStatuses.join(','))}`);
+    }
+    if (d.presetDiscountMin) parts.push(`discount_min=${d.presetDiscountMin}`);
+    if (d.presetDiscountMax) parts.push(`discount_max=${d.presetDiscountMax}`);
+    if (d.presetListedDay) parts.push(`listed_day=${d.presetListedDay}`);
+    if (d.presetSoldDay) parts.push(`sold_day=${d.presetSoldDay}`);
+    const query = parts.length ? '?' + parts.join('&') : '';
+    const title = d.presetTitle
+      || (d.keyword ? `法拍者联盟 — “${d.keyword}”法拍房源` : '法拍者联盟 — 法拍房源精选');
+    return { title, path: `/pages/property-list/property-list${query}` };
+  },
+
+  // 转发给好友
+  onShareAppMessage() {
+    return this.buildShare();
+  },
+
+  // 分享到朋友圈(query 不含前导 ?)
+  onShareTimeline() {
+    const s = this.buildShare();
+    return { title: s.title, query: s.path.split('?')[1] || '' };
+  },
 });
