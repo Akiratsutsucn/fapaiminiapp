@@ -52,3 +52,5 @@
     <button class="poster-copy-btn btn-outline" bindtap="onCopyLink">复制链接</button>
   </view>
 </view>
+
+<privacy-popup />

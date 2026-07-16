@@ -137,3 +137,5 @@ module.exports.has = function (arr, val) {
   <float-buttons bind:contact="onContact" bind:top="onScrollTop" />
 </view>
 
+
+<privacy-popup />

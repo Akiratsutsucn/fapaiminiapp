@@ -118,3 +118,5 @@
   <!-- 浮动按钮 -->
   <float-buttons bind:contact="onContact" bind:top="onScrollTop" />
 </view>
+
+<privacy-popup />

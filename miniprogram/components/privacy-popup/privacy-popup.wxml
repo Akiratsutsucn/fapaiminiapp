@@ -1,0 +1,17 @@
+<!-- 隐私授权弹窗：调用剪贴板/录音等隐私接口前，微信要求用户先同意隐私政策 -->
+<view class="pp-mask" wx:if="{{visible}}" catchtouchmove="noop">
+  <view class="pp-modal">
+    <view class="pp-title">隐私保护提示</view>
+    <view class="pp-content">
+      为了向你提供房源链接复制、语音搜索等服务，我们需要在你使用相关功能时申请必要的系统权限（剪贴板、麦克风）。请阅读并同意<text class="pp-link" catchtap="onOpenPrivacy">《隐私保护指引》</text>后继续使用。
+    </view>
+    <view class="pp-btns">
+      <button class="pp-btn pp-btn-reject" catchtap="onReject">拒绝</button>
+      <button
+        class="pp-btn pp-btn-agree"
+        open-type="agreePrivacyAuthorization"
+        bindagreeprivacyauthorization="onAgree"
+      >同意</button>
+    </view>
+  </view>
+</view>
