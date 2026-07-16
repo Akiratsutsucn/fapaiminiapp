@@ -116,7 +116,7 @@
       <view class="info-row" wx:if="{{property.case_number}}"><text class="info-k">案号</text><text class="info-v">{{property.case_number}}</text></view>
       <view class="info-row"><text class="info-k">拍卖轮次</text><text class="info-v">{{property.auction_round}}</text></view>
       <view class="info-row"><text class="info-k">加价幅度</text><text class="info-v">{{incrementAmountText}}</text></view>
-      <view class="info-row" wx:if="{{property.deposit}}"><text class="info-k">保证金</text><text class="info-v">{{depositText}}</text></view>
+      <view class="info-row"><text class="info-k">延时周期</text><text class="info-v">5分钟</text></view>
       <view class="info-row" wx:if="{{biddingTime}}"><text class="info-k">竞标时间</text><text class="info-v">{{biddingTime}}</text></view>
       <view class="info-row" wx:if="{{property.view_count}}"><text class="info-k">围观人数</text><text class="info-v">{{property.view_count}}人</text></view>
       <view class="info-row" wx:if="{{property.participant_count}}"><text class="info-k">参拍人数</text><text class="info-v">{{property.participant_count}}人</text></view>
