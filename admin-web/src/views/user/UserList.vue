@@ -70,7 +70,7 @@
           <t-select v-model="editForm.city_id">
             <t-option value="310000" label="上海" />
             <t-option value="330200" label="宁波" />
-            <t-option value="330100" label="杭州" />
+            <t-option value="330100" label="杭州" /><t-option value="371300" label="临沂" />
           </t-select>
         </t-form-item>
         <t-form-item label="负责地区" v-if="editForm.role === 'agent' || editForm.role === 'salesperson'">

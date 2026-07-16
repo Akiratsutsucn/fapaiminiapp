@@ -11,6 +11,7 @@ const DISTRICTS_BY_CITY = {
     310000: ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区', '嘉定区', '浦东新区', '金山区', '松江区', '青浦区', '奉贤区', '崇明区'],
     330200: ['海曙区', '江北区', '江东区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
     330100: ['上城区', '下城区', '江干区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
+    371300: ['兰山区', '罗庄区', '河东区', '沂南县', '郯城县', '沂水县', '兰陵县', '费县', '平邑县', '莒南县', '蒙阴县', '临沭县'],
 };
 function districtsForCity(cityId) {
     if (cityId && DISTRICTS_BY_CITY[cityId])
@@ -81,7 +82,7 @@ Page({
         const cityId = parseInt(options.city_id) || app.globalData.currentCityId || 0;
         if (cityId && cityId !== app.globalData.currentCityId) {
             app.globalData.currentCityId = cityId;
-            const cityNameMap = { 310000: '上海', 330200: '宁波', 330100: '杭州' };
+            const cityNameMap = { 310000: '上海', 330200: '宁波', 330100: '杭州', 371300: '临沂' };
             if (cityNameMap[cityId])
                 app.globalData.currentCityName = cityNameMap[cityId];
         }

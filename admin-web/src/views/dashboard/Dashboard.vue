@@ -6,7 +6,7 @@
         <t-option :value="0" label="全部" />
         <t-option :value="310000" label="上海" />
         <t-option :value="330200" label="宁波" />
-        <t-option :value="330100" label="杭州" />
+        <t-option :value="330100" label="杭州" /><t-option :value="371300" label="临沂" />
       </t-select>
     </div>
     <t-row :gutter="16" class="stat-cards">
@@ -57,7 +57,8 @@ async function loadDashboard() {
     const cityKeyNames: Record<string, string> = {
       shanghai: '上海',
       ningbo: '宁波',
-      hangzhou: '杭州'
+      hangzhou: '杭州',
+      linyi: '临沂'
     }
 
     // 辅助函数：从后端返回的数据中提取值和城市分项

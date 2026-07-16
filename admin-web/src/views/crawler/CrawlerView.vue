@@ -142,6 +142,7 @@
                     <th>上海</th>
                     <th>宁波</th>
                     <th>杭州</th>
+                    <th>临沂</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,6 +204,7 @@ const cities = [
   { id: 310000, name: '上海' },
   { id: 330200, name: '宁波' },
   { id: 330100, name: '杭州' },
+  { id: 371300, name: '临沂' },
 ]
 
 const cookiesStatus = ref<any>({})

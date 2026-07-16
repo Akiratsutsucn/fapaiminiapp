@@ -234,14 +234,15 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         # MTOP 较敏感,故并发保守=3。切IP/熔断/重启浏览器是全局动作,用锁串行化,
         # 避免并发下多个任务同时切IP(浪费额度+互相打断浏览器)。
         self._switch_lock = asyncio.Lock()
-        # 快代理限 300次/分钟。单个SSR页约41个隧道请求,故限每分钟 ≤6 页(6×41=246<300 留余量)。
         # 全局节流:每页 goto 前 acquire,保证两次 SSR 页加载间隔 ≥ _SSR_MIN_INTERVAL 秒。
+        # 青果提取API限 60次/分钟,桥按 TTL(45s)复用出口→提取约 1.3次/分,远不撞限;
+        # 此处 6页/分钟 主要为控制对淘宝的访问速率、降低风控,保守值足够。
         self._ssr_throttle_lock = asyncio.Lock()
         self._ssr_last_load_at = 0.0
-        self._SSR_MIN_INTERVAL = 10.0  # 秒/页 → 6页/分钟 ≈ 246请求/分钟
+        self._SSR_MIN_INTERVAL = 10.0  # 秒/页 → 6页/分钟
 
     async def _throttle_ssr(self) -> None:
-        """SSR 页加载限流:确保经快代理隧道的请求速率不超 300次/分钟。"""
+        """SSR 页加载限流:控制 SSR 页加载速率,降低对淘宝的访问频率以规避风控。"""
         async with self._ssr_throttle_lock:
             import time as _t
             now = _t.monotonic()
@@ -662,41 +663,19 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         async with self._switch_lock:
             if is_proactive and self._ssr_success_since_switch < self._PROACTIVE_SWITCH_EVERY:
                 return True  # 别的并发任务刚切过,无需重复
-            # === 快代理隧道:重启浏览器换新锁串=换新住宅IP(快、无额度限制)===
-            import os as _os
-            if _os.getenv("KDL_TUNNEL", "").strip():
-                try:
-                    from ..browser import browser_manager
-                    await asyncio.wait_for(browser_manager.restart_with_new_proxy(), timeout=60)
-                    self._ssr_success_since_switch = 0
-                    logger.info(f"[TaobaoPaiMai] 快代理换IP({reason}):重启浏览器→新住宅IP")
-                    return True
-                except asyncio.TimeoutError:
-                    logger.warning(f"[TaobaoPaiMai] 快代理重启浏览器超时60s({reason})")
-                    return False
-                except Exception as e:
-                    logger.warning(f"[TaobaoPaiMai] 快代理换IP异常({reason}): {e}")
-                    return False
+            # === 青果按量提取:换IP由本地 socks 桥自动完成 ===
+            # 桥每 TTL(默认45s)自动轮换一个新住宅出口IP,SSR 每页新建 page 经桥即走
+            # 当时的出口IP。爬虫无需主动操作面板/重启浏览器——触发桥立即换IP后短等即可。
+            # (被风控时也靠桥轮换恢复;个别在途 page 失败降级走列表兜底,可接受。)
             try:
-                from .. import ip_rotator
-                # 换IP内部要操作云镜面板(起浏览器),曾卡在 launch 超时180s×多次拖满4h。
-                # 加 90s 硬超时:换IP卡住即放弃(熔断保持、走列表兜底),不再拖死整轮。
-                rot = await asyncio.wait_for(
-                    ip_rotator.request_ip_rotation_async(reason=reason), timeout=90
-                )
-            except asyncio.TimeoutError:
-                logger.warning(f"[TaobaoPaiMai] 换IP超时90s放弃({reason}),保持熔断走列表兜底")
-                return False
+                from ..socks_bridge_ctl import force_bridge_ip_change
+                await asyncio.wait_for(force_bridge_ip_change(reason=reason), timeout=15)
             except Exception as e:
-                logger.warning(f"[TaobaoPaiMai] 换IP调用异常({reason}): {e}")
-                return False
-            if not rot.get("rotated"):
-                logger.warning(f"[TaobaoPaiMai] 换IP未成功({reason}): {rot.get('message')}")
-                return False
-            # 切成功 → 仅等隧道稳定,不重启浏览器(新 page 经本地桥自动走新IP)
-            await asyncio.sleep(8)
+                # 触发失败不致命:桥仍会按 TTL 自然轮换,后续新 page 自动走新IP
+                logger.debug(f"[TaobaoPaiMai] 触发桥换IP失败({reason}),依赖TTL自然轮换: {e}")
+            await asyncio.sleep(3)  # 等新出口IP就绪
             self._ssr_success_since_switch = 0  # 重置计划性计数
-            logger.info(f"[TaobaoPaiMai] 换IP成功({reason}),后续新page自动走新IP")
+            logger.info(f"[TaobaoPaiMai] 换IP({reason}):桥轮换新住宅IP,后续新page自动生效")
         return True
 
     @retry_on_failure(max_retries=2, backoff_factor=3.0, base_delay=3.0)
@@ -873,7 +852,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             return None
         try:
             # 拦截非必要资源:SSR 只需 HTML+框架JS(initData 靠 g.alicdn.com 的JS注入)。
-            # 快代理限 300次/分钟 且按量计费,故尽量减少每页经隧道的请求:
+            # 青果按量计费,故尽量减少每页经代理的请求:
             # ①图片/CSS/字体/媒体一律 abort ②埋点统计(mmstat/umdc/ping)一律 abort。
             # 保留 document/script(alicdn框架)/taobao API,保证 initData 能生成。
             _BLOCK_TYPES = ("image", "stylesheet", "font", "media", "ping")
@@ -922,7 +901,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 except Exception:
                     return {"_source": "skeleton"}
             try:
-                await self._throttle_ssr()  # 快代理300次/分钟限流:控制SSR页加载速率
+                await self._throttle_ssr()  # 控制SSR页加载速率,降低对淘宝的访问频率
                 # domcontentloaded 比 networkidle 可靠（该页面持续轮询，networkidle 易 45s 超时）
                 # 超时 20s(原30s):压缩失败路径耗时,IP被风控时不空等
                 await page.goto(url, wait_until="domcontentloaded", timeout=20000)

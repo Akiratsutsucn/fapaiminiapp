@@ -6,6 +6,23 @@ const settings_1 = require("../../services/settings");
 const storage_1 = require("../../utils/storage");
 const format_1 = require("../../utils/format");
 const app = getApp();
+// 平台标记：与列表页 house-card 保持一致
+const PLATFORM_KEY_MAP = {
+    '京东拍卖': 'jd',
+    '阿里拍卖': 'ali',
+    '公拍网': 'gpai',
+};
+// 阿里/淘宝详情页需转成 sf-item 可访问链接；其余平台直接用 source_url
+function toAccessUrl(sourceUrl, platform) {
+    if (!sourceUrl)
+        return '';
+    if (platform && (platform.indexOf('阿里') >= 0 || platform.indexOf('淘宝') >= 0)) {
+        const m = sourceUrl.match(/itemId=(\d+)/);
+        if (m)
+            return `https://sf-item.taobao.com/sf_item/${m[1]}.htm`;
+    }
+    return sourceUrl;
+}
 Page({
     data: {
         property: {},
@@ -13,6 +30,11 @@ Page({
         activeTab: 'basic',
         isFavorited: false,
         favoriteId: 0,
+        platformKey: '',
+        platformLabel: '',
+        showContactModal: false,
+        contactForm: { surname: '', phone: '' },
+        savingContact: false,
         statusLabel: '',
         statusTagClass: '',
         startingPriceWan: '',
@@ -168,6 +190,8 @@ Page({
             this.setData({
                 property,
                 images,
+                platformKey: PLATFORM_KEY_MAP[property.auction_platform || ''] || '',
+                platformLabel: property.auction_platform || '',
                 statusLabel: (0, format_1.statusLabel)(property.auction_status),
                 statusTagClass: (0, format_1.statusTagClass)(property.auction_status),
                 startingPriceWan: (0, format_1.formatPriceWan)(property.starting_price),
@@ -306,6 +330,19 @@ Page({
             '镇海区': '镇海区临港产业为基础，居住板块稳步发展。',
             '北仑区': '北仑区港口经济发达，产业人口集中，刚需活跃。',
             '奉化区': '奉化区融入宁波主城步伐加快，价格门槛较低。',
+            // 临沂
+            '兰山区': '兰山区为临沂主城核心，商贸物流城与北城新区并重，人口与商业高度集聚，二手房流通性好。',
+            '罗庄区': '罗庄区为临沂南部工业与居住区，配套逐步完善，房价处于主城相对低位，刚需活跃。',
+            '河东区': '河东区依沂河东岸开发提速，行政与居住新区带动板块价值，环境宜居。',
+            '沂南县': '沂南县为临沂北部县域，县城居住为主，价格门槛低，自住属性突出。',
+            '郯城县': '郯城县位于临沂南部，临近江苏，县城配套稳步发展，价格亲民。',
+            '沂水县': '沂水县为临沂北部人口大县，县城商业成熟，居住需求以本地刚需为主。',
+            '兰陵县': '兰陵县农业与商贸并重，县城居住板块价格门槛较低。',
+            '费县': '费县位于临沂西部，县城居住为主，山水生态环境较好。',
+            '平邑县': '平邑县为临沂西部县域，县城配套集中，价格处于低位。',
+            '莒南县': '莒南县临近日照，县城居住与产业并进，性价比突出。',
+            '蒙阴县': '蒙阴县以生态旅游为特色，县城居住需求以本地自住为主。',
+            '临沭县': '临沭县位于临沂东部，临近江苏连云港，县城居住稳步发展。',
         };
         const parts = [];
         const intro = (p.district && DISTRICT_INTRO[p.district]) || '';
@@ -383,6 +420,93 @@ Page({
             this.setData({ isFavorited: !newState });
             wx.showToast({ title: '操作失败', icon: 'none' });
         }
+    },
+    // ===== 平台链接：点击平台标记，登录+联系方式门禁后复制链接 =====
+    async checkContactStatus() {
+        if (!app.isLoggedIn())
+            return 'nologin';
+        try {
+            const profile = await (0, user_1.getUserProfile)();
+            return profile && profile.phone && profile.nickname ? 'ok' : 'need';
+        }
+        catch (e) {
+            return 'need';
+        }
+    },
+    async onTapPlatform() {
+        const p = this.data.property;
+        if (!p || !p.source_url) {
+            wx.showToast({ title: '暂无平台链接', icon: 'none' });
+            return;
+        }
+        const status = await this.checkContactStatus();
+        if (status === 'nologin') {
+            wx.showModal({
+                title: '请先登录',
+                content: '查看房源在拍卖平台的链接需要先登录',
+                confirmText: '去登录',
+                success: (res) => {
+                    if (res.confirm)
+                        wx.navigateTo({ url: '/pages/login/login' });
+                },
+            });
+            return;
+        }
+        if (status === 'need') {
+            this.setData({ showContactModal: true });
+            return;
+        }
+        this.openPlatformLink();
+    },
+    onContactInput(e) {
+        const field = e.currentTarget.dataset.field;
+        this.setData({ [`contactForm.${field}`]: e.detail.value });
+    },
+    onCloseContactModal() {
+        this.setData({ showContactModal: false });
+    },
+    noop() { },
+    async onSubmitContact() {
+        const s = (this.data.contactForm.surname || '').trim();
+        const ph = (this.data.contactForm.phone || '').trim();
+        if (!s) {
+            wx.showToast({ title: '请填写姓氏', icon: 'none' });
+            return;
+        }
+        if (!/^1\d{10}$/.test(ph)) {
+            wx.showToast({ title: '请填写正确的手机号', icon: 'none' });
+            return;
+        }
+        this.setData({ savingContact: true });
+        try {
+            await (0, user_1.updateUserProfile)({ nickname: s, phone: ph });
+            this.setData({ savingContact: false, showContactModal: false });
+            this.openPlatformLink();
+        }
+        catch (e) {
+            this.setData({ savingContact: false });
+            wx.showToast({ title: '保存失败,请重试', icon: 'none' });
+        }
+    },
+    openPlatformLink() {
+        const p = this.data.property;
+        const url = toAccessUrl(p.source_url, p.auction_platform);
+        if (!url) {
+            wx.showToast({ title: '暂无平台链接', icon: 'none' });
+            return;
+        }
+        wx.setClipboardData({
+            data: url,
+            success: () => {
+                wx.showToast({ title: '链接已复制', icon: 'success' });
+                wx.showModal({
+                    title: '链接已复制',
+                    content: '应微信官方安全规范要求,小程序无法直接跳转到外部网站。链接已为您复制,请打开手机浏览器粘贴访问,即可查看该房源在拍卖平台的页面。',
+                    showCancel: false,
+                    confirmText: '我知道了',
+                });
+            },
+        });
     },
     onShare() {
     },

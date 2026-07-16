@@ -7,7 +7,7 @@
         <t-select v-model="filters.city_id" placeholder="城市" clearable style="width:120px" @change="onSearch">
           <t-option :value="310000" label="上海" />
           <t-option :value="330200" label="宁波" />
-          <t-option :value="330100" label="杭州" />
+          <t-option :value="330100" label="杭州" /><t-option :value="371300" label="临沂" />
         </t-select>
         <t-button theme="primary" @click="onSearch">查询</t-button>
         <t-button v-if="!auth.isReadonly" variant="outline" @click="onAdd">添加小区</t-button>
@@ -51,6 +51,8 @@
           <t-select v-model="formData.city_id">
             <t-option :value="310000" label="上海" />
             <t-option :value="330200" label="宁波" />
+            <t-option :value="330100" label="杭州" />
+            <t-option :value="371300" label="临沂" />
           </t-select>
         </t-form-item>
         <t-form-item label="均价（元/㎡）"><t-input-number v-model="formData.avg_price" :min="0" placeholder="如：85000" /></t-form-item>

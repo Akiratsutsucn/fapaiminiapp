@@ -37,7 +37,7 @@
         </t-form-item>
         <t-form-item label="链接"><t-input v-model="formData.link_url" placeholder="无关联文章时用：站内路径或外部链接" /></t-form-item>
         <t-form-item label="城市">
-          <t-select v-model="formData.city_id"><t-option :value="0" label="全部" /><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /></t-select>
+          <t-select v-model="formData.city_id"><t-option :value="0" label="全部" /><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /><t-option :value="371300" label="临沂" /></t-select>
         </t-form-item>
         <t-form-item label="排序"><t-input-number v-model="formData.sort_order" :min="0" /></t-form-item>
         <t-form-item label="启用"><t-switch v-model="formData.is_active" /></t-form-item>
@@ -70,7 +70,7 @@ const formVisible = ref(false)
 const isEdit = ref(false)
 const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true })
 
-const CITY_MAP: Record<number, string> = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州' }
+const CITY_MAP: Record<number, string> = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州', 371300: '临沂' }
 function cityLabel(id: number) { return CITY_MAP[id] ?? '上海' }
 
 onMounted(() => loadData())

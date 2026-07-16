@@ -86,7 +86,7 @@
       <div class="rec-search">
         <t-input v-model="recKeyword" placeholder="搜索房源标题/小区关键词" clearable style="width:260px" @enter="loadRecProps" />
         <t-select v-model="recCity" placeholder="城市" style="width:120px" @change="loadRecProps">
-          <t-option :value="0" label="全部" /><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" />
+          <t-option :value="0" label="全部" /><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /><t-option :value="371300" label="临沂" />
         </t-select>
         <t-button theme="primary" @click="loadRecProps">查询房源</t-button>
       </div>
@@ -253,7 +253,7 @@ function onRecommend(row: any) {
   recSelected.value = null
   recMessage.value = ''
   recKeyword.value = row.target_district || ''
-  recCity.value = row.city === '宁波' ? 330200 : row.city === '杭州' ? 330100 : 310000
+  recCity.value = row.city === '宁波' ? 330200 : row.city === '杭州' ? 330100 : row.city === '临沂' ? 371300 : 310000
   recVisible.value = true
   loadRecProps()
 }

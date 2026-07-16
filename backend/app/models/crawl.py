@@ -62,7 +62,7 @@ class CrawlerTaskDetail(Base):
         Integer, ForeignKey("crawl_tasks.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     platform = Column(String(32), nullable=False, comment="平台名称：阿里拍卖/京东拍卖/公拍网")
-    city = Column(String(32), nullable=False, comment="城市名称：上海/宁波/杭州")
+    city = Column(String(32), nullable=False, comment="城市名称：上海/宁波/杭州/临沂")
     total_fetched = Column(Integer, nullable=False, default=0, comment="抓取总数")
     new_count = Column(Integer, nullable=False, default=0, comment="新增数量")
     updated_count = Column(Integer, nullable=False, default=0, comment="更新数量")

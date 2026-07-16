@@ -21,6 +21,7 @@ CITIES = [
     {"city_id": 310000, "city_name": "上海", "is_active": True},
     {"city_id": 330200, "city_name": "宁波", "is_active": True},
     {"city_id": 330100, "city_name": "杭州", "is_active": True},
+    {"city_id": 371300, "city_name": "临沂", "is_active": True},
 ]
 
 
@@ -73,13 +74,13 @@ async def list_cities():
 
 @router.get("/home-summary")
 async def home_summary(db: AsyncSession = Depends(get_session)):
-    """登录页/首屏用：上海+宁波+杭州三城合计的真实统计（每次查询即时计算，自然每日更新）。
+    """登录页/首屏用：上海+宁波+杭州+临沂四城合计的真实统计（每次查询即时计算，自然每日更新）。
 
     - on_auction：可参拍房源数（即将开拍 + 进行中，按实时状态计算）
     - bargain：可参拍且折扣 1折~6.5折的捡漏房源数
     - avg_discount：可参拍房源的平均折扣（court_discount_rate 0~1）
 
-    注意：限定三城（库里可能混入河北等其它城市的脏数据），避免登录页数字被污染。
+    注意：限定四城（库里可能混入河北等其它城市的脏数据），避免登录页数字被污染。
     """
     city_ids = [c["city_id"] for c in CITIES]
     in_cities = Property.city_id.in_(city_ids)

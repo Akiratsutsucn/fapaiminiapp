@@ -45,8 +45,12 @@ import re as _re_engine
 # 字样（如「河南永城上海公馆」「江阴市上海花园」「绍兴市上虞区新上海花园」），也属于外省
 # 房源，应跳过。注意：不含「上海/浙江」本身，也不含杭甬下辖区县（淳安/桐庐/象山/宁海/
 # 余姚/慈溪/建德/临安等），避免误杀目标城市。
+# 【临沂】山东省是目标省之一(临沂市)，故「山东」不能无条件拦截：用负向先行断言
+# 「山东(?!省?临沂)」——放行「山东省临沂市/山东临沂」，仍拦截「山东省济南市」等其他山东地。
+# 山东省内除临沂外的地市/区县(淄博/青岛/日照/滨州/高密/新泰/临邑/微山/莱西/东明等)仍在
+# 下方地名列表里逐一拦截，不受影响。
 _re_other_province = _re_engine.compile(
-    r"^\s*(?:位于|拍卖)?\s*(河北|河南|山东|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
+    r"^\s*(?:位于|拍卖)?\s*(河北|河南|山东(?!省?临沂)|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
     r"福建|安徽|江西|辽宁|吉林|黑龙江|云南|贵州|甘肃|内蒙古?|新疆|宁夏|青海|海南|西藏|"
     # 外省地市/区县（本次实拍暴露的「上海XX」同名楼盘所在地）：
     r"淄博|唐山|周口|西安|昆明|福州|青岛|江阴|绍兴|启东|蒙自|十堰|滨州|阜阳|荆州|武威|"
@@ -55,8 +59,9 @@ _re_other_province = _re_engine.compile(
 )
 
 # 同上地名集合,但无 ^ 锚定,用于 search 扫描整个标题任意位置(district 为空时兜底)。
+# 【临沂】同样对「山东」加负向先行断言,放行临沂。
 _re_other_province_any = _re_engine.compile(
-    r"(河北|河南|山东|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
+    r"(河北|河南|山东(?!省?临沂)|山西|陕西|重庆|北京|天津|广东|广西|江苏|四川|湖北|湖南|"
     r"福建|安徽|江西|辽宁|吉林|黑龙江|云南|贵州|甘肃|内蒙古?|新疆|宁夏|青海|海南|西藏|"
     r"淄博|唐山|周口|西安|昆明|福州|青岛|江阴|绍兴|启东|蒙自|十堰|滨州|阜阳|荆州|武威|"
     r"黄山|北海|南充|东海|张家口|临邑|微山|盘州|库尔勒|日照|莱西|东明|清河|奇台|道真|"
@@ -75,7 +80,7 @@ PLATFORM_FACTORY = {
     "公拍网": (GPaiCrawler, GPaiDetailParser),
 }
 
-CITY_ID_MAP = {"上海": 310000, "宁波": 330200, "杭州": 330100}
+CITY_ID_MAP = {"上海": 310000, "宁波": 330200, "杭州": 330100, "临沂": 371300}
 
 # 三市合法辖区白名单（用于拦截「外省叫『上海花园/上海城/上海路』的楼盘」——
 # 这类标题含「上海」会骗过关键词判断，但解析出的 district 是外省地名，可据此精确拦截）。
@@ -94,10 +99,19 @@ VALID_DISTRICTS = {
         "桐庐县", "钱塘区", "建德市", "淳安县", "滨江区", "江干区", "临平区",
         "下城区",
     },
+    371300: {  # 临沂（山东省）3区9县 + 功能区
+        "兰山区", "罗庄区", "河东区",
+        "沂南县", "郯城县", "沂水县", "兰陵县", "费县", "平邑县",
+        "莒南县", "蒙阴县", "临沭县",
+        # 功能区/开发区(实拍暴露:临沂真实房源解析出的 district 常为这些功能区名,
+        # 不补则被「非白名单辖区」误杀。含各种简写变体以兼容 parser 输出)。
+        "临港区", "临港经济开发区", "经济技术开发区", "技术开发区",
+        "经济开发区", "经济区", "高新区", "高新技术产业开发区",
+    },
 }
-# 所有合法辖区合集（任一市命中即视为目标区域内）。额外并入市级名称（上海/宁波/杭州），
+# 所有合法辖区合集（任一市命中即视为目标区域内）。额外并入市级名称（上海/宁波/杭州/临沂），
 # 兼容部分房源 district 只解析到市级、未细分到区的合法情况。
-_ALL_VALID_DISTRICTS = set().union(*VALID_DISTRICTS.values()) | {"上海", "宁波", "杭州"}
+_ALL_VALID_DISTRICTS = set().union(*VALID_DISTRICTS.values()) | {"上海", "宁波", "杭州", "临沂"}
 
 
 def _build_auction_item_from_list(item, platform_name: str, city_id: int):
@@ -450,7 +464,14 @@ class CrawlEngine:
                             if item_id_match:
                                 item_id = item_id_match.group(1)
                                 try:
-                                    api_data = await crawler.fetch_detail_api(item_id)
+                                    # 硬超时:单条详情抓取(含SSR多page/换IP)最多 DETAIL_FETCH_TIMEOUT 秒。
+                                    # 根因防护——代理IP半死时 page.content()/evaluate() 会永久挂起,
+                                    # 心跳看门狗只刷时间戳不杀协程,曾致整轮空耗5h被systemd杀(task158)。
+                                    # 超时即当作抓取失败,走下方列表兜底,不拖垮整轮。
+                                    _detail_timeout = float(os.getenv("DETAIL_FETCH_TIMEOUT", "90"))
+                                    api_data = await asyncio.wait_for(
+                                        crawler.fetch_detail_api(item_id), timeout=_detail_timeout
+                                    )
                                     if api_data:
                                         extra = {
                                             "area_text": item.area_text,
@@ -487,7 +508,11 @@ class CrawlEngine:
                             # Fallback: use Playwright HTML fetch + parse
                             if not _api_ok:
                                 try:
-                                    html = await crawler.fetch_detail(item.source_url)
+                                    # 同样加硬超时:Playwright 兜底抓取在半死IP下也可能挂起
+                                    _detail_timeout = float(os.getenv("DETAIL_FETCH_TIMEOUT", "90"))
+                                    html = await asyncio.wait_for(
+                                        crawler.fetch_detail(item.source_url), timeout=_detail_timeout
+                                    )
                                     await random_sleep(0.5, 2.0)
                                     extra = {
                                         "title": item.title,
@@ -525,8 +550,11 @@ class CrawlEngine:
                                     )
                                     return "failed", None
                         else:
-                            # Fetch detail HTML
-                            html = await crawler.fetch_detail(item.source_url)
+                            # Fetch detail HTML(公拍网/京东HTML路径也加硬超时,防半死代理挂起)
+                            _detail_timeout = float(os.getenv("DETAIL_FETCH_TIMEOUT", "90"))
+                            html = await asyncio.wait_for(
+                                crawler.fetch_detail(item.source_url), timeout=_detail_timeout
+                            )
                             await random_sleep(0.5, 2.0)
 
                             # Pass list-level metadata to help detail parser
@@ -579,6 +607,9 @@ class CrawlEngine:
                         elif "上海" in pc or "上海" in addr:
                             auction_item.city_id = 310000
                             auction_item.province_city = "上海"
+                        elif "临沂" in pc or "临沂" in addr:
+                            auction_item.city_id = 371300
+                            auction_item.province_city = "临沂"
                         # province_city 仅到省级（如「浙江省」）：用本次抓取的目标城市兜底。
                         # 但京东用省级 provinceId 搜索,会混入浙江其他市(嘉兴/衢州等),故对京东
                         # 收紧:仅当解析出的 district 属于目标城市辖区白名单才放行,否则跳过。
@@ -596,6 +627,21 @@ class CrawlEngine:
                                 return "skipped_city", None
                             auction_item.city_id = city_id
                             auction_item.province_city = "宁波" if city_id == 330200 else "杭州"
+                        # 【临沂】山东省级兜底：province_city 仅到「山东省」时,用本次目标城市(临沂)兜底。
+                        # 与浙江同理:京东全国搜会混入山东其他市(济南/青岛等),收紧到临沂辖区白名单;
+                        # 阿里/公拍按 keyword=临沂 精确搜,维持宽松兜底。
+                        elif pc in ("山东省", "山东") and city_id == 371300:
+                            _d = (auction_item.district or "").strip()
+                            if "京东" in platform_name and not (
+                                _d and _d in VALID_DISTRICTS.get(371300, set())
+                            ):
+                                logger.debug(
+                                    f"[{platform_name}] Skipping 京东山东省级兜底未命中辖区: "
+                                    f"district={_d!r} city_id=371300 — {item.source_url}"
+                                )
+                                return "skipped_city", None
+                            auction_item.city_id = 371300
+                            auction_item.province_city = "临沂"
                         else:
                             logger.debug(
                                 f"[{platform_name}] Skipping non-target city: "

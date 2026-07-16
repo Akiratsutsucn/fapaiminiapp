@@ -37,6 +37,12 @@ PAIMAI_CONFIGS = [
         source_url="https://pages-fast.m.taobao.com/wow/z/app/pm/search-ssr/search",
         label="阿里拍卖-杭州-诉讼资产",
     ),
+    SourceConfig(
+        platform="阿里拍卖",
+        city="临沂",
+        source_url="https://pages-fast.m.taobao.com/wow/z/app/pm/search-ssr/search",
+        label="阿里拍卖-临沂-诉讼资产",
+    ),
 ]
 
 
@@ -61,6 +67,16 @@ JD_CONFIGS = [
         city="杭州",
         source_url="https://pmsearch.jd.com/?publishSource=7&provinceId=15",
         label="京东-杭州-浙江省筛选",
+    ),
+    # 【临沂】京东 provinceId=13=山东(2026-07-16 用 Playwright 拦截接口实地探明:
+    # provinceId=13 返回烟台/济宁/威海/临沂/潍坊/青岛/济南等,确为山东)。与浙江(15)同模式:
+    # 省级筛选缩小范围,再由 _match_city 按 city 字段精确过滤出临沂;engine 对京东省级兜底
+    # 已收紧到临沂辖区白名单,避免混入山东其他市。
+    SourceConfig(
+        platform="京东拍卖",
+        city="临沂",
+        source_url="https://pmsearch.jd.com/?publishSource=7&provinceId=13",
+        label="京东-临沂-山东省筛选",
     ),
 ]
 
@@ -103,6 +119,18 @@ GPAI_CONFIGS = [
         city="杭州",
         source_url="https://s.gpai.net/sf/search.do?at=381&cityNum=3301",
         label="公拍网-杭州-类型B",
+    ),
+    SourceConfig(
+        platform="公拍网",
+        city="临沂",
+        source_url="https://s.gpai.net/sf/search.do?at=376&cityNum=3713",
+        label="公拍网-临沂-类型A",
+    ),
+    SourceConfig(
+        platform="公拍网",
+        city="临沂",
+        source_url="https://s.gpai.net/sf/search.do?at=381&cityNum=3713",
+        label="公拍网-临沂-类型B",
     ),
     # 注：公拍网现通过住宅代理(GPAI_PROXY)调 s.gpai.net 城市精确搜索(cityNum)，
     # 见 gpai.py _fetch_city_search_ids；城市归属仍由详情页 province_city 二次校验。

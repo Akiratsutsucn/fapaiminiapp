@@ -6,7 +6,7 @@
       <t-form :data="form" label-width="110px">
         <t-row :gutter="24">
           <t-col :span="8"><t-form-item label="标题"><t-input v-model="form.title" /></t-form-item></t-col>
-          <t-col :span="4"><t-form-item label="城市"><t-select v-model="form.city_id"><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /></t-select></t-form-item></t-col>
+          <t-col :span="4"><t-form-item label="城市"><t-select v-model="form.city_id"><t-option :value="310000" label="上海" /><t-option :value="330200" label="宁波" /><t-option :value="330100" label="杭州" /><t-option :value="371300" label="临沂" /></t-select></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="区"><t-input v-model="form.district" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="板块"><t-input v-model="form.sub_district" /></t-form-item></t-col>
           <t-col :span="4"><t-form-item label="环线"><t-input v-model="form.ring_road" /></t-form-item></t-col>

@@ -27,7 +27,7 @@ DEFAULT_START_SCAN_ID = 52772
 SCAN_RANGE = 200  # 从 max_id+1 起扫这么多个新 ID
 
 # 城市 → 公拍网 cityNum（s.gpai.net 城市精确搜索参数）
-CITY_NUM_MAP = {"上海": "31", "宁波": "3302", "杭州": "3301"}
+CITY_NUM_MAP = {"上海": "31", "宁波": "3302", "杭州": "3301", "临沂": "3713"}
 # 资产类型 at 参数：376/381 覆盖住宅+商业等不动产类型
 GPAI_ASSET_TYPES = ["376", "381"]
 
@@ -114,45 +114,65 @@ class GPaiCrawler(AbstractBrokerCrawler):
         种 cookie，再带 cookie 请求 s.gpai.net/sf/search.do?at=&cityNum=。
         仅抓列表（流量小），详情页仍走服务器直连。GPAI_PROXY 未配置则跳过。
         """
-        proxy = (settings.GPAI_PROXY or "").strip()
         city_num = CITY_NUM_MAP.get(city)
-        if not proxy or not city_num:
+        if not city_num:
+            return []
+        # 代理候选:优先 GPAI_PROXY(云镜住宅),失效则回退 PROXY_POOL(本地青果 socks 桥)。
+        # (2026-07-16:云镜代理认证失败 Invalid username/password 致城市搜索全线走首页
+        #  兜底抓成全国混杂数据;青果 socks 桥已验证可访问 s.gpai.net,故加回退保正确性。)
+        import os as _os
+        proxy_candidates = []
+        _gp = (settings.GPAI_PROXY or "").strip()
+        if _gp:
+            proxy_candidates.append(_gp)
+        _pool = (_os.getenv("PROXY_POOL", "") or "").strip()
+        if _pool and _pool not in proxy_candidates:
+            proxy_candidates.append(_pool)
+        if not proxy_candidates:
             return []
 
         ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         items: list[ListItem] = []
         seen: set[str] = set()
-        try:
-            async with httpx.AsyncClient(
-                proxy=proxy, timeout=40, follow_redirects=True,
-                headers={"User-Agent": ua},
-            ) as client:
-                # 1. 访问主站种 cookie
-                await client.get("https://www.gpai.net/sf/")
-                # 2. 每个资产类型分别搜索
-                for at in GPAI_ASSET_TYPES:
-                    url = f"https://s.gpai.net/sf/search.do?at={at}&cityNum={city_num}"
-                    try:
-                        resp = await client.get(url, headers={"Referer": "https://www.gpai.net/sf/"})
-                    except Exception as e:
-                        logger.warning(f"[GPai] 城市搜索请求失败 city={city} at={at}: {e}")
-                        continue
-                    if resp.status_code != 200:
-                        logger.warning(f"[GPai] 城市搜索 HTTP {resp.status_code} city={city} at={at}")
-                        continue
-                    for m in _ITEM_ID_RE.finditer(resp.text):
-                        sid = m.group(1)
-                        if sid not in seen:
-                            seen.add(sid)
-                            items.append(ListItem(
-                                source_url=f"{self.BASE_URL}/sf/item2.do?Web_Item_ID={sid}",
-                                title="",
-                            ))
-                    await asyncio.sleep(1.5)
-            logger.info(f"[GPai] 住宅代理城市搜索 city={city}: 发现 {len(items)} 个房源")
-        except Exception as e:
-            logger.warning(f"[GPai] 城市搜索整体失败 city={city}: {e}")
+        for _pi, proxy in enumerate(proxy_candidates):
+            _tag = "GPAI_PROXY" if (_gp and proxy == _gp) else "socks桥"
+            try:
+                async with httpx.AsyncClient(
+                    proxy=proxy, timeout=40, follow_redirects=True,
+                    headers={"User-Agent": ua},
+                ) as client:
+                    # 1. 访问主站种 cookie
+                    await client.get("https://www.gpai.net/sf/")
+                    # 2. 每个资产类型分别搜索
+                    for at in GPAI_ASSET_TYPES:
+                        url = f"https://s.gpai.net/sf/search.do?at={at}&cityNum={city_num}"
+                        try:
+                            resp = await client.get(url, headers={"Referer": "https://www.gpai.net/sf/"})
+                        except Exception as e:
+                            logger.warning(f"[GPai] 城市搜索请求失败 city={city} at={at} via {_tag}: {e}")
+                            continue
+                        if resp.status_code != 200:
+                            logger.warning(f"[GPai] 城市搜索 HTTP {resp.status_code} city={city} at={at} via {_tag}")
+                            continue
+                        for m in _ITEM_ID_RE.finditer(resp.text):
+                            sid = m.group(1)
+                            if sid not in seen:
+                                seen.add(sid)
+                                items.append(ListItem(
+                                    source_url=f"{self.BASE_URL}/sf/item2.do?Web_Item_ID={sid}",
+                                    title="",
+                                ))
+                        await asyncio.sleep(1.5)
+                # 该代理成功拿到房源 → 不再试后续代理
+                if items:
+                    logger.info(f"[GPai] 城市搜索 city={city} via {_tag}: 发现 {len(items)} 个房源")
+                    return items
+                logger.warning(f"[GPai] 城市搜索 city={city} via {_tag} 返回 0 房源,尝试下一代理")
+            except Exception as e:
+                logger.warning(f"[GPai] 城市搜索 city={city} via {_tag} 整体失败: {e},尝试下一代理")
+                continue
+        logger.warning(f"[GPai] 城市搜索 city={city}: 所有代理均失败/无结果")
         return items
 
     @retry_on_failure(max_retries=2, backoff_factor=2.0)

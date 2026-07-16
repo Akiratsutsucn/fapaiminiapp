@@ -23,7 +23,7 @@ router = APIRouter()
 
 @router.get("")
 async def get_dashboard(
-    city_id: Optional[int] = Query(None, description="筛选城市：310000=上海, 330200=宁波, 330100=杭州, 不传=全部"),
+    city_id: Optional[int] = Query(None, description="筛选城市：310000=上海, 330200=宁波, 330100=杭州, 371300=临沂, 不传=全部"),
     db: AsyncSession = Depends(get_session),
     admin: dict = Depends(check_module_permission("dashboard")),
 ):
@@ -77,8 +77,8 @@ async def get_dashboard(
 
     total_articles = (await db.execute(select(func.count(Article.id)))).scalar() or 0
 
-    # 三城分项数据
-    CITIES = {"shanghai": 310000, "ningbo": 330200, "hangzhou": 330100}
+    # 四城分项数据
+    CITIES = {"shanghai": 310000, "ningbo": 330200, "hangzhou": 330100, "linyi": 371300}
 
     async def _city_breakdown(base_conditions):
         """计算城市分项数据"""

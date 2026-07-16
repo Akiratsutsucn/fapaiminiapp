@@ -77,7 +77,7 @@ Examples:
     )
     parser.add_argument(
         "--city", "-c",
-        choices=["上海", "宁波", "杭州"],
+        choices=["上海", "宁波", "杭州", "临沂"],
         help="Target city (default: all)",
     )
     parser.add_argument(

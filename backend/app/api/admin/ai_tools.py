@@ -169,7 +169,7 @@ async def get_crawler_status(db: AsyncSession) -> dict[str, Any]:
             ).group_by(Property.city_id)
         )
 
-        city_map = {310000: "上海", 330200: "宁波", 330100: "杭州"}
+        city_map = {310000: "上海", 330200: "宁波", 330100: "杭州", 371300: "临沂"}
         city_data = [
             {
                 "city_id": row[0],
@@ -206,7 +206,7 @@ async def analyze_property_stats(
 
     Args:
         db: 数据库会话
-        city: 城市名称（上海/宁波/杭州，不传则全部）
+        city: 城市名称（上海/宁波/杭州/临沂，不传则全部）
         days: 分析最近N天的数据
 
     Returns:
@@ -214,7 +214,7 @@ async def analyze_property_stats(
     """
     try:
         # 城市映射
-        city_map = {"上海": 310000, "宁波": 330200, "杭州": 330100}
+        city_map = {"上海": 310000, "宁波": 330200, "杭州": 330100, "临沂": 371300}
 
         conditions = []
         if city and city in city_map:

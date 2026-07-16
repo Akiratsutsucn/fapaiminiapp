@@ -59,7 +59,7 @@ SYSTEM_PROMPT = """你是法拍者联盟管理后台的AI助手。你可以帮�
 - demands: 需求表（id, user_id, city, status, created_at等）
 - articles: 文章表（id, title, content, published_at等）
 
-城市代码：310000=上海, 330200=宁波, 330100=杭州
+城市代码：310000=上海, 330200=宁波, 330100=杭州, 371300=临沂
 
 请用简体中文回答，保持专业和友好。"""
 
@@ -235,8 +235,8 @@ async def _stream_chat(
                         "properties": {
                             "city": {
                                 "type": "string",
-                                "description": "城市名称（上海/宁波/杭州），不传则分析全部城市",
-                                "enum": ["上海", "宁波", "杭州"],
+                                "description": "城市名称（上海/宁波/杭州/临沂），不传则分析全部城市",
+                                "enum": ["上海", "宁波", "杭州", "临沂"],
                             },
                             "days": {
                                 "type": "integer",

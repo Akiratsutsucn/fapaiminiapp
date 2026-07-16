@@ -51,6 +51,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--limit", type=int, default=0, help="每平台最多回填 N 条（0=不限）")
     p.add_argument("--only-missing-area", action="store_true",
                    help="只回填面积缺失(area<=0)的房源")
+    p.add_argument("--only-missing-appraisal", action="store_true",
+                   help="只回填评估价缺失(appraisal_price<=0)的房源")
     p.add_argument("--recheck-sold", action="store_true",
                    help="成交复核模式：核实已结束/已成交房源的成交价与成交状态(纠正误判)")
     p.add_argument("--city-id", type=int, default=None,
@@ -64,7 +66,9 @@ def _build_query(platform_name: str, args):
     if args.city_id:
         conds.append(Property.city_id == args.city_id)
 
-    if args.only_missing_area:
+    if getattr(args, "only_missing_appraisal", False):
+        conds.append(or_(Property.appraisal_price.is_(None), Property.appraisal_price <= 0))
+    elif args.only_missing_area:
         conds.append(or_(Property.area.is_(None), Property.area <= 0))
     elif getattr(args, "recheck_sold", False):
         # 成交复核模式：核实「已结束/已成交」房源的真实成交状态与成交价。
@@ -85,6 +89,7 @@ def _build_query(platform_name: str, args):
             Property.increment_amount.is_(None), Property.increment_amount <= 0,
             Property.starting_price.is_(None), Property.starting_price <= 0,
             Property.deposit.is_(None), Property.deposit <= 0,
+            Property.appraisal_price.is_(None), Property.appraisal_price <= 0,
             and_(
                 Property.auction_end_time.isnot(None),
                 Property.auction_end_time < now,
