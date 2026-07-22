@@ -109,6 +109,15 @@ seed_demo_data.py
 gpai_new.py
 *_debug.py
 verify_*.py
+# 一次性诊断/候选/清理脚本（下划线前缀约定）
+_*.py
+_*.sh
+crawler/_*.py
+crawler/_*.sh
+*.prod.py
+# 临时工作目录（回流/对比用）
+_linyi_work/
+_*_work/
 
 # 例外：正式测试目录不受上面的一次性脚本规则影响
 !backend/tests/
