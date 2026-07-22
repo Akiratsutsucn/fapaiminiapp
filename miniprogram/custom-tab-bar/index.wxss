@@ -56,7 +56,7 @@
   color: #FF6B35;
 }
 
-/* 中间 AI选房 凸起圆形按钮 */
+/* 中间 选房 凸起圆形按钮 */
 .tab-center {
   flex: 1;
   height: 100rpx;

@@ -1,7 +1,6 @@
 {
-  "navigationBarTitleText": "AI 智能选房",
+  "navigationBarTitleText": "选房",
   "usingComponents": {
-    "house-card": "/components/house-card/house-card",
-    "privacy-popup": "/components/privacy-popup/privacy-popup"
+    "house-card": "/components/house-card/house-card"
   }
 }

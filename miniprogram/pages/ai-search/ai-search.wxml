@@ -1,76 +1,32 @@
 <view class="ai-search-page">
   <view class="as-header">
-    <view class="as-icon"></view>
-    <text class="as-title">AI 智能选房</text>
-    <text class="as-subtitle">说出你的需求，AI 帮你找房</text>
+    <text class="as-title">选房</text>
+    <text class="as-subtitle">输入关键词，快速找法拍房</text>
   </view>
 
   <!-- 输入区域 -->
   <view class="as-input-wrap">
     <textarea
       class="as-input"
-      placeholder="例如：徐汇区三室两厅500万以下"
+      placeholder="输入小区名、区域或关键词，如：徐汇 住宅"
       value="{{query}}"
       bindinput="onQueryInput"
       maxlength="100"
       auto-height
     />
     <view class="as-actions">
-      <button class="as-btn as-btn-voice" bindtap="onVoiceInput" wx:if="{{!recording}}">
-        <view class="voice-icon"></view>
-        <text>语音输入</text>
-      </button>
-      <button class="as-btn as-btn-voice recording" bindtap="onStopRecord" wx:if="{{recording}}">
-        <view class="voice-icon"></view>
-        <text>停止录音</text>
-      </button>
       <button class="as-btn as-btn-search" bindtap="onSearch" loading="{{searching}}">搜索</button>
     </view>
   </view>
 
   <!-- 示例引导 -->
   <view class="as-examples" wx:if="{{!searched}}">
-    <text class="as-examples-title">试试这样说：</text>
+    <text class="as-examples-title">试试这样搜：</text>
     <view class="as-example-tags">
-      <view class="as-tag" bindtap="onTapExample" data-text="浦东新区两室一厅300万以下">浦东新区两室一厅300万以下</view>
-      <view class="as-tag" bindtap="onTapExample" data-text="徐汇区100平以上捡漏房">徐汇区100平以上捡漏房</view>
-      <view class="as-tag" bindtap="onTapExample" data-text="静安区即将开拍的住宅">静安区即将开拍的住宅</view>
-      <view class="as-tag" bindtap="onTapExample" data-text="宁波江北区200到300万">宁波江北区200到300万</view>
-    </view>
-  </view>
-
-  <!-- 解析结果 -->
-  <view class="as-parsed" wx:if="{{parsed && Object.keys(parsed).length > 0}}">
-    <text class="as-parsed-title">AI 理解为：</text>
-    <view class="as-parsed-items">
-      <view class="as-parsed-item" wx:if="{{parsed.district}}">
-        <text class="label">区域</text>
-        <text class="value">{{parsed.district}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.layout}}">
-        <text class="label">户型</text>
-        <text class="value">{{parsed.layout}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.price_min || parsed.price_max}}">
-        <text class="label">价格</text>
-        <text class="value">{{priceText}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.area_min || parsed.area_max}}">
-        <text class="label">面积</text>
-        <text class="value">{{areaText}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.property_type}}">
-        <text class="label">类型</text>
-        <text class="value">{{parsed.property_type}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.auction_status}}">
-        <text class="label">状态</text>
-        <text class="value">{{parsed.auction_status}}</text>
-      </view>
-      <view class="as-parsed-item" wx:if="{{parsed.discount_min}}">
-        <text class="label">标签</text>
-        <text class="value">捡漏房源</text>
-      </view>
+      <view class="as-tag" bindtap="onTapExample" data-text="浦东新区">浦东新区</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="徐汇 住宅">徐汇 住宅</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="静安">静安</view>
+      <view class="as-tag" bindtap="onTapExample" data-text="宁波 江北">宁波 江北</view>
     </view>
   </view>
 
@@ -83,21 +39,15 @@
       <house-card wx:for="{{list}}" wx:key="id" property="{{item}}" />
     </view>
     <view class="as-empty" wx:if="{{list.length === 0 && !searching}}">
-      <text>暂无匹配房源，试试调整条件</text>
+      <text>暂无匹配房源，试试调整关键词</text>
     </view>
   </view>
 
-  <!-- 合规提示：AI 生成内容声明 + 麦克风权限说明 -->
-  <view class="as-ai-notice">
-    <text class="as-ai-notice-main">包含人工智能生成合成内容</text>
-    <text class="as-ai-notice-sub">使用语音输入时，小程序需要获得麦克风的权限</text>
-  </view>
-
-  <!-- 联系方式门禁弹窗:使用 AI 找房前必须填写手机号+姓氏 -->
+  <!-- 联系方式门禁弹窗:使用选房前必须填写手机号+姓氏 -->
   <view class="contact-mask" wx:if="{{showContactModal}}" catchtouchmove="true">
     <view class="contact-modal">
       <view class="contact-title">填写联系方式</view>
-      <view class="contact-tip">使用 AI 找房需先留下联系方式,方便顾问为您 1 对 1 服务</view>
+      <view class="contact-tip">使用选房需先留下联系方式,方便顾问为您 1 对 1 服务</view>
       <view class="contact-field">
         <text class="contact-label">姓氏 <text class="contact-req">*</text></text>
         <input class="contact-input" placeholder="请输入您的姓氏(如:张)" maxlength="10" value="{{contactForm.surname}}" bindinput="onContactInput" data-field="surname" />
@@ -113,5 +63,3 @@
     </view>
   </view>
 </view>
-
-<privacy-popup />

@@ -1,4 +1,4 @@
-// 隐私授权弹窗组件：把它放在任何会调用隐私接口(剪贴板/录音)的页面上。
+// 隐私授权弹窗组件：把它放在任何会调用隐私接口(剪贴板)的页面上。
 // 组件在 attached 时注册 wx.onNeedPrivacyAuthorization：微信在首次调用隐私接口
 // 前回调本组件弹窗，用户点"同意"(open-type=agreePrivacyAuthorization)后放行，
 // 本次运行期内不再弹。用法：页面 wxml 加 <privacy-popup />。
