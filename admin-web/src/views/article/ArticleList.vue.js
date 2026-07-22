@@ -2,6 +2,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { listArticles, createArticle, updateArticle, deleteArticle, syncArticlesFromMp, importArticleFromUrl, refetchArticleContent } from '@/api/articles';
+import { useAuthStore } from '@/stores/auth';
+const auth = useAuthStore();
 const loading = ref(false);
 const syncing = ref(false);
 const refetchingId = ref(0);
@@ -193,67 +195,73 @@ const __VLS_19 = {
 };
 __VLS_15.slots.default;
 var __VLS_15;
-const __VLS_20 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_21 = __VLS_asFunctionalComponent(__VLS_20, new __VLS_20({
-    ...{ 'onClick': {} },
-    variant: "outline",
-}));
-const __VLS_22 = __VLS_21({
-    ...{ 'onClick': {} },
-    variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_21));
-let __VLS_24;
-let __VLS_25;
-let __VLS_26;
-const __VLS_27 = {
-    onClick: (__VLS_ctx.onAdd)
-};
-__VLS_23.slots.default;
-var __VLS_23;
-const __VLS_28 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
-    ...{ 'onClick': {} },
-    theme: "success",
-    loading: (__VLS_ctx.syncing),
-}));
-const __VLS_30 = __VLS_29({
-    ...{ 'onClick': {} },
-    theme: "success",
-    loading: (__VLS_ctx.syncing),
-}, ...__VLS_functionalComponentArgsRest(__VLS_29));
-let __VLS_32;
-let __VLS_33;
-let __VLS_34;
-const __VLS_35 = {
-    onClick: (__VLS_ctx.onSyncFromMp)
-};
-__VLS_31.slots.default;
-var __VLS_31;
-const __VLS_36 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    variant: "outline",
-}));
-const __VLS_38 = __VLS_37({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_37));
-let __VLS_40;
-let __VLS_41;
-let __VLS_42;
-const __VLS_43 = {
-    onClick: (__VLS_ctx.onImportDialog)
-};
-__VLS_39.slots.default;
-var __VLS_39;
+if (!__VLS_ctx.auth.isReadonly) {
+    const __VLS_20 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_21 = __VLS_asFunctionalComponent(__VLS_20, new __VLS_20({
+        ...{ 'onClick': {} },
+        variant: "outline",
+    }));
+    const __VLS_22 = __VLS_21({
+        ...{ 'onClick': {} },
+        variant: "outline",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_21));
+    let __VLS_24;
+    let __VLS_25;
+    let __VLS_26;
+    const __VLS_27 = {
+        onClick: (__VLS_ctx.onAdd)
+    };
+    __VLS_23.slots.default;
+    var __VLS_23;
+}
+if (!__VLS_ctx.auth.isReadonly) {
+    const __VLS_28 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
+        ...{ 'onClick': {} },
+        theme: "success",
+        loading: (__VLS_ctx.syncing),
+    }));
+    const __VLS_30 = __VLS_29({
+        ...{ 'onClick': {} },
+        theme: "success",
+        loading: (__VLS_ctx.syncing),
+    }, ...__VLS_functionalComponentArgsRest(__VLS_29));
+    let __VLS_32;
+    let __VLS_33;
+    let __VLS_34;
+    const __VLS_35 = {
+        onClick: (__VLS_ctx.onSyncFromMp)
+    };
+    __VLS_31.slots.default;
+    var __VLS_31;
+}
+if (!__VLS_ctx.auth.isReadonly) {
+    const __VLS_36 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
+        ...{ 'onClick': {} },
+        theme: "primary",
+        variant: "outline",
+    }));
+    const __VLS_38 = __VLS_37({
+        ...{ 'onClick': {} },
+        theme: "primary",
+        variant: "outline",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_37));
+    let __VLS_40;
+    let __VLS_41;
+    let __VLS_42;
+    const __VLS_43 = {
+        onClick: (__VLS_ctx.onImportDialog)
+    };
+    __VLS_39.slots.default;
+    var __VLS_39;
+}
 const __VLS_44 = {}.TTable;
 /** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
 // @ts-ignore
@@ -365,30 +373,34 @@ __VLS_47.slots.default;
     const __VLS_69 = __VLS_asFunctionalComponent(__VLS_68, new __VLS_68({}));
     const __VLS_70 = __VLS_69({}, ...__VLS_functionalComponentArgsRest(__VLS_69));
     __VLS_71.slots.default;
-    const __VLS_72 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }));
-    const __VLS_74 = __VLS_73({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_73));
-    let __VLS_76;
-    let __VLS_77;
-    let __VLS_78;
-    const __VLS_79 = {
-        onClick: (...[$event]) => {
-            __VLS_ctx.onEdit(row);
-        }
-    };
-    __VLS_75.slots.default;
-    var __VLS_75;
-    if (row.mp_url) {
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_72 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }));
+        const __VLS_74 = __VLS_73({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_73));
+        let __VLS_76;
+        let __VLS_77;
+        let __VLS_78;
+        const __VLS_79 = {
+            onClick: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onEdit(row);
+            }
+        };
+        __VLS_75.slots.default;
+        var __VLS_75;
+    }
+    if (!__VLS_ctx.auth.isReadonly && row.mp_url) {
         const __VLS_80 = {}.TButton;
         /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
         // @ts-ignore
@@ -411,7 +423,7 @@ __VLS_47.slots.default;
         let __VLS_86;
         const __VLS_87 = {
             onClick: (...[$event]) => {
-                if (!(row.mp_url))
+                if (!(!__VLS_ctx.auth.isReadonly && row.mp_url))
                     return;
                 __VLS_ctx.onRefetch(row);
             }
@@ -419,42 +431,51 @@ __VLS_47.slots.default;
         __VLS_83.slots.default;
         var __VLS_83;
     }
-    const __VLS_88 = {}.TPopconfirm;
-    /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
-    // @ts-ignore
-    const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
-        ...{ 'onConfirm': {} },
-        content: "确定删除？",
-    }));
-    const __VLS_90 = __VLS_89({
-        ...{ 'onConfirm': {} },
-        content: "确定删除？",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_89));
-    let __VLS_92;
-    let __VLS_93;
-    let __VLS_94;
-    const __VLS_95 = {
-        onConfirm: (...[$event]) => {
-            __VLS_ctx.onDelete(row.id);
-        }
-    };
-    __VLS_91.slots.default;
-    const __VLS_96 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }));
-    const __VLS_98 = __VLS_97({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_97));
-    __VLS_99.slots.default;
-    var __VLS_99;
-    var __VLS_91;
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_88 = {}.TPopconfirm;
+        /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
+        // @ts-ignore
+        const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
+            ...{ 'onConfirm': {} },
+            content: "确定删除？",
+        }));
+        const __VLS_90 = __VLS_89({
+            ...{ 'onConfirm': {} },
+            content: "确定删除？",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_89));
+        let __VLS_92;
+        let __VLS_93;
+        let __VLS_94;
+        const __VLS_95 = {
+            onConfirm: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onDelete(row.id);
+            }
+        };
+        __VLS_91.slots.default;
+        const __VLS_96 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }));
+        const __VLS_98 = __VLS_97({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_97));
+        __VLS_99.slots.default;
+        var __VLS_99;
+        var __VLS_91;
+    }
+    if (__VLS_ctx.auth.isReadonly) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ style: {} },
+        });
+    }
     var __VLS_71;
 }
 var __VLS_47;
@@ -728,6 +749,7 @@ var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
+            auth: auth,
             loading: loading,
             syncing: syncing,
             refetchingId: refetchingId,

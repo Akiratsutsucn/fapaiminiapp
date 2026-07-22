@@ -754,6 +754,9 @@ else if (__VLS_ctx.currentDetail) {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.h4, __VLS_intrinsicElements.h4)({
             ...{ class: "section-title" },
         });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "section-hint" },
+        });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "violations-list" },
         });
@@ -766,20 +769,73 @@ else if (__VLS_ctx.currentDetail) {
                 ...{ class: "violation-rule" },
             });
             (ruleName);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "violation-actions" },
+            });
             const __VLS_148 = {}.TTag;
             /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
             // @ts-ignore
             const __VLS_149 = __VLS_asFunctionalComponent(__VLS_148, new __VLS_148({
-                theme: "warning",
+                theme: "default",
                 size: "small",
             }));
             const __VLS_150 = __VLS_149({
-                theme: "warning",
+                theme: "default",
                 size: "small",
             }, ...__VLS_functionalComponentArgsRest(__VLS_149));
             __VLS_151.slots.default;
             (count);
             var __VLS_151;
+            if (__VLS_ctx.currentDetail.rule_action_summary && __VLS_ctx.currentDetail.rule_action_summary[ruleName]) {
+                if (__VLS_ctx.currentDetail.rule_action_summary[ruleName].deleted > 0) {
+                    const __VLS_152 = {}.TTag;
+                    /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
+                    // @ts-ignore
+                    const __VLS_153 = __VLS_asFunctionalComponent(__VLS_152, new __VLS_152({
+                        theme: "danger",
+                        size: "small",
+                    }));
+                    const __VLS_154 = __VLS_153({
+                        theme: "danger",
+                        size: "small",
+                    }, ...__VLS_functionalComponentArgsRest(__VLS_153));
+                    __VLS_155.slots.default;
+                    (__VLS_ctx.currentDetail.rule_action_summary[ruleName].deleted);
+                    var __VLS_155;
+                }
+                if (__VLS_ctx.currentDetail.rule_action_summary[ruleName].fixed > 0) {
+                    const __VLS_156 = {}.TTag;
+                    /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
+                    // @ts-ignore
+                    const __VLS_157 = __VLS_asFunctionalComponent(__VLS_156, new __VLS_156({
+                        theme: "success",
+                        size: "small",
+                    }));
+                    const __VLS_158 = __VLS_157({
+                        theme: "success",
+                        size: "small",
+                    }, ...__VLS_functionalComponentArgsRest(__VLS_157));
+                    __VLS_159.slots.default;
+                    (__VLS_ctx.currentDetail.rule_action_summary[ruleName].fixed);
+                    var __VLS_159;
+                }
+                if (__VLS_ctx.currentDetail.rule_action_summary[ruleName].flagged > 0) {
+                    const __VLS_160 = {}.TTag;
+                    /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
+                    // @ts-ignore
+                    const __VLS_161 = __VLS_asFunctionalComponent(__VLS_160, new __VLS_160({
+                        theme: "warning",
+                        size: "small",
+                    }));
+                    const __VLS_162 = __VLS_161({
+                        theme: "warning",
+                        size: "small",
+                    }, ...__VLS_functionalComponentArgsRest(__VLS_161));
+                    __VLS_163.slots.default;
+                    (__VLS_ctx.currentDetail.rule_action_summary[ruleName].flagged);
+                    var __VLS_163;
+                }
+            }
         }
     }
 }
@@ -861,9 +917,11 @@ var __VLS_95;
 /** @type {__VLS_StyleScopedClasses['stat-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['violations-section']} */ ;
 /** @type {__VLS_StyleScopedClasses['section-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['section-hint']} */ ;
 /** @type {__VLS_StyleScopedClasses['violations-list']} */ ;
 /** @type {__VLS_StyleScopedClasses['violation-item']} */ ;
 /** @type {__VLS_StyleScopedClasses['violation-rule']} */ ;
+/** @type {__VLS_StyleScopedClasses['violation-actions']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {

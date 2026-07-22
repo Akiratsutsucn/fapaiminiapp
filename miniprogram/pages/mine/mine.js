@@ -16,6 +16,9 @@ Page({
         recUnread: 0,
         demandUnread: 0,
         defaultAvatar: DEFAULT_AVATAR,
+        loading: false,
+        loadError: false,
+        retryCount: 0,
     },
     onShow() {
         if (typeof this.getTabBar === 'function' && this.getTabBar()) {
@@ -63,15 +66,14 @@ Page({
         });
     },
     async loadUserData() {
+        this.setData({ loading: true, loadError: false });
         try {
             const [userInfo, stats] = await Promise.all([
-                (0, user_1.getUserProfile)().catch(err => {
-                    console.error('获取用户信息失败:', err);
-                    return null;
-                }),
-                (0, user_1.getUserStats)().catch(err => {
-                    console.error('获取统计数据失败:', err);
-                    return { favorite_count: 0, participated_count: 0, won_count: 0 };
+                this.fetchWithRetry(() => (0, user_1.getUserProfile)(), '获取用户信息'),
+                this.fetchWithRetry(() => (0, user_1.getUserStats)(), '获取统计数据', {
+                    favorite_count: 0,
+                    participated_count: 0,
+                    won_count: 0
                 }),
             ]);
             if (userInfo) {
@@ -81,30 +83,70 @@ Page({
                 this.setData({ stats });
             }
             const role = (userInfo && userInfo.role) || '';
-            // 延迟加载非关键数据，避免并发请求触发限流
-            setTimeout(() => {
+            Promise.all([
                 (0, user_1.getRecommendationUnread)()
                     .then((r) => this.setData({ recUnread: (r && r.unread) || 0 }))
                     .catch(err => {
                     console.error('获取推荐未读数失败:', err);
                     this.setData({ recUnread: 0 });
-                });
-            }, 300);
-            if (role === 'agent' || role === 'salesperson') {
-                setTimeout(() => {
-                    (0, user_1.getMyDemandsUnread)()
+                }),
+                (role === 'agent' || role === 'salesperson')
+                    ? (0, user_1.getMyDemandsUnread)()
                         .then((r) => this.setData({ demandUnread: (r && r.unread) || 0 }))
                         .catch(err => {
                         console.error('获取需求未读数失败:', err);
                         this.setData({ demandUnread: 0 });
-                    });
-                }, 600);
-            }
+                    })
+                    : Promise.resolve(),
+            ]);
+            this.setData({ loading: false, loadError: false, retryCount: 0 });
         }
         catch (e) {
             console.error('加载用户数据失败:', e);
-            wx.showToast({ title: '加载失败，请稍后重试', icon: 'none', duration: 2000 });
+            this.setData({ loading: false, loadError: true });
+            if (this.data.retryCount === 0) {
+                wx.showToast({
+                    title: '加载失败，请下拉重试',
+                    icon: 'none',
+                    duration: 2000
+                });
+            }
         }
+    },
+    async fetchWithRetry(fetchFn, errorMsg, defaultValue, maxRetries = 2) {
+        for (let i = 0; i <= maxRetries; i++) {
+            try {
+                const result = await fetchFn();
+                return result;
+            }
+            catch (err) {
+                console.error(`${errorMsg}失败 (尝试 ${i + 1}/${maxRetries + 1}):`, err);
+                if (i < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+                else {
+                    if (defaultValue !== undefined) {
+                        return defaultValue;
+                    }
+                    throw err;
+                }
+            }
+        }
+        return defaultValue !== undefined ? defaultValue : null;
+    },
+    onPullDownRefresh() {
+        if (!this.data.isLoggedIn) {
+            wx.stopPullDownRefresh();
+            return;
+        }
+        this.setData({ retryCount: this.data.retryCount + 1 });
+        this.loadUserData().finally(() => {
+            wx.stopPullDownRefresh();
+        });
+    },
+    onRetryLoad() {
+        this.setData({ retryCount: this.data.retryCount + 1 });
+        this.loadUserData();
     },
     onGoLogin() {
         wx.navigateTo({ url: '/pages/login/login' });

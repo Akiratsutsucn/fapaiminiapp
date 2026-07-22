@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { adminLogin } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
+import { firstAccessiblePath } from '@/router';
 const router = useRouter();
 const auth = useAuthStore();
 const loading = ref(false);
@@ -16,8 +17,10 @@ async function onLogin() {
     loading.value = true;
     try {
         const data = await adminLogin(form.username, form.password);
-        auth.setAuth(data.access_token, data.user_info || { nickname: form.username, role: 'admin', id: 0 });
-        router.push('/dashboard');
+        const info = data.user_info || { nickname: form.username, role: 'admin', id: 0 };
+        auth.setAuth(data.access_token, info);
+        // 跳到该角色可达首页(内容管理员无看板权限,跳 dashboard 会被拦成403)
+        router.push(firstAccessiblePath(info.role || ''));
     }
     catch { /* interceptor handles */ }
     finally {
@@ -65,10 +68,10 @@ const __VLS_8 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_9 = __VLS_asFunctionalComponent(__VLS_8, new __VLS_8({
-    label: "用户名",
+    label: "账号",
 }));
 const __VLS_10 = __VLS_9({
-    label: "用户名",
+    label: "账号",
 }, ...__VLS_functionalComponentArgsRest(__VLS_9));
 __VLS_11.slots.default;
 const __VLS_12 = {}.TInput;
@@ -76,12 +79,12 @@ const __VLS_12 = {}.TInput;
 // @ts-ignore
 const __VLS_13 = __VLS_asFunctionalComponent(__VLS_12, new __VLS_12({
     modelValue: (__VLS_ctx.form.username),
-    placeholder: "请输入用户名",
+    placeholder: "管理员用户名 或 手机号",
     clearable: true,
 }));
 const __VLS_14 = __VLS_13({
     modelValue: (__VLS_ctx.form.username),
-    placeholder: "请输入用户名",
+    placeholder: "管理员用户名 或 手机号",
     clearable: true,
 }, ...__VLS_functionalComponentArgsRest(__VLS_13));
 var __VLS_11;

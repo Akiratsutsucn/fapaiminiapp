@@ -23,7 +23,8 @@ async function loadDashboard() {
         const cityKeyNames = {
             shanghai: '上海',
             ningbo: '宁波',
-            hangzhou: '杭州'
+            hangzhou: '杭州',
+            linyi: '临沂'
         };
         // 辅助函数：从后端返回的数据中提取值和城市分项
         function parseMetric(metricData) {
@@ -144,69 +145,80 @@ const __VLS_22 = __VLS_21({
     value: (330100),
     label: "杭州",
 }, ...__VLS_functionalComponentArgsRest(__VLS_21));
-var __VLS_3;
-const __VLS_24 = {}.TRow;
-/** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
+const __VLS_24 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_25 = __VLS_asFunctionalComponent(__VLS_24, new __VLS_24({
+    value: (371300),
+    label: "临沂",
+}));
+const __VLS_26 = __VLS_25({
+    value: (371300),
+    label: "临沂",
+}, ...__VLS_functionalComponentArgsRest(__VLS_25));
+var __VLS_3;
+const __VLS_28 = {}.TRow;
+/** @type {[typeof __VLS_components.TRow, typeof __VLS_components.tRow, typeof __VLS_components.TRow, typeof __VLS_components.tRow, ]} */ ;
+// @ts-ignore
+const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
     gutter: (16),
     ...{ class: "stat-cards" },
 }));
-const __VLS_26 = __VLS_25({
+const __VLS_30 = __VLS_29({
     gutter: (16),
     ...{ class: "stat-cards" },
-}, ...__VLS_functionalComponentArgsRest(__VLS_25));
-__VLS_27.slots.default;
+}, ...__VLS_functionalComponentArgsRest(__VLS_29));
+__VLS_31.slots.default;
 for (const [card] of __VLS_getVForSourceType((__VLS_ctx.cards))) {
-    const __VLS_28 = {}.TCol;
+    const __VLS_32 = {}.TCol;
     /** @type {[typeof __VLS_components.TCol, typeof __VLS_components.tCol, typeof __VLS_components.TCol, typeof __VLS_components.tCol, ]} */ ;
     // @ts-ignore
-    const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
-        span: (3),
-        key: (card.label),
-    }));
-    const __VLS_30 = __VLS_29({
-        span: (3),
-        key: (card.label),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_29));
-    __VLS_31.slots.default;
-    const __VLS_32 = {}.TCard;
-    /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
-    // @ts-ignore
     const __VLS_33 = __VLS_asFunctionalComponent(__VLS_32, new __VLS_32({
-        title: (card.label),
-        hoverShadow: true,
+        span: (3),
+        key: (card.label),
     }));
     const __VLS_34 = __VLS_33({
-        title: (card.label),
-        hoverShadow: true,
+        span: (3),
+        key: (card.label),
     }, ...__VLS_functionalComponentArgsRest(__VLS_33));
     __VLS_35.slots.default;
+    const __VLS_36 = {}.TCard;
+    /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
+    // @ts-ignore
+    const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
+        title: (card.label),
+        hoverShadow: true,
+    }));
+    const __VLS_38 = __VLS_37({
+        title: (card.label),
+        hoverShadow: true,
+    }, ...__VLS_functionalComponentArgsRest(__VLS_37));
+    __VLS_39.slots.default;
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "stat-value" },
     });
     (card.value);
     if (card.cityBreakdown && card.cityBreakdown.length > 0 && __VLS_ctx.cityId === 0) {
-        const __VLS_36 = {}.TCollapse;
+        const __VLS_40 = {}.TCollapse;
         /** @type {[typeof __VLS_components.TCollapse, typeof __VLS_components.tCollapse, typeof __VLS_components.TCollapse, typeof __VLS_components.tCollapse, ]} */ ;
         // @ts-ignore
-        const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
-            ...{ style: {} },
-        }));
-        const __VLS_38 = __VLS_37({
-            ...{ style: {} },
-        }, ...__VLS_functionalComponentArgsRest(__VLS_37));
-        __VLS_39.slots.default;
-        const __VLS_40 = {}.TCollapsePanel;
-        /** @type {[typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, ]} */ ;
-        // @ts-ignore
         const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
-            header: "城市明细",
+            ...{ style: {} },
         }));
         const __VLS_42 = __VLS_41({
-            header: "城市明细",
+            ...{ style: {} },
         }, ...__VLS_functionalComponentArgsRest(__VLS_41));
         __VLS_43.slots.default;
+        const __VLS_44 = {}.TCollapsePanel;
+        /** @type {[typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, typeof __VLS_components.TCollapsePanel, typeof __VLS_components.tCollapsePanel, ]} */ ;
+        // @ts-ignore
+        const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
+            header: "城市明细",
+        }));
+        const __VLS_46 = __VLS_45({
+            header: "城市明细",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_45));
+        __VLS_47.slots.default;
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "city-breakdown" },
         });
@@ -224,13 +236,13 @@ for (const [card] of __VLS_getVForSourceType((__VLS_ctx.cards))) {
             });
             (city.value);
         }
+        var __VLS_47;
         var __VLS_43;
-        var __VLS_39;
     }
+    var __VLS_39;
     var __VLS_35;
-    var __VLS_31;
 }
-var __VLS_27;
+var __VLS_31;
 /** @type {__VLS_StyleScopedClasses['dashboard']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-header']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;

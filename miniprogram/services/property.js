@@ -8,6 +8,7 @@ exports.getHomeSummary = getHomeSummary;
 exports.getBanners = getBanners;
 exports.getCities = getCities;
 exports.getMapMarkers = getMapMarkers;
+exports.getMapAggregate = getMapAggregate;
 exports.getDistrictAnalysis = getDistrictAnalysis;
 exports.getPropertyAmenities = getPropertyAmenities;
 const request_1 = require("../utils/request");
@@ -45,8 +46,17 @@ async function getBanners(cityId) {
 async function getCities() {
     return (0, request_1.request)({ url: '/cities' });
 }
-async function getMapMarkers(cityId = 310000) {
-    return (0, request_1.request)({ url: `/properties/map-markers?city_id=${cityId}` });
+function buildQs(params) {
+    return Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+        .join('&');
+}
+async function getMapMarkers(params) {
+    return (0, request_1.request)({ url: `/properties/map-markers?${buildQs(params)}` });
+}
+async function getMapAggregate(level, params) {
+    return (0, request_1.request)({ url: `/properties/map-aggregate?level=${level}&${buildQs(params)}` });
 }
 async function getDistrictAnalysis(propertyId) {
     return (0, request_1.request)({ url: `/properties/${propertyId}/analysis` });

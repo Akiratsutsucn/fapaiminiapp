@@ -3,6 +3,8 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { listDemands, createDemand, updateDemand, deleteDemand, recommendProperty, listAssignableUsers } from '@/api/demands';
 import { listProperties } from '@/api/properties';
+import { useAuthStore } from '@/stores/auth';
+const auth = useAuthStore();
 const loading = ref(false);
 const list = ref([]);
 const filters = reactive({ phone: '', status: '', source: '' });
@@ -145,7 +147,7 @@ function onRecommend(row) {
     recSelected.value = null;
     recMessage.value = '';
     recKeyword.value = row.target_district || '';
-    recCity.value = row.city === '宁波' ? 330200 : row.city === '杭州' ? 330100 : 310000;
+    recCity.value = row.city === '宁波' ? 330200 : row.city === '杭州' ? 330100 : row.city === '临沂' ? 371300 : 310000;
     recVisible.value = true;
     loadRecProps();
 }
@@ -364,27 +366,29 @@ const __VLS_55 = {
 };
 __VLS_51.slots.default;
 var __VLS_51;
-const __VLS_56 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    variant: "outline",
-}));
-const __VLS_58 = __VLS_57({
-    ...{ 'onClick': {} },
-    theme: "primary",
-    variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_57));
-let __VLS_60;
-let __VLS_61;
-let __VLS_62;
-const __VLS_63 = {
-    onClick: (__VLS_ctx.onCreate)
-};
-__VLS_59.slots.default;
-var __VLS_59;
+if (!__VLS_ctx.auth.isReadonly) {
+    const __VLS_56 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
+        ...{ 'onClick': {} },
+        theme: "primary",
+        variant: "outline",
+    }));
+    const __VLS_58 = __VLS_57({
+        ...{ 'onClick': {} },
+        theme: "primary",
+        variant: "outline",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_57));
+    let __VLS_60;
+    let __VLS_61;
+    let __VLS_62;
+    const __VLS_63 = {
+        onClick: (__VLS_ctx.onCreate)
+    };
+    __VLS_59.slots.default;
+    var __VLS_59;
+}
 const __VLS_64 = {}.TTable;
 /** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
 // @ts-ignore
@@ -475,90 +479,107 @@ __VLS_67.slots.default;
     const __VLS_85 = __VLS_asFunctionalComponent(__VLS_84, new __VLS_84({}));
     const __VLS_86 = __VLS_85({}, ...__VLS_functionalComponentArgsRest(__VLS_85));
     __VLS_87.slots.default;
-    const __VLS_88 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }));
-    const __VLS_90 = __VLS_89({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_89));
-    let __VLS_92;
-    let __VLS_93;
-    let __VLS_94;
-    const __VLS_95 = {
-        onClick: (...[$event]) => {
-            __VLS_ctx.onEdit(row);
-        }
-    };
-    __VLS_91.slots.default;
-    var __VLS_91;
-    const __VLS_96 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-        theme: "primary",
-    }));
-    const __VLS_98 = __VLS_97({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-        theme: "primary",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_97));
-    let __VLS_100;
-    let __VLS_101;
-    let __VLS_102;
-    const __VLS_103 = {
-        onClick: (...[$event]) => {
-            __VLS_ctx.onRecommend(row);
-        }
-    };
-    __VLS_99.slots.default;
-    var __VLS_99;
-    const __VLS_104 = {}.TPopconfirm;
-    /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
-    // @ts-ignore
-    const __VLS_105 = __VLS_asFunctionalComponent(__VLS_104, new __VLS_104({
-        ...{ 'onConfirm': {} },
-        content: "确定删除该需求？",
-    }));
-    const __VLS_106 = __VLS_105({
-        ...{ 'onConfirm': {} },
-        content: "确定删除该需求？",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_105));
-    let __VLS_108;
-    let __VLS_109;
-    let __VLS_110;
-    const __VLS_111 = {
-        onConfirm: (...[$event]) => {
-            __VLS_ctx.onDelete(row);
-        }
-    };
-    __VLS_107.slots.default;
-    const __VLS_112 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_113 = __VLS_asFunctionalComponent(__VLS_112, new __VLS_112({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }));
-    const __VLS_114 = __VLS_113({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_113));
-    __VLS_115.slots.default;
-    var __VLS_115;
-    var __VLS_107;
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_88 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }));
+        const __VLS_90 = __VLS_89({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_89));
+        let __VLS_92;
+        let __VLS_93;
+        let __VLS_94;
+        const __VLS_95 = {
+            onClick: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onEdit(row);
+            }
+        };
+        __VLS_91.slots.default;
+        var __VLS_91;
+    }
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_96 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_97 = __VLS_asFunctionalComponent(__VLS_96, new __VLS_96({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+            theme: "primary",
+        }));
+        const __VLS_98 = __VLS_97({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+            theme: "primary",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_97));
+        let __VLS_100;
+        let __VLS_101;
+        let __VLS_102;
+        const __VLS_103 = {
+            onClick: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onRecommend(row);
+            }
+        };
+        __VLS_99.slots.default;
+        var __VLS_99;
+    }
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_104 = {}.TPopconfirm;
+        /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
+        // @ts-ignore
+        const __VLS_105 = __VLS_asFunctionalComponent(__VLS_104, new __VLS_104({
+            ...{ 'onConfirm': {} },
+            content: "确定删除该需求？",
+        }));
+        const __VLS_106 = __VLS_105({
+            ...{ 'onConfirm': {} },
+            content: "确定删除该需求？",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_105));
+        let __VLS_108;
+        let __VLS_109;
+        let __VLS_110;
+        const __VLS_111 = {
+            onConfirm: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onDelete(row);
+            }
+        };
+        __VLS_107.slots.default;
+        const __VLS_112 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_113 = __VLS_asFunctionalComponent(__VLS_112, new __VLS_112({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }));
+        const __VLS_114 = __VLS_113({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_113));
+        __VLS_115.slots.default;
+        var __VLS_115;
+        var __VLS_107;
+    }
+    if (__VLS_ctx.auth.isReadonly) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ style: {} },
+        });
+    }
     var __VLS_87;
 }
 var __VLS_67;
@@ -1077,33 +1098,44 @@ const __VLS_290 = __VLS_289({
     value: (330100),
     label: "杭州",
 }, ...__VLS_functionalComponentArgsRest(__VLS_289));
-var __VLS_271;
-const __VLS_292 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+const __VLS_292 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_293 = __VLS_asFunctionalComponent(__VLS_292, new __VLS_292({
+    value: (371300),
+    label: "临沂",
+}));
+const __VLS_294 = __VLS_293({
+    value: (371300),
+    label: "临沂",
+}, ...__VLS_functionalComponentArgsRest(__VLS_293));
+var __VLS_271;
+const __VLS_296 = {}.TButton;
+/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+// @ts-ignore
+const __VLS_297 = __VLS_asFunctionalComponent(__VLS_296, new __VLS_296({
     ...{ 'onClick': {} },
     theme: "primary",
 }));
-const __VLS_294 = __VLS_293({
+const __VLS_298 = __VLS_297({
     ...{ 'onClick': {} },
     theme: "primary",
-}, ...__VLS_functionalComponentArgsRest(__VLS_293));
-let __VLS_296;
-let __VLS_297;
-let __VLS_298;
-const __VLS_299 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_297));
+let __VLS_300;
+let __VLS_301;
+let __VLS_302;
+const __VLS_303 = {
     onClick: (__VLS_ctx.loadRecProps)
 };
-__VLS_295.slots.default;
-var __VLS_295;
+__VLS_299.slots.default;
+var __VLS_299;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "rec-hint" },
 });
-const __VLS_300 = {}.TTable;
+const __VLS_304 = {}.TTable;
 /** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
 // @ts-ignore
-const __VLS_301 = __VLS_asFunctionalComponent(__VLS_300, new __VLS_300({
+const __VLS_305 = __VLS_asFunctionalComponent(__VLS_304, new __VLS_304({
     data: (__VLS_ctx.recProps),
     columns: (__VLS_ctx.recCols),
     rowKey: "id",
@@ -1111,86 +1143,86 @@ const __VLS_301 = __VLS_asFunctionalComponent(__VLS_300, new __VLS_300({
     maxHeight: "320",
     size: "small",
 }));
-const __VLS_302 = __VLS_301({
+const __VLS_306 = __VLS_305({
     data: (__VLS_ctx.recProps),
     columns: (__VLS_ctx.recCols),
     rowKey: "id",
     loading: (__VLS_ctx.recLoading),
     maxHeight: "320",
     size: "small",
-}, ...__VLS_functionalComponentArgsRest(__VLS_301));
-__VLS_303.slots.default;
+}, ...__VLS_functionalComponentArgsRest(__VLS_305));
+__VLS_307.slots.default;
 {
-    const { pick: __VLS_thisSlot } = __VLS_303.slots;
+    const { pick: __VLS_thisSlot } = __VLS_307.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    const __VLS_304 = {}.TRadio;
+    const __VLS_308 = {}.TRadio;
     /** @type {[typeof __VLS_components.TRadio, typeof __VLS_components.tRadio, ]} */ ;
     // @ts-ignore
-    const __VLS_305 = __VLS_asFunctionalComponent(__VLS_304, new __VLS_304({
+    const __VLS_309 = __VLS_asFunctionalComponent(__VLS_308, new __VLS_308({
         ...{ 'onClick': {} },
         checked: (__VLS_ctx.recSelected && __VLS_ctx.recSelected.id === row.id),
     }));
-    const __VLS_306 = __VLS_305({
+    const __VLS_310 = __VLS_309({
         ...{ 'onClick': {} },
         checked: (__VLS_ctx.recSelected && __VLS_ctx.recSelected.id === row.id),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_305));
-    let __VLS_308;
-    let __VLS_309;
-    let __VLS_310;
-    const __VLS_311 = {
+    }, ...__VLS_functionalComponentArgsRest(__VLS_309));
+    let __VLS_312;
+    let __VLS_313;
+    let __VLS_314;
+    const __VLS_315 = {
         onClick: (...[$event]) => {
             __VLS_ctx.recSelected = row;
         }
     };
-    var __VLS_307;
+    var __VLS_311;
 }
 {
-    const { starting_price: __VLS_thisSlot } = __VLS_303.slots;
+    const { starting_price: __VLS_thisSlot } = __VLS_307.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
     (row.starting_price ? (row.starting_price / 10000).toFixed(0) + '万' : '-');
 }
 {
-    const { auction_status: __VLS_thisSlot } = __VLS_303.slots;
+    const { auction_status: __VLS_thisSlot } = __VLS_307.slots;
     const [{ row }] = __VLS_getSlotParams(__VLS_thisSlot);
-    const __VLS_312 = {}.TTag;
+    const __VLS_316 = {}.TTag;
     /** @type {[typeof __VLS_components.TTag, typeof __VLS_components.tTag, typeof __VLS_components.TTag, typeof __VLS_components.tTag, ]} */ ;
     // @ts-ignore
-    const __VLS_313 = __VLS_asFunctionalComponent(__VLS_312, new __VLS_312({
+    const __VLS_317 = __VLS_asFunctionalComponent(__VLS_316, new __VLS_316({
         size: "small",
         theme: (row.auction_status === '进行中' ? 'danger' : 'primary'),
         variant: "light",
     }));
-    const __VLS_314 = __VLS_313({
+    const __VLS_318 = __VLS_317({
         size: "small",
         theme: (row.auction_status === '进行中' ? 'danger' : 'primary'),
         variant: "light",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_313));
-    __VLS_315.slots.default;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_317));
+    __VLS_319.slots.default;
     (row.auction_status);
-    var __VLS_315;
+    var __VLS_319;
 }
-var __VLS_303;
+var __VLS_307;
 if (__VLS_ctx.recSelected) {
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "rec-selected" },
     });
     (__VLS_ctx.recSelected.title);
 }
-const __VLS_316 = {}.TTextarea;
+const __VLS_320 = {}.TTextarea;
 /** @type {[typeof __VLS_components.TTextarea, typeof __VLS_components.tTextarea, ]} */ ;
 // @ts-ignore
-const __VLS_317 = __VLS_asFunctionalComponent(__VLS_316, new __VLS_316({
+const __VLS_321 = __VLS_asFunctionalComponent(__VLS_320, new __VLS_320({
     modelValue: (__VLS_ctx.recMessage),
     placeholder: "推荐语（选填），如：该房源临近地铁，起拍价低于评估价两成，符合您的预算",
     autosize: ({ minRows: 2, maxRows: 4 }),
     ...{ style: {} },
 }));
-const __VLS_318 = __VLS_317({
+const __VLS_322 = __VLS_321({
     modelValue: (__VLS_ctx.recMessage),
     placeholder: "推荐语（选填），如：该房源临近地铁，起拍价低于评估价两成，符合您的预算",
     autosize: ({ minRows: 2, maxRows: 4 }),
     ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_317));
+}, ...__VLS_functionalComponentArgsRest(__VLS_321));
 var __VLS_255;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
 /** @type {__VLS_StyleScopedClasses['page-title']} */ ;
@@ -1203,6 +1235,7 @@ var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
+            auth: auth,
             loading: loading,
             list: list,
             filters: filters,

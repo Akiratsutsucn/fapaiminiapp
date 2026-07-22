@@ -14,3 +14,6 @@ export function deleteUser(id) {
 export function updateUserRole(id, role) {
     return http.put(`/users/${id}/role`, { role }).then(r => r.data);
 }
+export function resetUserPassword(id, password) {
+    return http.post(`/users/${id}/reset-password`, { password }).then(r => r.data);
+}

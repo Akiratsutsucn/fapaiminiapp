@@ -2,6 +2,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { listBanners, createBanner, updateBanner, deleteBanner } from '@/api/banners';
+import { useAuthStore } from '@/stores/auth';
+const auth = useAuthStore();
 const loading = ref(false);
 const list = ref([]);
 const columns = [
@@ -17,7 +19,7 @@ const columns = [
 const formVisible = ref(false);
 const isEdit = ref(false);
 const formData = reactive({ id: 0, title: '', image_url: '', category: '', link_url: '', article_id: 0, city_id: 310000, sort_order: 0, is_active: true });
-const CITY_MAP = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州' };
+const CITY_MAP = { 0: '全部', 310000: '上海', 330200: '宁波', 330100: '杭州', 371300: '临沂' };
 function cityLabel(id) { return CITY_MAP[id] ?? '上海'; }
 onMounted(() => loadData());
 async function loadData() {
@@ -72,25 +74,32 @@ __VLS_3.slots.default;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "search-bar" },
 });
-const __VLS_4 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-// @ts-ignore
-const __VLS_5 = __VLS_asFunctionalComponent(__VLS_4, new __VLS_4({
-    ...{ 'onClick': {} },
-    theme: "primary",
-}));
-const __VLS_6 = __VLS_5({
-    ...{ 'onClick': {} },
-    theme: "primary",
-}, ...__VLS_functionalComponentArgsRest(__VLS_5));
-let __VLS_8;
-let __VLS_9;
-let __VLS_10;
-const __VLS_11 = {
-    onClick: (__VLS_ctx.onAdd)
-};
-__VLS_7.slots.default;
-var __VLS_7;
+if (!__VLS_ctx.auth.isReadonly) {
+    const __VLS_4 = {}.TButton;
+    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+    // @ts-ignore
+    const __VLS_5 = __VLS_asFunctionalComponent(__VLS_4, new __VLS_4({
+        ...{ 'onClick': {} },
+        theme: "primary",
+    }));
+    const __VLS_6 = __VLS_5({
+        ...{ 'onClick': {} },
+        theme: "primary",
+    }, ...__VLS_functionalComponentArgsRest(__VLS_5));
+    let __VLS_8;
+    let __VLS_9;
+    let __VLS_10;
+    const __VLS_11 = {
+        onClick: (__VLS_ctx.onAdd)
+    };
+    __VLS_7.slots.default;
+    var __VLS_7;
+}
+else {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+        ...{ style: {} },
+    });
+}
 const __VLS_12 = {}.TTable;
 /** @type {[typeof __VLS_components.TTable, typeof __VLS_components.tTable, typeof __VLS_components.TTable, typeof __VLS_components.tTable, ]} */ ;
 // @ts-ignore
@@ -156,65 +165,78 @@ __VLS_15.slots.default;
     const __VLS_25 = __VLS_asFunctionalComponent(__VLS_24, new __VLS_24({}));
     const __VLS_26 = __VLS_25({}, ...__VLS_functionalComponentArgsRest(__VLS_25));
     __VLS_27.slots.default;
-    const __VLS_28 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }));
-    const __VLS_30 = __VLS_29({
-        ...{ 'onClick': {} },
-        variant: "text",
-        size: "small",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_29));
-    let __VLS_32;
-    let __VLS_33;
-    let __VLS_34;
-    const __VLS_35 = {
-        onClick: (...[$event]) => {
-            __VLS_ctx.onEdit(row);
-        }
-    };
-    __VLS_31.slots.default;
-    var __VLS_31;
-    const __VLS_36 = {}.TPopconfirm;
-    /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
-    // @ts-ignore
-    const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
-        ...{ 'onConfirm': {} },
-        content: "确定删除？",
-    }));
-    const __VLS_38 = __VLS_37({
-        ...{ 'onConfirm': {} },
-        content: "确定删除？",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_37));
-    let __VLS_40;
-    let __VLS_41;
-    let __VLS_42;
-    const __VLS_43 = {
-        onConfirm: (...[$event]) => {
-            __VLS_ctx.onDelete(row.id);
-        }
-    };
-    __VLS_39.slots.default;
-    const __VLS_44 = {}.TButton;
-    /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
-    // @ts-ignore
-    const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }));
-    const __VLS_46 = __VLS_45({
-        variant: "text",
-        size: "small",
-        theme: "danger",
-    }, ...__VLS_functionalComponentArgsRest(__VLS_45));
-    __VLS_47.slots.default;
-    var __VLS_47;
-    var __VLS_39;
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_28 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_29 = __VLS_asFunctionalComponent(__VLS_28, new __VLS_28({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }));
+        const __VLS_30 = __VLS_29({
+            ...{ 'onClick': {} },
+            variant: "text",
+            size: "small",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_29));
+        let __VLS_32;
+        let __VLS_33;
+        let __VLS_34;
+        const __VLS_35 = {
+            onClick: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onEdit(row);
+            }
+        };
+        __VLS_31.slots.default;
+        var __VLS_31;
+    }
+    if (!__VLS_ctx.auth.isReadonly) {
+        const __VLS_36 = {}.TPopconfirm;
+        /** @type {[typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, typeof __VLS_components.TPopconfirm, typeof __VLS_components.tPopconfirm, ]} */ ;
+        // @ts-ignore
+        const __VLS_37 = __VLS_asFunctionalComponent(__VLS_36, new __VLS_36({
+            ...{ 'onConfirm': {} },
+            content: "确定删除？",
+        }));
+        const __VLS_38 = __VLS_37({
+            ...{ 'onConfirm': {} },
+            content: "确定删除？",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_37));
+        let __VLS_40;
+        let __VLS_41;
+        let __VLS_42;
+        const __VLS_43 = {
+            onConfirm: (...[$event]) => {
+                if (!(!__VLS_ctx.auth.isReadonly))
+                    return;
+                __VLS_ctx.onDelete(row.id);
+            }
+        };
+        __VLS_39.slots.default;
+        const __VLS_44 = {}.TButton;
+        /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+        // @ts-ignore
+        const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }));
+        const __VLS_46 = __VLS_45({
+            variant: "text",
+            size: "small",
+            theme: "danger",
+        }, ...__VLS_functionalComponentArgsRest(__VLS_45));
+        __VLS_47.slots.default;
+        var __VLS_47;
+        var __VLS_39;
+    }
+    if (__VLS_ctx.auth.isReadonly) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ style: {} },
+        });
+    }
     var __VLS_27;
 }
 var __VLS_15;
@@ -426,50 +448,61 @@ const __VLS_122 = __VLS_121({
     value: (330100),
     label: "杭州",
 }, ...__VLS_functionalComponentArgsRest(__VLS_121));
-var __VLS_107;
-var __VLS_103;
-const __VLS_124 = {}.TFormItem;
-/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
+const __VLS_124 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
 // @ts-ignore
 const __VLS_125 = __VLS_asFunctionalComponent(__VLS_124, new __VLS_124({
-    label: "排序",
+    value: (371300),
+    label: "临沂",
 }));
 const __VLS_126 = __VLS_125({
-    label: "排序",
+    value: (371300),
+    label: "临沂",
 }, ...__VLS_functionalComponentArgsRest(__VLS_125));
-__VLS_127.slots.default;
-const __VLS_128 = {}.TInputNumber;
-/** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
-// @ts-ignore
-const __VLS_129 = __VLS_asFunctionalComponent(__VLS_128, new __VLS_128({
-    modelValue: (__VLS_ctx.formData.sort_order),
-    min: (0),
-}));
-const __VLS_130 = __VLS_129({
-    modelValue: (__VLS_ctx.formData.sort_order),
-    min: (0),
-}, ...__VLS_functionalComponentArgsRest(__VLS_129));
-var __VLS_127;
-const __VLS_132 = {}.TFormItem;
+var __VLS_107;
+var __VLS_103;
+const __VLS_128 = {}.TFormItem;
 /** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
+const __VLS_129 = __VLS_asFunctionalComponent(__VLS_128, new __VLS_128({
+    label: "排序",
+}));
+const __VLS_130 = __VLS_129({
+    label: "排序",
+}, ...__VLS_functionalComponentArgsRest(__VLS_129));
+__VLS_131.slots.default;
+const __VLS_132 = {}.TInputNumber;
+/** @type {[typeof __VLS_components.TInputNumber, typeof __VLS_components.tInputNumber, ]} */ ;
+// @ts-ignore
 const __VLS_133 = __VLS_asFunctionalComponent(__VLS_132, new __VLS_132({
-    label: "启用",
+    modelValue: (__VLS_ctx.formData.sort_order),
+    min: (0),
 }));
 const __VLS_134 = __VLS_133({
-    label: "启用",
+    modelValue: (__VLS_ctx.formData.sort_order),
+    min: (0),
 }, ...__VLS_functionalComponentArgsRest(__VLS_133));
-__VLS_135.slots.default;
-const __VLS_136 = {}.TSwitch;
-/** @type {[typeof __VLS_components.TSwitch, typeof __VLS_components.tSwitch, ]} */ ;
+var __VLS_131;
+const __VLS_136 = {}.TFormItem;
+/** @type {[typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, typeof __VLS_components.TFormItem, typeof __VLS_components.tFormItem, ]} */ ;
 // @ts-ignore
 const __VLS_137 = __VLS_asFunctionalComponent(__VLS_136, new __VLS_136({
-    modelValue: (__VLS_ctx.formData.is_active),
+    label: "启用",
 }));
 const __VLS_138 = __VLS_137({
-    modelValue: (__VLS_ctx.formData.is_active),
+    label: "启用",
 }, ...__VLS_functionalComponentArgsRest(__VLS_137));
-var __VLS_135;
+__VLS_139.slots.default;
+const __VLS_140 = {}.TSwitch;
+/** @type {[typeof __VLS_components.TSwitch, typeof __VLS_components.tSwitch, ]} */ ;
+// @ts-ignore
+const __VLS_141 = __VLS_asFunctionalComponent(__VLS_140, new __VLS_140({
+    modelValue: (__VLS_ctx.formData.is_active),
+}));
+const __VLS_142 = __VLS_141({
+    modelValue: (__VLS_ctx.formData.is_active),
+}, ...__VLS_functionalComponentArgsRest(__VLS_141));
+var __VLS_139;
 var __VLS_59;
 var __VLS_51;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
@@ -479,6 +512,7 @@ var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
+            auth: auth,
             loading: loading,
             list: list,
             columns: columns,

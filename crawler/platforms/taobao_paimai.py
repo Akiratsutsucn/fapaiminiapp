@@ -718,15 +718,16 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 self._ssr_circuit_open = True
                 logger.warning(
                     f"[TaobaoPaiMai] SSR连续失败{self._ssr_consecutive_fails}次,"
-                    f"判定当前IP被风控,熔断SSR→尝试自动换IP恢复"
+                    f"判定当前IP被风控,熔断SSR→换IP后走列表兜底,每{self._SSR_CIRCUIT_RETRY_EVERY}条试探恢复"
                 )
-                # 熔断兜底:也走同一套切IP+重启逻辑;切成功则重置熔断继续用新IP抓。
-                # 切失败也不永久卡死:置 circuit_skips=0,由上方「每25条试探性解熔断」机制
-                # 在后续兜底中周期性重试SSR+再换IP(避免一次换IP失败就几百条全跳过)。
-                switched = await self._switch_ip_and_restart(reason="ali-ssr-circuit-open")
-                if switched:
-                    self._ssr_circuit_open = False
-                    self._ssr_consecutive_fails = 0
+                # 换IP,但【保持熔断】:换后不立即解熔断。
+                # (task162 根因:此前"换IP总返回True→立即解熔断"形同虚设——青果桥的
+                #  _switch_ip_and_restart 无条件返回True,无法确认新出口IP是否真恢复;
+                #  于是每条详情都重跑完整SSR失败路径(goto20s+content15s+evaluate15s≈95s)
+                #  且泄漏page,600条名额把内存拖到1.5G OOM、时间拖到systemd超时。)
+                # 正确姿势:熔断期走列表兜底(几百ms、不建page、不泄漏),由上方
+                # 「每25条试探性解熔断」机制周期性重试SSR——新IP真恢复则继续抓,仍坏则再熔断。
+                await self._switch_ip_and_restart(reason="ali-ssr-circuit-open")
                 self._ssr_circuit_skips = 0
 
         # Strategy 2: Build from cached list API row
@@ -873,8 +874,9 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 pass
             return await self._do_ssr_extract(page, item_id)
         finally:
+            # close 经半死连接可能挂起→5s硬超时;shield 防被 engine 外层取消打断
             try:
-                await page.close()
+                await asyncio.wait_for(asyncio.shield(page.close()), timeout=5)
             except Exception:
                 pass
 
@@ -887,7 +889,28 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         # initData 由页面 JS 异步注入 HTML（实测最快 1.5s 就绪），首次单次检测易误判骨架；
         # 故每轮都「轮询」检测 initData，给足注入时间。
         # 仍骨架则尽快返回 skeleton 标记，让调用方走列表数据兜底（列表已含多数字段）。
-        SSR_MAX_ATTEMPTS = 2
+        #
+        # 内存安全(task162 OOM根治):attempt>0 时会新建 page 并重新赋值局部变量 page,
+        # 而外层 _extract_from_ssr 的 finally 只持有「原始 page」引用、关不到新建的 page,
+        # 导致 IP 被风控大量走 attempt>0 重试时每条泄漏一个 Chromium page→72分钟撞1.5G OOM。
+        # 用 _extra_pages 跟踪本函数新建的所有 page,借 try/finally 保证无论正常返回、异常、
+        # 还是被 engine 外层 90s wait_for 取消(抛 CancelledError),都逐一关闭,杜绝泄漏。
+        _extra_pages: list = []
+        try:
+            return await self._do_ssr_extract_inner(
+                page, item_id, url, _extra_pages)
+        finally:
+            # close 本身也可能经半死连接挂起→各加5s硬超时;shield 防被取消打断关闭链
+            for p in _extra_pages:
+                try:
+                    await asyncio.wait_for(asyncio.shield(p.close()), timeout=5)
+                except Exception:
+                    pass
+
+    async def _do_ssr_extract_inner(self, page, item_id, url, _extra_pages) -> dict | None:
+        # 熔断态下不做二次建page重试(attempt>0):被风控时重试几乎必然仍失败,
+        # 却要多建一个page(内存+耗时)。仅未熔断时才给一次重试碰运气命中更优出口。
+        SSR_MAX_ATTEMPTS = 1 if self._ssr_circuit_open else 2
         for attempt in range(SSR_MAX_ATTEMPTS):
             if attempt > 0:
                 # 持续骨架 → 换一个新 page 重试一次(新建连接可能命中更优出口)。
@@ -897,6 +920,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     pass
                 try:
                     page = await browser_manager.new_page()
+                    _extra_pages.append(page)  # 纳入 finally 关闭,防泄漏
                     await self._add_taobao_cookies(page)
                 except Exception:
                     return {"_source": "skeleton"}
@@ -918,11 +942,17 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             for _ in range(5):
                 await asyncio.sleep(1.5)
                 try:
-                    full_html = await page.content()
+                    # page.content() 不受 set_default_timeout 约束:代理IP半死+页面持续轮询时
+                    # 页面永不 settle,此调用会永久挂起(task158整轮空耗5h的直接挂点)。
+                    # 加 15s 硬超时:卡住即当作本轮无 initData,继续走 skeleton 兜底。
+                    full_html = await asyncio.wait_for(page.content(), timeout=15)
                     cand = _extract_suspense_init_data(full_html)
                     if cand and (cand.get("title") or cand.get("realTitle")):
                         init_data = cand
                         break
+                except asyncio.TimeoutError:
+                    logger.warning(f"[TaobaoPaiMai] page.content()超时15s {item_id},判定IP半死→跳出")
+                    break
                 except Exception as e:
                     logger.debug(f"[TaobaoPaiMai] initData poll failed for {item_id}: {e}")
             if init_data:
@@ -930,7 +960,9 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 return {"data": init_data}
 
             # Evaluate DOM to check if real data rendered
-            result = await page.evaluate("""() => {
+            # page.evaluate() 同样不受 default_timeout 约束,半死IP下会挂起→加15s硬超时。
+            try:
+                result = await asyncio.wait_for(page.evaluate("""() => {
                 const r = {};
                 const body = document.body.innerText || '';
                 r.bodyLen = body.length;
@@ -968,7 +1000,13 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                 }
 
                 return r;
-            }""")
+            }"""), timeout=15)
+            except asyncio.TimeoutError:
+                logger.warning(f"[TaobaoPaiMai] page.evaluate()超时15s {item_id},判定IP半死→跳过本轮")
+                result = {}
+            except Exception as e:
+                logger.debug(f"[TaobaoPaiMai] page.evaluate失败 {item_id}: {e}")
+                result = {}
 
             if not result.get("isSkeleton") and result.get("bodyLen", 0) > 100:
                 # Page rendered real content — try to parse it

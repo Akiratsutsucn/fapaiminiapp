@@ -19,9 +19,12 @@ from app.models.property import Property, PropertyImage
 
 COMMIT = "--commit" in sys.argv
 LIMIT = 0
+CITY_ID = 0
 for i, a in enumerate(sys.argv):
     if a == "--limit" and i + 1 < len(sys.argv):
         LIMIT = int(sys.argv[i + 1])
+    if a == "--city-id" and i + 1 < len(sys.argv):
+        CITY_ID = int(sys.argv[i + 1])
 
 
 def extract_item_id(source_url: str) -> str | None:
@@ -44,18 +47,21 @@ async def main():
 
     await browser_manager.start()
     try:
-        # 阿里在拍、但无可见图片的房源
+        # 阿里在拍、但无可见图片的房源(--city-id 可限定城市,如临沂371300)
+        _conds = [Property.auction_platform == "阿里拍卖", Property.auction_start_time > func.now()]
+        if CITY_ID:
+            _conds.append(Property.city_id == CITY_ID)
         sub = (
             select(Property.id)
             .outerjoin(PropertyImage, (PropertyImage.property_id == Property.id) & (PropertyImage.hidden == 0))
-            .where(Property.auction_platform == "阿里拍卖", Property.auction_start_time > func.now())
+            .where(*_conds)
             .group_by(Property.id)
             .having(func.count(PropertyImage.id) == 0)
         )
         ids = [r[0] for r in (await db.execute(sub)).all()]
         if LIMIT:
             ids = ids[:LIMIT]
-        print(f"待补图阿里房源: {len(ids)}  proxy={'on' if proxy else 'off'} commit={COMMIT}", flush=True)
+        print(f"待补图阿里房源(city={CITY_ID or '全部'}): {len(ids)}  proxy={'on' if proxy else 'off'} commit={COMMIT}", flush=True)
 
         fixed = stillempty = noid = nodetail = 0
         for pid in ids:
