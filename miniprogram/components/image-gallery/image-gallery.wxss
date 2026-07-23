@@ -22,19 +22,25 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--blue-100);
+  /* 干净的淡雅天空渐变背景 */
+  background: linear-gradient(180deg, #eaf1fb 0%, #dce8f7 55%, #cfe0f2 100%);
 }
 
-.gallery-empty-img {
-  width: 200rpx;
-  height: 200rpx;
-  opacity: 0.5;
+/* 极简建筑室外剪影(内联SVG,楼宇轮廓,统一各城市兜底风格) */
+.gallery-empty-art {
+  width: 100%;
+  height: 300rpx;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 92% auto;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 180' fill='none'%3E%3Cg fill='%23aec6e8'%3E%3Crect x='40' y='70' width='46' height='100' rx='3'/%3E%3Crect x='96' y='40' width='40' height='130' rx='3'/%3E%3Crect x='146' y='88' width='38' height='82' rx='3'/%3E%3Crect x='196' y='24' width='44' height='146' rx='3'/%3E%3Crect x='250' y='60' width='40' height='110' rx='3'/%3E%3Crect x='300' y='96' width='36' height='74' rx='3'/%3E%3C/g%3E%3Cg fill='%238fb2df'%3E%3Crect x='104' y='54' width='7' height='7' rx='1'/%3E%3Crect x='120' y='54' width='7' height='7' rx='1'/%3E%3Crect x='104' y='72' width='7' height='7' rx='1'/%3E%3Crect x='120' y='72' width='7' height='7' rx='1'/%3E%3Crect x='104' y='90' width='7' height='7' rx='1'/%3E%3Crect x='120' y='90' width='7' height='7' rx='1'/%3E%3Crect x='206' y='40' width='7' height='7' rx='1'/%3E%3Crect x='222' y='40' width='7' height='7' rx='1'/%3E%3Crect x='206' y='58' width='7' height='7' rx='1'/%3E%3Crect x='222' y='58' width='7' height='7' rx='1'/%3E%3Crect x='206' y='76' width='7' height='7' rx='1'/%3E%3Crect x='222' y='76' width='7' height='7' rx='1'/%3E%3C/g%3E%3Crect x='20' y='168' width='340' height='4' rx='2' fill='%238fb2df'/%3E%3C/svg%3E");
 }
 
 .gallery-empty-text {
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--blue-600);
+  margin-top: 28rpx;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+  color: #6b86ad;
 }
 
 .gallery-counter {

@@ -5,8 +5,8 @@
     </swiper-item>
   </swiper>
   <view wx:else class="gallery-empty">
-    <image class="gallery-empty-img" src="/images/default-house.png" mode="aspectFit" />
-    <text class="gallery-empty-text">暂无房源照片</text>
+    <view class="gallery-empty-art"></view>
+    <text class="gallery-empty-text">敬请期待房源实图</text>
   </view>
   <view class="gallery-counter" wx:if="{{images.length > 1}}">{{current + 1}}/{{images.length}}</view>
 </view>

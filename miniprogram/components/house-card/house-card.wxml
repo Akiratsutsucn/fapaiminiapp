@@ -1,6 +1,10 @@
 <view class="house-card" bindtap="onTap">
   <view class="card-image-wrap">
-    <image class="card-image" src="{{coverImage}}" mode="aspectFill" lazy-load />
+    <image wx:if="{{hasRealCover}}" class="card-image" src="{{coverImage}}" mode="aspectFill" lazy-load />
+    <view wx:else class="card-image card-image-placeholder">
+      <view class="card-ph-art"></view>
+      <text class="card-ph-text">敬请期待房源实图</text>
+    </view>
     <view class="card-tag-v2 {{statusTagClass}}">{{statusLabel}}</view>
     <view class="card-discount-corner" wx:if="{{discount || savingWan}}">
       <text class="dc-discount" wx:if="{{discount}}">{{discount}}</text>

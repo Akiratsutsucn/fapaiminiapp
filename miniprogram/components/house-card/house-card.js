@@ -77,7 +77,8 @@ Component({
             const rate = p.court_discount_rate || 0;
             const discount = rate > 0 && rate < 1 ? (0, format_1.formatDiscount)(rate) : '';
             this.setData({
-                coverImage: p.cover_image || '/images/default-house.png',
+                hasRealCover: !!p.cover_image,
+                coverImage: p.cover_image || '',
                 statusLabel: (0, format_1.statusLabel)(p.auction_status),
                 statusTagClass: (0, format_1.statusTagClass)(p.auction_status),
                 startingPriceWan: startingNum,
@@ -99,6 +100,7 @@ Component({
         },
     },
     data: {
+        hasRealCover: false,
         coverImage: '',
         statusLabel: '',
         statusTagClass: '',
