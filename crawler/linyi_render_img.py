@@ -1,6 +1,6 @@
 """临沂定向渲染抓图：不依赖SSR initData，直接从渲染后的页面收集阿里CDN图下载。
 根因：fetch_detail_api骨架时没收集页面img，但这些房源详情页实际有28-66张阿里CDN图。"""
-import asyncio, re, sys
+import asyncio, hashlib, os, re, sys
 from sqlalchemy import select, func
 from crawler.browser import browser_manager
 from crawler.storage.db import get_session
@@ -12,6 +12,14 @@ from app.models.property import Property, PropertyImage
 
 CDN_RE = re.compile(r'https?://[^"\s]+\.(?:jpg|webp|png|jpeg)', re.I)
 COMMIT = "--commit" in sys.argv
+
+# 已知脏图 md5 黑名单(阿里UI图标/「恭喜您报名成功」等内容脏图,处理后 webp 的 md5)。
+# 这些图会跨多个房源重复出现,靠尺寸/URL识别不了,只能按内容 md5 拦截。
+_BLACKLIST_PATH = os.path.join(os.path.dirname(__file__), "junk_image_md5_blacklist.txt")
+JUNK_MD5 = set()
+if os.path.exists(_BLACKLIST_PATH):
+    with open(_BLACKLIST_PATH) as _f:
+        JUNK_MD5 = {ln.strip() for ln in _f if ln.strip()}
 
 
 async def main():
@@ -66,13 +74,18 @@ async def main():
                 print(f"  id={pid} 过滤后无有效图", flush=True)
                 continue
             processed = await img_proc.process_batch(cdn, generate_thumbs=True, platform="阿里拍卖")
-            # 字节层过滤:处理后<2KB的一律判为图标/占位图脏图(真实房源照片均≥20KB),不入库
-            processed = [
-                p for p in processed
-                if p.get("full_bytes") and len(p["full_bytes"]) >= 2048 and not p.get("junk_reason")
-            ]
+            # 三层过滤:①处理后<2KB=图标/占位 ②junk_reason=广告/二维码 ③md5命中已知脏图黑名单
+            # (真实房源照片均≥20KB且内容唯一;脏图会跨多房源重复,只能按内容md5拦截)
+            def _keep(p):
+                b = p.get("full_bytes")
+                if not b or len(b) < 2048 or p.get("junk_reason"):
+                    return False
+                if hashlib.md5(b).hexdigest() in JUNK_MD5:
+                    return False
+                return True
+            processed = [p for p in processed if _keep(p)]
             if not processed:
-                print(f"  id={pid} 过滤后无有效图(全为图标/占位)", flush=True)
+                print(f"  id={pid} 过滤后无有效图(全为图标/占位/脏图)", flush=True)
                 continue
             saved = storage.save_property_images(pid, source_url, processed)
             vis = [s for s in saved if s.get("oss_url")]
