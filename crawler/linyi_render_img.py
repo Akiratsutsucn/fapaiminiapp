@@ -59,14 +59,28 @@ async def main():
             if not cdn:
                 print(f"  id={pid} 页面无阿里CDN图", flush=True)
                 continue
+            # 源URL层过滤:阿里UI图标常带尺寸后缀(_很小)或成功/占位图关键词
+            cdn = [u for u in cdn if not re.search(r'_(?:\d{1,2}|1\d{2})x(?:\d{1,2}|1\d{2})[.\-]', u)]
+            cdn = [u for u in cdn if not re.search(r'(success|checkmark|placeholder|default|loading|icon|blank)', u, re.I)]
+            if not cdn:
+                print(f"  id={pid} 过滤后无有效图", flush=True)
+                continue
             processed = await img_proc.process_batch(cdn, generate_thumbs=True, platform="阿里拍卖")
+            # 字节层过滤:处理后<2KB的一律判为图标/占位图脏图(真实房源照片均≥20KB),不入库
+            processed = [
+                p for p in processed
+                if p.get("full_bytes") and len(p["full_bytes"]) >= 2048 and not p.get("junk_reason")
+            ]
+            if not processed:
+                print(f"  id={pid} 过滤后无有效图(全为图标/占位)", flush=True)
+                continue
             saved = storage.save_property_images(pid, source_url, processed)
-            vis = [s for s in saved if s.get("oss_url") and not s.get("junk_reason")]
+            vis = [s for s in saved if s.get("oss_url")]
             if vis and COMMIT:
                 rows_ins = [
                     {"image_url": s["oss_url"], "thumb_url": s.get("thumb_url"), "sort_order": i,
                      "is_cover": i == 0, "hidden": 0, "hide_reason": None}
-                    for i, s in enumerate(saved) if s.get("oss_url") and not s.get("junk_reason")
+                    for i, s in enumerate(vis)
                 ]
                 await PropertyImageRepository.batch_upsert(db, pid, rows_ins)
                 await db.commit()

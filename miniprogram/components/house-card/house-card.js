@@ -187,6 +187,9 @@ Component({
                         confirmText: '我知道了',
                     });
                 },
+                fail: () => {
+                    wx.showToast({ title: '复制失败,请重试', icon: 'none' });
+                },
             });
         },
     },
