@@ -50,14 +50,14 @@
       <table class="digest-table">
         <thead>
           <tr>
-            <th style="width:70px">城市</th>
-            <th style="width:90px">区县</th>
-            <th>法拍房源名称</th>
-            <th style="width:130px">小区名</th>
-            <th style="width:80px">面积(㎡)</th>
-            <th style="width:110px">起拍价(万)</th>
-            <th style="width:110px">评估价(万)</th>
-            <th style="width:170px">开拍时间</th>
+            <th style="width:56px">城市</th>
+            <th style="width:76px">区县</th>
+            <th style="width:22%">法拍房源名称</th>
+            <th style="width:120px">小区名</th>
+            <th style="width:68px">面积(㎡)</th>
+            <th style="width:92px">起拍价(万)</th>
+            <th style="width:92px">评估价(万)</th>
+            <th style="width:150px">开拍时间</th>
           </tr>
         </thead>
         <tbody>
@@ -188,20 +188,24 @@ async function onExportPdf() {
   try {
     const canvas = await html2canvas(digestRef.value, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
     const imgData = canvas.toDataURL('image/jpeg', 0.92)
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgW = pageW
+    // A4 纵向,两侧留 15mm 页边距,顶部/底部 12mm
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight()  // 297mm
+    const marginX = 15
+    const marginY = 12
+    const imgW = pageW - marginX * 2
     const imgH = (canvas.height * imgW) / canvas.width
+    const usableH = pageH - marginY * 2
     let heightLeft = imgH
-    let position = 0
-    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH)
-    heightLeft -= pageH
+    let position = marginY
+    pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH)
+    heightLeft -= usableH
     while (heightLeft > 0) {
-      position -= pageH
+      position = position - usableH
       pdf.addPage()
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH)
-      heightLeft -= pageH
+      pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH)
+      heightLeft -= usableH
     }
     const today = new Date().toISOString().slice(0, 10)
     pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`)
@@ -254,7 +258,7 @@ onMounted(() => loadData())
 .brand-name { font-size: 30px; font-weight: 800; color: #1a2f52; letter-spacing: 2px; }
 
 /* 清单表格:蓝色风格 + 斑马纹 */
-.digest-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.digest-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 .digest-table th {
   background: #1a2f52;
   color: #ffffff;
@@ -271,7 +275,7 @@ onMounted(() => loadData())
   vertical-align: top;
 }
 .digest-table .row-alt td { background: #f2f6fc; }
-.digest-table .td-title { color: #1a2f52; font-weight: 500; line-height: 1.5; }
+.digest-table .td-title { color: #1a2f52; font-weight: 500; line-height: 1.5; word-break: break-all; }
 .digest-table .td-price { color: #d4573e; font-weight: 700; }
 .digest-table .td-time { font-size: 12px; color: #4a5a78; white-space: nowrap; }
 .digest-table .td-time-end { color: #8a97ad; margin-top: 2px; }

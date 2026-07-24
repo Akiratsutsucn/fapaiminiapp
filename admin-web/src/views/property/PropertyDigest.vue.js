@@ -100,20 +100,24 @@ async function onExportPdf() {
     try {
         const canvas = await html2canvas(digestRef.value, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
         const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const imgW = pageW;
+        // A4 纵向,两侧留 15mm 页边距,顶部/底部 12mm
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageW = pdf.internal.pageSize.getWidth(); // 210mm
+        const pageH = pdf.internal.pageSize.getHeight(); // 297mm
+        const marginX = 15;
+        const marginY = 12;
+        const imgW = pageW - marginX * 2;
         const imgH = (canvas.height * imgW) / canvas.width;
+        const usableH = pageH - marginY * 2;
         let heightLeft = imgH;
-        let position = 0;
-        pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-        heightLeft -= pageH;
+        let position = marginY;
+        pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH);
+        heightLeft -= usableH;
         while (heightLeft > 0) {
-            position -= pageH;
+            position = position - usableH;
             pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-            heightLeft -= pageH;
+            pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH);
+            heightLeft -= usableH;
         }
         const today = new Date().toISOString().slice(0, 10);
         pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`);
@@ -420,7 +424,9 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th
 __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
     ...{ style: {} },
 });
-__VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+__VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+    ...{ style: {} },
+});
 __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
     ...{ style: {} },
 });
