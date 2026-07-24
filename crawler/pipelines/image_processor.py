@@ -11,7 +11,9 @@ Rules:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
+import os
 import re
 from PIL import Image, ImageFile
 from loguru import logger
@@ -25,6 +27,44 @@ WEBP_QUALITY = 80
 TARGET_MAX_BYTES = 180 * 1024
 REQUEST_TIMEOUT = 30
 MAX_CONCURRENT_DOWNLOADS = 3
+
+# ===== 房源图筛选规则(全平台/全城市统一) =====
+# 规则:每套房最多保留 3 张“有效”图;脏图(图标/占位/广告/二维码/已知内容脏图)过滤掉后,
+# 尽量凑够 3 张。少于 3 张则有几张算几张。脏图只能在下载处理后按内容判定,
+# 所以调用方应多取候选(见 IMG_CANDIDATE_LIMIT)喂给 process_batch,再用 select_valid_images 取前 3。
+MAX_VALID_IMAGES = 3          # 每套最终保留的有效图上限
+IMG_CANDIDATE_LIMIT = 10      # 下载处理的候选图上限(留余量供过滤)
+MIN_VALID_BYTES = 2048        # 处理后 <2KB 判为图标/占位脏图(真实房源照片均≥20KB)
+
+# 已知内容脏图 md5 黑名单(如阿里「恭喜您报名成功」提示图/UI图标,处理后 webp 的 md5)。
+# 这些图会跨多个房源重复出现,靠尺寸/URL识别不了,只能按内容 md5 拦截。
+_BLACKLIST_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "junk_image_md5_blacklist.txt")
+JUNK_MD5: set[str] = set()
+if os.path.exists(_BLACKLIST_PATH):
+    try:
+        with open(_BLACKLIST_PATH) as _f:
+            JUNK_MD5 = {ln.strip() for ln in _f if ln.strip()}
+    except OSError:
+        JUNK_MD5 = set()
+
+
+def select_valid_images(processed: list[dict], limit: int = MAX_VALID_IMAGES) -> list[dict]:
+    """从 process_batch 的结果中筛出有效房源图,最多返回 limit 张。
+
+    过滤(三层):①下载失败(无 full_bytes) ②广告/二维码(junk_reason) 或 处理后 <2KB(图标/占位)
+    ③md5 命中已知脏图黑名单。保留原始顺序,取前 limit 张。
+    """
+    valid = []
+    for p in processed:
+        b = p.get("full_bytes")
+        if not b or len(b) < MIN_VALID_BYTES or p.get("junk_reason"):
+            continue
+        if JUNK_MD5 and hashlib.md5(b).hexdigest() in JUNK_MD5:
+            continue
+        valid.append(p)
+        if len(valid) >= limit:
+            break
+    return valid
 
 
 class ImageProcessor:

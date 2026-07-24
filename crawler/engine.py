@@ -35,7 +35,7 @@ from .storage.repository import (
 from .storage.deduplicator import Deduplicator
 from .utils.url_registry import SourceConfig, get_configs, group_configs_by_platform
 from .utils.failure_type import classify_error, LOGIN_COOKIE, IP_BLOCKED, PARSE_LOGIC
-from .pipelines.image_processor import ImageProcessor
+from .pipelines.image_processor import ImageProcessor, select_valid_images, IMG_CANDIDATE_LIMIT
 from .pipelines.local_storage import LocalStorage
 from .pipelines.data_enricher import DataEnricher
 
@@ -763,42 +763,41 @@ class CrawlEngine:
                         image_dicts = []
                         if auction_item.image_urls and settings.IMAGE_PROCESS_ENABLED:
                             try:
+                                # 房源图规则(全城市统一):多取候选(前10张)下载处理,过滤脏图后
+                                # 只保留前3张有效图入库。脏图只能下载后按内容判定,故先多取再筛。
+                                candidates = auction_item.image_urls[:IMG_CANDIDATE_LIMIT]
                                 processed = await image_processor.process_batch(
-                                    auction_item.image_urls, generate_thumbs=True,
+                                    candidates, generate_thumbs=True,
                                     platform=platform_name
                                 )
+                                valid = select_valid_images(processed)  # 过滤脏图+取前3张
 
                                 uploaded = local_storage.save_property_images(
-                                    prop_id, item.source_url, processed
+                                    prop_id, item.source_url, valid
                                 )
                                 image_dicts = []
-                                _cover_set = False
                                 for i, u in enumerate(uploaded):
                                     if not u["oss_url"]:
                                         continue
-                                    is_junk = bool(u.get("junk_reason"))
-                                    # 封面取第一张非垃圾图
-                                    is_cover = (not is_junk) and (not _cover_set)
-                                    if is_cover:
-                                        _cover_set = True
                                     image_dicts.append({
                                         "image_url": u["oss_url"],
                                         "thumb_url": u.get("thumb_url", ""),
                                         "sort_order": i,
-                                        "is_cover": is_cover,
-                                        "hidden": 1 if is_junk else 0,
-                                        "hide_reason": u.get("junk_reason"),
+                                        "is_cover": i == 0,  # 首张有效图作封面
+                                        "hidden": 0,
+                                        "hide_reason": None,
                                     })
 
                                 logger.debug(
-                                    f"Processed {len(auction_item.image_urls)} images for property #{prop_id}, "
-                                    f"{len(image_dicts)} saved to local"
+                                    f"Processed {len(candidates)} candidates for property #{prop_id}, "
+                                    f"{len(image_dicts)} valid images saved (max {len(valid)})"
                                 )
                             except Exception as img_err:
                                 logger.warning(f"Image processing failed for #{prop_id}: {img_err}")
+                                # 兜底:处理异常时最多存前3张原图URL(仍遵守3图规则)
                                 image_dicts = [
                                     {"image_url": url, "sort_order": i, "is_cover": i == 0}
-                                    for i, url in enumerate(auction_item.image_urls) if url
+                                    for i, url in enumerate([u for u in auction_item.image_urls if u][:3])
                                 ]
 
                         # Save image records (local URLs with thumbnails, or originals)

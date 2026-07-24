@@ -12,7 +12,7 @@ from crawler.config import settings
 from crawler.browser import browser_manager
 from crawler.platforms.taobao_paimai import TaobaoPaiMaiCrawler
 from crawler.parsers.taobao_paimai_detail import TaobaoPaiMaiDetailParser
-from crawler.pipelines.image_processor import ImageProcessor
+from crawler.pipelines.image_processor import ImageProcessor, select_valid_images, IMG_CANDIDATE_LIMIT
 from crawler.pipelines.local_storage import LocalStorage
 from crawler.storage.repository import PropertyImageRepository
 from app.models.property import Property, PropertyImage
@@ -93,28 +93,24 @@ async def main():
                 stillempty += 1
                 print(f"  id={pid} 详情无图片URL", flush=True)
                 continue
-            processed = await img_proc.process_batch(img_urls[:20], generate_thumbs=True, platform="阿里拍卖")
-            saved = storage.save_property_images(pid, p.source_url, processed)
+            # 房源图规则(全城市统一):多取候选(前10张)下载,过滤脏图后取前3张有效图
+            processed = await img_proc.process_batch(img_urls[:IMG_CANDIDATE_LIMIT], generate_thumbs=True, platform="阿里拍卖")
+            valid = select_valid_images(processed)  # 过滤脏图(junk/<2KB/md5黑名单)+取前3张
+            saved = storage.save_property_images(pid, p.source_url, valid)
             rows = [{
                 "image_url": s["oss_url"], "thumb_url": s.get("thumb_url"),
-                "sort_order": i, "is_cover": False,
-                "hidden": 1 if s.get("junk_reason") else 0, "hide_reason": s.get("junk_reason"),
+                "sort_order": i, "is_cover": (i == 0),
+                "hidden": 0, "hide_reason": None,
             } for i, s in enumerate(saved) if s.get("oss_url")]
-            # 封面 = 第一张非垃圾图
-            for r in rows:
-                if not r["hidden"]:
-                    r["is_cover"] = True
-                    break
-            visible = [r for r in rows if not r["hidden"]]
-            if rows and visible and COMMIT:
+            if rows and COMMIT:
                 await PropertyImageRepository.batch_upsert(db, pid, rows)
                 await db.commit()
-            if visible:
+            if rows:
                 fixed += 1
-                print(f"  id={pid} 补图成功 {len(visible)}可见/{len(rows)}张 (itemId={item_id})", flush=True)
+                print(f"  id={pid} 补图成功 {len(rows)}张 (itemId={item_id})", flush=True)
             else:
                 stillempty += 1
-                print(f"  id={pid} 仍无可见图({len(rows)}张全垃圾/失败)", flush=True)
+                print(f"  id={pid} 仍无有效图(全为图标/占位/脏图)", flush=True)
         print(f"\n完成：补图成功 {fixed} / 仍空 {stillempty} / 详情失败 {nodetail} / 无itemId {noid} / 共 {len(ids)}", flush=True)
         if not COMMIT:
             print("(dry-run 未写库)", flush=True)
