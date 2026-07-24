@@ -14,18 +14,10 @@
           <t-option :value="''" label="全部区县" />
           <t-option v-for="d in districtOptions" :key="d" :value="d" :label="d" />
         </t-select>
-        <t-check-tag
-          v-model:checked="filters.statusLive"
-          theme="primary"
-          variant="light-outline"
-          @change="onSearch"
-        >拍卖中</t-check-tag>
-        <t-check-tag
-          v-model:checked="filters.statusUpcoming"
-          theme="primary"
-          variant="light-outline"
-          @change="onSearch"
-        >即将开拍</t-check-tag>
+        <div class="status-filter">
+          <t-checkbox v-model="filters.statusLive" @change="onSearch">拍卖中</t-checkbox>
+          <t-checkbox v-model="filters.statusUpcoming" @change="onSearch">即将开拍</t-checkbox>
+        </div>
         <t-button theme="primary" @click="onSearch">查询</t-button>
         <t-button variant="outline" @click="onReset">重置</t-button>
         <div class="spacer"></div>
@@ -235,6 +227,7 @@ onMounted(() => loadData())
 .filter-card { margin-bottom: 16px; }
 .search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .search-bar .spacer { flex: 1; }
+.status-filter { display: flex; align-items: center; gap: 16px; padding: 0 4px; }
 
 /* 可导出清单区域:白底 */
 .digest-sheet {

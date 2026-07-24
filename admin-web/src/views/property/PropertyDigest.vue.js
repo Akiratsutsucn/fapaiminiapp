@@ -297,20 +297,19 @@ for (const [d] of __VLS_getVForSourceType((__VLS_ctx.districtOptions))) {
     }, ...__VLS_functionalComponentArgsRest(__VLS_45));
 }
 var __VLS_35;
-const __VLS_48 = {}.TCheckTag;
-/** @type {[typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, ]} */ ;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+    ...{ class: "status-filter" },
+});
+const __VLS_48 = {}.TCheckbox;
+/** @type {[typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, ]} */ ;
 // @ts-ignore
 const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
     ...{ 'onChange': {} },
-    checked: (__VLS_ctx.filters.statusLive),
-    theme: "primary",
-    variant: "light-outline",
+    modelValue: (__VLS_ctx.filters.statusLive),
 }));
 const __VLS_50 = __VLS_49({
     ...{ 'onChange': {} },
-    checked: (__VLS_ctx.filters.statusLive),
-    theme: "primary",
-    variant: "light-outline",
+    modelValue: (__VLS_ctx.filters.statusLive),
 }, ...__VLS_functionalComponentArgsRest(__VLS_49));
 let __VLS_52;
 let __VLS_53;
@@ -320,20 +319,16 @@ const __VLS_55 = {
 };
 __VLS_51.slots.default;
 var __VLS_51;
-const __VLS_56 = {}.TCheckTag;
-/** @type {[typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, ]} */ ;
+const __VLS_56 = {}.TCheckbox;
+/** @type {[typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, typeof __VLS_components.TCheckbox, typeof __VLS_components.tCheckbox, ]} */ ;
 // @ts-ignore
 const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
     ...{ 'onChange': {} },
-    checked: (__VLS_ctx.filters.statusUpcoming),
-    theme: "primary",
-    variant: "light-outline",
+    modelValue: (__VLS_ctx.filters.statusUpcoming),
 }));
 const __VLS_58 = __VLS_57({
     ...{ 'onChange': {} },
-    checked: (__VLS_ctx.filters.statusUpcoming),
-    theme: "primary",
-    variant: "light-outline",
+    modelValue: (__VLS_ctx.filters.statusUpcoming),
 }, ...__VLS_functionalComponentArgsRest(__VLS_57));
 let __VLS_60;
 let __VLS_61;
@@ -551,6 +546,7 @@ var __VLS_91;
 /** @type {__VLS_StyleScopedClasses['digest-page']} */ ;
 /** @type {__VLS_StyleScopedClasses['filter-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
+/** @type {__VLS_StyleScopedClasses['status-filter']} */ ;
 /** @type {__VLS_StyleScopedClasses['spacer']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-sheet']} */ ;
 /** @type {__VLS_StyleScopedClasses['sheet-header']} */ ;
