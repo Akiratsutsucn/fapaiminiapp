@@ -711,6 +711,21 @@ class CrawlEngine:
                             )
                             return "skipped_non_real_estate", None
 
+                        # (b3) 「存放于某地点的货物/存货」类纯动产：标题以「货架/货物/存货/衣服/
+                        #      衣物/服装/库存」等仓储物品收尾，被拍主体是货物本身(房产只是存放地点)。
+                        #      例:「位于上海市闵行区都会路451号4楼G05货架上和箱内衣服」→ 货物,跳过。
+                        #      同样排除「及/以及/不动产/房产/房地产/全幢/整幢」等连房带物的真房产。
+                        if _re_asset.search(
+                            r"(货架上?[^及]*|货物|存货|库存(?:商品|货物)?|存放(?:的)?货物|"
+                            r"(?:箱内|箱中|货架上和箱内)?衣服|衣物|服装|鞋子|鞋帽|布匹|纺织品)\s*$",
+                            title,
+                        ) and not _re_asset.search(r"(及|以及|不动产|房产|房地产|全幢|整幢)", title):
+                            logger.info(
+                                f"[{platform_name}] Skipping movable-asset (存放货物/存货类纯动产): "
+                                f"{title[:40]} — {item.source_url}"
+                            )
+                            return "skipped_non_real_estate", None
+
                         non_real_estate_kw = _re_asset.compile(
                             r"车牌|本田|奔驰|宝马|奥迪|大众|丰田|日产|路虎|保时捷|普通客车|轿车|商务车|货车|挖掘机|装载机|捷豹|荣威"
                             r"|越野车|牌小型|牌轿车|客车|摩托车|电动车|叉车|铲车|搅拌车|罐车|挂车|牌汽车|号牌"
