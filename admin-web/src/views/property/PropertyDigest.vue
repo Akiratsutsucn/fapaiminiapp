@@ -81,6 +81,24 @@
 
     <!-- 隐藏的导出区域:渲染筛选出的全部房源,按页分块(每块带品牌页眉+表头),逐块生成PDF页 -->
     <div class="export-holder" ref="exportHolderRef" aria-hidden="true">
+      <!-- 测量表:一次性渲染全部行,用于按实测行高动态分页 -->
+      <table class="digest-table measuring-table" ref="measuringRef">
+        <tbody>
+          <tr v-for="row in exportRows" :key="'m'+row.id" data-mrow>
+            <td style="width:56px">{{ cityName(row.city_id) }}</td>
+            <td style="width:76px">{{ row.district || '-' }}</td>
+            <td class="td-title" style="width:22%">{{ row.title || '-' }}</td>
+            <td style="width:120px">{{ row.community_name || '-' }}</td>
+            <td style="width:68px">{{ fmtArea(row.area) }}</td>
+            <td class="td-price" style="width:92px">{{ fmtWan(row.starting_price) }}</td>
+            <td style="width:92px">{{ fmtWan(row.appraisal_price) }}</td>
+            <td class="td-time" style="width:150px">
+              <div>{{ fmtDate(row.auction_start_time) }}</div>
+              <div class="td-time-end">至 {{ fmtDate(row.auction_end_time) }}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <div ref="exportRef">
         <div v-for="(chunk, ci) in exportChunks" :key="ci" class="export-page digest-sheet">
           <div class="sheet-header">
@@ -170,16 +188,12 @@ const exporting = ref(false)
 const digestRef = ref<HTMLElement | null>(null)
 const exportRef = ref<HTMLElement | null>(null)
 const exportHolderRef = ref<HTMLElement | null>(null)
-const exportRows = ref<any[]>([])           // 导出用:筛选出的全部房源
-const EXPORT_ROWS_PER_PAGE = 22             // 每个PDF页的行数(A4纵向约容纳)
-const exportChunks = computed<any[][]>(() => {
-  const rows = exportRows.value
-  const chunks: any[][] = []
-  for (let i = 0; i < rows.length; i += EXPORT_ROWS_PER_PAGE) {
-    chunks.push(rows.slice(i, i + EXPORT_ROWS_PER_PAGE))
-  }
-  return chunks
-})
+const exportRows = ref<any[]>([])           // 导出用:筛选出的全部房源(单表测量高度)
+const exportChunks = ref<any[][]>([])       // 按实测行高动态分页的结果
+const measuringRef = ref<HTMLElement | null>(null)
+// 每页表格行累计高度上限(px @820宽)。A4比例总高1160,减去页眉+表头+内边距开销后,
+// 实测满页开销约345px(页眉/表头/padding),故行区上限取 780 确保满页总高≤1160不裁切。
+const PAGE_CONTENT_PX = 780
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 
 const districtOptions = computed(() => {
@@ -284,7 +298,26 @@ async function onExportPdf() {
       MessagePlugin.warning('当前无数据可导出')
       return
     }
-    // 2. 等待导出区域按分块渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
+    // 2. 先渲染测量表,按实测行高动态分页(保证每页内容不超过A4高度,长标题也不溢出)
+    exportChunks.value = []
+    await nextTick()
+    await new Promise(r => setTimeout(r, 30))
+    const mrows = Array.from(measuringRef.value?.querySelectorAll('tr[data-mrow]') || []) as HTMLElement[]
+    const rows = exportRows.value
+    const chunks: any[][] = []
+    let cur: any[] = []
+    let curH = 0
+    for (let i = 0; i < rows.length; i++) {
+      const h = mrows[i]?.offsetHeight || 40
+      if (cur.length > 0 && curH + h > PAGE_CONTENT_PX) {
+        chunks.push(cur); cur = []; curH = 0
+      }
+      cur.push(rows[i]); curH += h
+    }
+    if (cur.length) chunks.push(cur)
+    exportChunks.value = chunks
+
+    // 3. 等待分页后的导出页渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
     await nextTick()
     exportHolderRef.value?.classList.add('exporting-visible')
     // 等待logo图片加载完成,否则截图缺图
@@ -301,7 +334,6 @@ async function onExportPdf() {
     const marginX = 10
     const marginY = 10
     const maxW = pageW - marginX * 2
-    const maxH = pageH - marginY * 2
     for (let i = 0; i < pages.length; i++) {
       const el = pages[i] as HTMLElement
       const canvas = await html2canvas(el, {
@@ -313,9 +345,9 @@ async function onExportPdf() {
         windowWidth: el.offsetWidth,
       })
       const imgData = canvas.toDataURL('image/jpeg', 0.92)
-      let imgW = maxW
-      let imgH = (canvas.height * imgW) / canvas.width
-      if (imgH > maxH) { imgH = maxH; imgW = (canvas.width * imgH) / canvas.height }  // 单块超高则按高约束
+      // 每页导出块均为固定 A4 比例(820x1160),始终按满宽放置 → 各页宽度完全一致
+      const imgW = maxW
+      const imgH = (canvas.height * imgW) / canvas.width
       if (i > 0) pdf.addPage()
       pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH)
     }
@@ -329,6 +361,7 @@ async function onExportPdf() {
     exportHolderRef.value?.classList.remove('exporting-visible')
     loadingMsg.then((m: any) => m.close?.()).catch(() => {})
     exportRows.value = []
+    exportChunks.value = []
     exporting.value = false
   }
 }
@@ -356,7 +389,18 @@ onMounted(() => loadData())
   background: #ffffff;
 }
 .export-holder.exporting-visible { opacity: 1; z-index: 9999; }
-.export-page { width: 820px; margin-bottom: 20px; box-sizing: border-box; background: #ffffff; box-shadow: none !important; border-radius: 0 !important; }
+/* 测量表:仅用于测行高。宽度=导出页内容区宽(820-48padding=772),绝对定位不占布局、不进截图 */
+.measuring-table { position: absolute; top: 0; left: 0; width: 772px; visibility: hidden; }
+/* 固定宽度820px(高度随内容自适应)。宽度一致 → 各页canvas宽高比一致 → PDF各页宽度统一。
+   导出代码始终按满宽放置,不再因超高缩窄宽度,故各页宽度完全相同。 */
+.export-page {
+  width: 820px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  background: #ffffff;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
 .sheet-page { margin-left: 12px; color: #8a97ad; font-weight: 500; }
 
 /* 可导出清单区域:白底 */

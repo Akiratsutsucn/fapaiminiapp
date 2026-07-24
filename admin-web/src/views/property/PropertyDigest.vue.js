@@ -22,16 +22,12 @@ const exporting = ref(false);
 const digestRef = ref(null);
 const exportRef = ref(null);
 const exportHolderRef = ref(null);
-const exportRows = ref([]); // 导出用:筛选出的全部房源
-const EXPORT_ROWS_PER_PAGE = 22; // 每个PDF页的行数(A4纵向约容纳)
-const exportChunks = computed(() => {
-    const rows = exportRows.value;
-    const chunks = [];
-    for (let i = 0; i < rows.length; i += EXPORT_ROWS_PER_PAGE) {
-        chunks.push(rows.slice(i, i + EXPORT_ROWS_PER_PAGE));
-    }
-    return chunks;
-});
+const exportRows = ref([]); // 导出用:筛选出的全部房源(单表测量高度)
+const exportChunks = ref([]); // 按实测行高动态分页的结果
+const measuringRef = ref(null);
+// 每页表格行累计高度上限(px @820宽)。A4比例总高1160,减去页眉+表头+内边距开销后,
+// 实测满页开销约345px(页眉/表头/padding),故行区上限取 780 确保满页总高≤1160不裁切。
+const PAGE_CONTENT_PX = 780;
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const districtOptions = computed(() => {
     if (filters.city_id === 310000)
@@ -145,7 +141,29 @@ async function onExportPdf() {
             MessagePlugin.warning('当前无数据可导出');
             return;
         }
-        // 2. 等待导出区域按分块渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
+        // 2. 先渲染测量表,按实测行高动态分页(保证每页内容不超过A4高度,长标题也不溢出)
+        exportChunks.value = [];
+        await nextTick();
+        await new Promise(r => setTimeout(r, 30));
+        const mrows = Array.from(measuringRef.value?.querySelectorAll('tr[data-mrow]') || []);
+        const rows = exportRows.value;
+        const chunks = [];
+        let cur = [];
+        let curH = 0;
+        for (let i = 0; i < rows.length; i++) {
+            const h = mrows[i]?.offsetHeight || 40;
+            if (cur.length > 0 && curH + h > PAGE_CONTENT_PX) {
+                chunks.push(cur);
+                cur = [];
+                curH = 0;
+            }
+            cur.push(rows[i]);
+            curH += h;
+        }
+        if (cur.length)
+            chunks.push(cur);
+        exportChunks.value = chunks;
+        // 3. 等待分页后的导出页渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
         await nextTick();
         exportHolderRef.value?.classList.add('exporting-visible');
         // 等待logo图片加载完成,否则截图缺图
@@ -162,7 +180,6 @@ async function onExportPdf() {
         const marginX = 10;
         const marginY = 10;
         const maxW = pageW - marginX * 2;
-        const maxH = pageH - marginY * 2;
         for (let i = 0; i < pages.length; i++) {
             const el = pages[i];
             const canvas = await html2canvas(el, {
@@ -174,12 +191,9 @@ async function onExportPdf() {
                 windowWidth: el.offsetWidth,
             });
             const imgData = canvas.toDataURL('image/jpeg', 0.92);
-            let imgW = maxW;
-            let imgH = (canvas.height * imgW) / canvas.width;
-            if (imgH > maxH) {
-                imgH = maxH;
-                imgW = (canvas.width * imgH) / canvas.height;
-            } // 单块超高则按高约束
+            // 每页导出块均为固定 A4 比例(820x1160),始终按满宽放置 → 各页宽度完全一致
+            const imgW = maxW;
+            const imgH = (canvas.height * imgW) / canvas.width;
             if (i > 0)
                 pdf.addPage();
             pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH);
@@ -196,6 +210,7 @@ async function onExportPdf() {
         exportHolderRef.value?.classList.remove('exporting-visible');
         loadingMsg.then((m) => m.close?.()).catch(() => { });
         exportRows.value = [];
+        exportChunks.value = [];
         exporting.value = false;
     }
 }
@@ -587,6 +602,58 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.d
     'aria-hidden': "true",
 });
 /** @type {typeof __VLS_ctx.exportHolderRef} */ ;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.table, __VLS_intrinsicElements.table)({
+    ...{ class: "digest-table measuring-table" },
+    ref: "measuringRef",
+});
+/** @type {typeof __VLS_ctx.measuringRef} */ ;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.tbody, __VLS_intrinsicElements.tbody)({});
+for (const [row] of __VLS_getVForSourceType((__VLS_ctx.exportRows))) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({
+        key: ('m' + row.id),
+        'data-mrow': true,
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ style: {} },
+    });
+    (__VLS_ctx.cityName(row.city_id));
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ style: {} },
+    });
+    (row.district || '-');
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ class: "td-title" },
+        ...{ style: {} },
+    });
+    (row.title || '-');
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ style: {} },
+    });
+    (row.community_name || '-');
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ style: {} },
+    });
+    (__VLS_ctx.fmtArea(row.area));
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ class: "td-price" },
+        ...{ style: {} },
+    });
+    (__VLS_ctx.fmtWan(row.starting_price));
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ style: {} },
+    });
+    (__VLS_ctx.fmtWan(row.appraisal_price));
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+        ...{ class: "td-time" },
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({});
+    (__VLS_ctx.fmtDate(row.auction_start_time));
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "td-time-end" },
+    });
+    (__VLS_ctx.fmtDate(row.auction_end_time));
+}
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ref: "exportRef",
 });
@@ -753,6 +820,12 @@ var __VLS_91;
 /** @type {__VLS_StyleScopedClasses['td-time-end']} */ ;
 /** @type {__VLS_StyleScopedClasses['empty-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['export-holder']} */ ;
+/** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['measuring-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-price']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-time']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-time-end']} */ ;
 /** @type {__VLS_StyleScopedClasses['export-page']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-sheet']} */ ;
 /** @type {__VLS_StyleScopedClasses['sheet-header']} */ ;
@@ -784,6 +857,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             exportHolderRef: exportHolderRef,
             exportRows: exportRows,
             exportChunks: exportChunks,
+            measuringRef: measuringRef,
             pagination: pagination,
             districtOptions: districtOptions,
             cityLabel: cityLabel,
