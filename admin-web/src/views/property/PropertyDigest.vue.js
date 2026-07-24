@@ -21,6 +21,7 @@ const loading = ref(false);
 const exporting = ref(false);
 const digestRef = ref(null);
 const exportRef = ref(null);
+const exportHolderRef = ref(null);
 const exportRows = ref([]); // 导出用:筛选出的全部房源
 const EXPORT_ROWS_PER_PAGE = 22; // 每个PDF页的行数(A4纵向约容纳)
 const exportChunks = computed(() => {
@@ -144,9 +145,13 @@ async function onExportPdf() {
             MessagePlugin.warning('当前无数据可导出');
             return;
         }
-        // 2. 等待隐藏导出区域按分块渲染完成
+        // 2. 等待导出区域按分块渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
         await nextTick();
-        await new Promise(r => setTimeout(r, 60));
+        exportHolderRef.value?.classList.add('exporting-visible');
+        // 等待logo图片加载完成,否则截图缺图
+        const imgs = Array.from(exportRef.value?.querySelectorAll('img') || []);
+        await Promise.all(imgs.map(img => (img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = () => res(null); }))));
+        await new Promise(r => setTimeout(r, 120));
         const pages = exportRef.value?.querySelectorAll('.export-page');
         if (!pages || pages.length === 0)
             throw new Error('no export pages');
@@ -154,12 +159,20 @@ async function onExportPdf() {
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW = pdf.internal.pageSize.getWidth(); // 210mm
         const pageH = pdf.internal.pageSize.getHeight(); // 297mm
-        const marginX = 15;
-        const marginY = 12;
+        const marginX = 10;
+        const marginY = 10;
         const maxW = pageW - marginX * 2;
         const maxH = pageH - marginY * 2;
         for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const el = pages[i];
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: el.offsetWidth,
+                height: el.offsetHeight,
+                windowWidth: el.offsetWidth,
+            });
             const imgData = canvas.toDataURL('image/jpeg', 0.92);
             let imgW = maxW;
             let imgH = (canvas.height * imgW) / canvas.width;
@@ -171,6 +184,7 @@ async function onExportPdf() {
                 pdf.addPage();
             pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH);
         }
+        exportHolderRef.value?.classList.remove('exporting-visible');
         const today = new Date().toISOString().slice(0, 10);
         pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`);
         MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`);
@@ -179,6 +193,7 @@ async function onExportPdf() {
         MessagePlugin.error('导出失败,请重试');
     }
     finally {
+        exportHolderRef.value?.classList.remove('exporting-visible');
         loadingMsg.then((m) => m.close?.()).catch(() => { });
         exportRows.value = [];
         exporting.value = false;
@@ -190,6 +205,7 @@ const __VLS_ctx = {};
 let __VLS_components;
 let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-holder']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
@@ -567,8 +583,10 @@ if (!__VLS_ctx.loading && __VLS_ctx.list.length === 0) {
 }
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "export-holder" },
+    ref: "exportHolderRef",
     'aria-hidden': "true",
 });
+/** @type {typeof __VLS_ctx.exportHolderRef} */ ;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ref: "exportRef",
 });
@@ -763,6 +781,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             exporting: exporting,
             digestRef: digestRef,
             exportRef: exportRef,
+            exportHolderRef: exportHolderRef,
             exportRows: exportRows,
             exportChunks: exportChunks,
             pagination: pagination,

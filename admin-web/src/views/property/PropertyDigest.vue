@@ -80,7 +80,7 @@
     </div>
 
     <!-- 隐藏的导出区域:渲染筛选出的全部房源,按页分块(每块带品牌页眉+表头),逐块生成PDF页 -->
-    <div class="export-holder" aria-hidden="true">
+    <div class="export-holder" ref="exportHolderRef" aria-hidden="true">
       <div ref="exportRef">
         <div v-for="(chunk, ci) in exportChunks" :key="ci" class="export-page digest-sheet">
           <div class="sheet-header">
@@ -169,6 +169,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const digestRef = ref<HTMLElement | null>(null)
 const exportRef = ref<HTMLElement | null>(null)
+const exportHolderRef = ref<HTMLElement | null>(null)
 const exportRows = ref<any[]>([])           // 导出用:筛选出的全部房源
 const EXPORT_ROWS_PER_PAGE = 22             // 每个PDF页的行数(A4纵向约容纳)
 const exportChunks = computed<any[][]>(() => {
@@ -283,9 +284,13 @@ async function onExportPdf() {
       MessagePlugin.warning('当前无数据可导出')
       return
     }
-    // 2. 等待隐藏导出区域按分块渲染完成
+    // 2. 等待导出区域按分块渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
     await nextTick()
-    await new Promise(r => setTimeout(r, 60))
+    exportHolderRef.value?.classList.add('exporting-visible')
+    // 等待logo图片加载完成,否则截图缺图
+    const imgs = Array.from(exportRef.value?.querySelectorAll('img') || [])
+    await Promise.all(imgs.map(img => (img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = () => res(null) }))))
+    await new Promise(r => setTimeout(r, 120))
     const pages = exportRef.value?.querySelectorAll('.export-page')
     if (!pages || pages.length === 0) throw new Error('no export pages')
 
@@ -293,12 +298,20 @@ async function onExportPdf() {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()   // 210mm
     const pageH = pdf.internal.pageSize.getHeight()  // 297mm
-    const marginX = 15
-    const marginY = 12
+    const marginX = 10
+    const marginY = 10
     const maxW = pageW - marginX * 2
     const maxH = pageH - marginY * 2
     for (let i = 0; i < pages.length; i++) {
-      const canvas = await html2canvas(pages[i] as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const el = pages[i] as HTMLElement
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        windowWidth: el.offsetWidth,
+      })
       const imgData = canvas.toDataURL('image/jpeg', 0.92)
       let imgW = maxW
       let imgH = (canvas.height * imgW) / canvas.width
@@ -306,12 +319,14 @@ async function onExportPdf() {
       if (i > 0) pdf.addPage()
       pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH)
     }
+    exportHolderRef.value?.classList.remove('exporting-visible')
     const today = new Date().toISOString().slice(0, 10)
     pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`)
     MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`)
   } catch (e) {
     MessagePlugin.error('导出失败,请重试')
   } finally {
+    exportHolderRef.value?.classList.remove('exporting-visible')
     loadingMsg.then((m: any) => m.close?.()).catch(() => {})
     exportRows.value = []
     exporting.value = false
@@ -328,9 +343,20 @@ onMounted(() => loadData())
 .search-bar .spacer { flex: 1; }
 .status-filter { display: flex; align-items: center; gap: 16px; padding: 0 4px; }
 
-/* 隐藏导出区域:移出视口(不能用display:none,否则html2canvas截不到) */
-.export-holder { position: absolute; left: -99999px; top: 0; width: 800px; }
-.export-page { width: 800px; margin-bottom: 20px; box-sizing: border-box; }
+/* 导出区域:默认覆盖在视口左上但完全透明+不可交互(html2canvas能正确截取,用户看不到)。
+   不能用 display:none 或 left:-99999px,否则html2canvas渲染错乱。 */
+.export-holder {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 820px;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  background: #ffffff;
+}
+.export-holder.exporting-visible { opacity: 1; z-index: 9999; }
+.export-page { width: 820px; margin-bottom: 20px; box-sizing: border-box; background: #ffffff; box-shadow: none !important; border-radius: 0 !important; }
 .sheet-page { margin-left: 12px; color: #8a97ad; font-weight: 500; }
 
 /* 可导出清单区域:白底 */
