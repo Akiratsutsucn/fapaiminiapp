@@ -317,17 +317,17 @@ async function onExportPdf() {
     if (cur.length) chunks.push(cur)
     exportChunks.value = chunks
 
-    // 3. 等待分页后的导出页渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
+    // 3. 等待分页后的导出页渲染完成(导出区始终 opacity:0 隐藏,页面不闪现)
     await nextTick()
-    exportHolderRef.value?.classList.add('exporting-visible')
     // 等待logo图片加载完成,否则截图缺图
     const imgs = Array.from(exportRef.value?.querySelectorAll('img') || [])
     await Promise.all(imgs.map(img => (img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = () => res(null) }))))
-    await new Promise(r => setTimeout(r, 120))
+    await new Promise(r => setTimeout(r, 60))
     const pages = exportRef.value?.querySelectorAll('.export-page')
     if (!pages || pages.length === 0) throw new Error('no export pages')
 
-    // 3. 逐块(每块=1个PDF页)截图,行不会被从中间切断
+    // 逐块(每块=1个PDF页)截图,行不会被从中间切断。
+    // 用 onclone 只在 html2canvas 克隆的离屏文档里把导出区改为可见 → 真实页面全程无闪现。
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()   // 210mm
     const pageH = pdf.internal.pageSize.getHeight()  // 297mm
@@ -343,6 +343,11 @@ async function onExportPdf() {
         width: el.offsetWidth,
         height: el.offsetHeight,
         windowWidth: el.offsetWidth,
+        onclone: (doc: Document) => {
+          // 仅在克隆文档中让导出区可见,不影响用户当前页面
+          const holder = doc.querySelector('.export-holder') as HTMLElement | null
+          if (holder) { holder.style.opacity = '1'; holder.style.zIndex = '0' }
+        },
       })
       const imgData = canvas.toDataURL('image/jpeg', 0.92)
       // 每页导出块均为固定 A4 比例(820x1160),始终按满宽放置 → 各页宽度完全一致
@@ -351,14 +356,12 @@ async function onExportPdf() {
       if (i > 0) pdf.addPage()
       pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH)
     }
-    exportHolderRef.value?.classList.remove('exporting-visible')
     const today = new Date().toISOString().slice(0, 10)
     pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`)
     MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`)
   } catch (e) {
     MessagePlugin.error('导出失败,请重试')
   } finally {
-    exportHolderRef.value?.classList.remove('exporting-visible')
     loadingMsg.then((m: any) => m.close?.()).catch(() => {})
     exportRows.value = []
     exportChunks.value = []
@@ -388,7 +391,6 @@ onMounted(() => loadData())
   pointer-events: none;
   background: #ffffff;
 }
-.export-holder.exporting-visible { opacity: 1; z-index: 9999; }
 /* 测量表:仅用于测行高。宽度=导出页内容区宽(820-48padding=772),绝对定位不占布局、不进截图 */
 .measuring-table { position: absolute; top: 0; left: 0; width: 772px; visibility: hidden; }
 /* 固定宽度820px(高度随内容自适应)。宽度一致 → 各页canvas宽高比一致 → PDF各页宽度统一。

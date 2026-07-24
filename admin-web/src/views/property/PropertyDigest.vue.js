@@ -163,17 +163,17 @@ async function onExportPdf() {
         if (cur.length)
             chunks.push(cur);
         exportChunks.value = chunks;
-        // 3. 等待分页后的导出页渲染完成,并把它临时置于视口内(html2canvas对离屏元素渲染不稳定)
+        // 3. 等待分页后的导出页渲染完成(导出区始终 opacity:0 隐藏,页面不闪现)
         await nextTick();
-        exportHolderRef.value?.classList.add('exporting-visible');
         // 等待logo图片加载完成,否则截图缺图
         const imgs = Array.from(exportRef.value?.querySelectorAll('img') || []);
         await Promise.all(imgs.map(img => (img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = () => res(null); }))));
-        await new Promise(r => setTimeout(r, 120));
+        await new Promise(r => setTimeout(r, 60));
         const pages = exportRef.value?.querySelectorAll('.export-page');
         if (!pages || pages.length === 0)
             throw new Error('no export pages');
-        // 3. 逐块(每块=1个PDF页)截图,行不会被从中间切断
+        // 逐块(每块=1个PDF页)截图,行不会被从中间切断。
+        // 用 onclone 只在 html2canvas 克隆的离屏文档里把导出区改为可见 → 真实页面全程无闪现。
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW = pdf.internal.pageSize.getWidth(); // 210mm
         const pageH = pdf.internal.pageSize.getHeight(); // 297mm
@@ -189,6 +189,14 @@ async function onExportPdf() {
                 width: el.offsetWidth,
                 height: el.offsetHeight,
                 windowWidth: el.offsetWidth,
+                onclone: (doc) => {
+                    // 仅在克隆文档中让导出区可见,不影响用户当前页面
+                    const holder = doc.querySelector('.export-holder');
+                    if (holder) {
+                        holder.style.opacity = '1';
+                        holder.style.zIndex = '0';
+                    }
+                },
             });
             const imgData = canvas.toDataURL('image/jpeg', 0.92);
             // 每页导出块均为固定 A4 比例(820x1160),始终按满宽放置 → 各页宽度完全一致
@@ -198,7 +206,6 @@ async function onExportPdf() {
                 pdf.addPage();
             pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH);
         }
-        exportHolderRef.value?.classList.remove('exporting-visible');
         const today = new Date().toISOString().slice(0, 10);
         pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`);
         MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`);
@@ -207,7 +214,6 @@ async function onExportPdf() {
         MessagePlugin.error('导出失败,请重试');
     }
     finally {
-        exportHolderRef.value?.classList.remove('exporting-visible');
         loadingMsg.then((m) => m.close?.()).catch(() => { });
         exportRows.value = [];
         exportChunks.value = [];
@@ -220,7 +226,6 @@ const __VLS_ctx = {};
 let __VLS_components;
 let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
-/** @type {__VLS_StyleScopedClasses['export-holder']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
 /** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
