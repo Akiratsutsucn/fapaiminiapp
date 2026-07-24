@@ -201,7 +201,18 @@ async def list_properties(
 
     # 排序：用户主动选了字段(starting_price/appraisal_price/area)就按该字段；
     # 否则套 状态优先(可参拍排前/已结束已成交沉底) + 主城优先 4 档 + 开拍时间升序 + created_at desc 兜底。
-    if sort_by in ("starting_price", "appraisal_price", "area"):
+    if sort_by == "digest":
+        # 房源清单专用：进行中(拍卖中)排在即将开拍上方，各组内按拍卖结束时间升序。
+        from sqlalchemy import case as _case
+        _st = effective_status_sql()
+        status_rank = _case((_st == "进行中", 0), (_st == "即将开拍", 1), else_=2)
+        order_clauses = [
+            status_rank.asc(),
+            Property.auction_end_time.is_(None).asc(),  # 无结束时间的沉底
+            Property.auction_end_time.asc(),
+            Property.id.asc(),
+        ]
+    elif sort_by in ("starting_price", "appraisal_price", "area"):
         order_col = getattr(Property, sort_by)
         # 状态优先仍置顶：即使按价格/面积排序，已结束/已成交也沉到可参拍之后
         order_clauses = [

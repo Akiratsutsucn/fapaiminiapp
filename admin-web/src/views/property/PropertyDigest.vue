@@ -14,13 +14,18 @@
           <t-option :value="''" label="全部区县" />
           <t-option v-for="d in districtOptions" :key="d" :value="d" :label="d" />
         </t-select>
-        <t-date-range-picker
-          v-model="filters.startRange"
-          placeholder="开拍时间范围"
-          clearable
-          style="width:280px"
+        <t-check-tag
+          v-model:checked="filters.statusLive"
+          theme="primary"
+          variant="light-outline"
           @change="onSearch"
-        />
+        >拍卖中</t-check-tag>
+        <t-check-tag
+          v-model:checked="filters.statusUpcoming"
+          theme="primary"
+          variant="light-outline"
+          @change="onSearch"
+        >即将开拍</t-check-tag>
         <t-button theme="primary" @click="onSearch">查询</t-button>
         <t-button variant="outline" @click="onReset">重置</t-button>
         <div class="spacer"></div>
@@ -111,7 +116,8 @@ const CITY_NAMES: Record<number, string> = { 310000: '上海', 330200: '宁波',
 const filters = reactive({
   city_id: 0,
   district: '',
-  startRange: [] as string[],
+  statusLive: true,      // 拍卖中(进行中)
+  statusUpcoming: true,  // 即将开拍
 })
 const list = ref<any[]>([])
 const loading = ref(false)
@@ -128,9 +134,10 @@ const districtOptions = computed(() => {
 })
 const cityLabel = computed(() => filters.city_id ? CITY_NAMES[filters.city_id] || '' : '全部城市')
 const rangeLabel = computed(() => {
-  const [a, b] = filters.startRange || []
-  if (a && b) return `${a} ~ ${b} 开拍`
-  return ''
+  const parts: string[] = []
+  if (filters.statusLive) parts.push('拍卖中')
+  if (filters.statusUpcoming) parts.push('即将开拍')
+  return parts.join('/')
 })
 
 function cityName(id: number) { return CITY_NAMES[id] || '-' }
@@ -152,12 +159,14 @@ function fmtDate(s: string | null) {
 async function loadData() {
   loading.value = true
   try {
-    const params: any = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'auction_start_time', sort_order: 'asc' }
+    const params: any = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'digest' }
     if (filters.city_id) params.city_id = filters.city_id
     if (filters.district) params.district = filters.district
-    const [a, b] = filters.startRange || []
-    if (a) params.start_from = a
-    if (b) params.start_to = b
+    // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
+    const statuses: string[] = []
+    if (filters.statusLive) statuses.push('进行中')
+    if (filters.statusUpcoming) statuses.push('即将开拍')
+    params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',')
     const data: any = await listProperties(params)
     list.value = data.items || []
     pagination.total = data.total || 0
@@ -169,7 +178,7 @@ async function loadData() {
 }
 
 function onSearch() { pagination.current = 1; loadData() }
-function onReset() { filters.city_id = 0; filters.district = ''; filters.startRange = []; pagination.current = 1; loadData() }
+function onReset() { filters.city_id = 0; filters.district = ''; filters.statusLive = true; filters.statusUpcoming = true; pagination.current = 1; loadData() }
 function onCityChange() { filters.district = ''; onSearch() }
 function onPageChange(pageInfo: any) {
   pagination.current = pageInfo.current

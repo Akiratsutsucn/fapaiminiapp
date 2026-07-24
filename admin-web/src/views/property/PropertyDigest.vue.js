@@ -13,7 +13,8 @@ const CITY_NAMES = { 310000: '上海', 330200: '宁波', 330100: '杭州', 37130
 const filters = reactive({
     city_id: 0,
     district: '',
-    startRange: [],
+    statusLive: true, // 拍卖中(进行中)
+    statusUpcoming: true, // 即将开拍
 });
 const list = ref([]);
 const loading = ref(false);
@@ -33,10 +34,12 @@ const districtOptions = computed(() => {
 });
 const cityLabel = computed(() => filters.city_id ? CITY_NAMES[filters.city_id] || '' : '全部城市');
 const rangeLabel = computed(() => {
-    const [a, b] = filters.startRange || [];
-    if (a && b)
-        return `${a} ~ ${b} 开拍`;
-    return '';
+    const parts = [];
+    if (filters.statusLive)
+        parts.push('拍卖中');
+    if (filters.statusUpcoming)
+        parts.push('即将开拍');
+    return parts.join('/');
 });
 function cityName(id) { return CITY_NAMES[id] || '-'; }
 function cityNameForFile() { return filters.city_id ? (CITY_NAMES[filters.city_id] || '') : '全部城市'; }
@@ -59,16 +62,18 @@ function fmtDate(s) {
 async function loadData() {
     loading.value = true;
     try {
-        const params = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'auction_start_time', sort_order: 'asc' };
+        const params = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'digest' };
         if (filters.city_id)
             params.city_id = filters.city_id;
         if (filters.district)
             params.district = filters.district;
-        const [a, b] = filters.startRange || [];
-        if (a)
-            params.start_from = a;
-        if (b)
-            params.start_to = b;
+        // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
+        const statuses = [];
+        if (filters.statusLive)
+            statuses.push('进行中');
+        if (filters.statusUpcoming)
+            statuses.push('即将开拍');
+        params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',');
         const data = await listProperties(params);
         list.value = data.items || [];
         pagination.total = data.total || 0;
@@ -81,7 +86,7 @@ async function loadData() {
     }
 }
 function onSearch() { pagination.current = 1; loadData(); }
-function onReset() { filters.city_id = 0; filters.district = ''; filters.startRange = []; pagination.current = 1; loadData(); }
+function onReset() { filters.city_id = 0; filters.district = ''; filters.statusLive = true; filters.statusUpcoming = true; pagination.current = 1; loadData(); }
 function onCityChange() { filters.district = ''; onSearch(); }
 function onPageChange(pageInfo) {
     pagination.current = pageInfo.current;
@@ -292,22 +297,20 @@ for (const [d] of __VLS_getVForSourceType((__VLS_ctx.districtOptions))) {
     }, ...__VLS_functionalComponentArgsRest(__VLS_45));
 }
 var __VLS_35;
-const __VLS_48 = {}.TDateRangePicker;
-/** @type {[typeof __VLS_components.TDateRangePicker, typeof __VLS_components.tDateRangePicker, ]} */ ;
+const __VLS_48 = {}.TCheckTag;
+/** @type {[typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, ]} */ ;
 // @ts-ignore
 const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
     ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.startRange),
-    placeholder: "开拍时间范围",
-    clearable: true,
-    ...{ style: {} },
+    checked: (__VLS_ctx.filters.statusLive),
+    theme: "primary",
+    variant: "light-outline",
 }));
 const __VLS_50 = __VLS_49({
     ...{ 'onChange': {} },
-    modelValue: (__VLS_ctx.filters.startRange),
-    placeholder: "开拍时间范围",
-    clearable: true,
-    ...{ style: {} },
+    checked: (__VLS_ctx.filters.statusLive),
+    theme: "primary",
+    variant: "light-outline",
 }, ...__VLS_functionalComponentArgsRest(__VLS_49));
 let __VLS_52;
 let __VLS_53;
@@ -315,23 +318,28 @@ let __VLS_54;
 const __VLS_55 = {
     onChange: (__VLS_ctx.onSearch)
 };
+__VLS_51.slots.default;
 var __VLS_51;
-const __VLS_56 = {}.TButton;
-/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+const __VLS_56 = {}.TCheckTag;
+/** @type {[typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, typeof __VLS_components.TCheckTag, typeof __VLS_components.tCheckTag, ]} */ ;
 // @ts-ignore
 const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
-    ...{ 'onClick': {} },
+    ...{ 'onChange': {} },
+    checked: (__VLS_ctx.filters.statusUpcoming),
     theme: "primary",
+    variant: "light-outline",
 }));
 const __VLS_58 = __VLS_57({
-    ...{ 'onClick': {} },
+    ...{ 'onChange': {} },
+    checked: (__VLS_ctx.filters.statusUpcoming),
     theme: "primary",
+    variant: "light-outline",
 }, ...__VLS_functionalComponentArgsRest(__VLS_57));
 let __VLS_60;
 let __VLS_61;
 let __VLS_62;
 const __VLS_63 = {
-    onClick: (__VLS_ctx.onSearch)
+    onChange: (__VLS_ctx.onSearch)
 };
 __VLS_59.slots.default;
 var __VLS_59;
@@ -340,44 +348,63 @@ const __VLS_64 = {}.TButton;
 // @ts-ignore
 const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
     ...{ 'onClick': {} },
-    variant: "outline",
+    theme: "primary",
 }));
 const __VLS_66 = __VLS_65({
     ...{ 'onClick': {} },
-    variant: "outline",
+    theme: "primary",
 }, ...__VLS_functionalComponentArgsRest(__VLS_65));
 let __VLS_68;
 let __VLS_69;
 let __VLS_70;
 const __VLS_71 = {
-    onClick: (__VLS_ctx.onReset)
+    onClick: (__VLS_ctx.onSearch)
 };
 __VLS_67.slots.default;
 var __VLS_67;
-__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-    ...{ class: "spacer" },
-});
 const __VLS_72 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
 const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
     ...{ 'onClick': {} },
-    theme: "primary",
-    loading: (__VLS_ctx.exporting),
+    variant: "outline",
 }));
 const __VLS_74 = __VLS_73({
     ...{ 'onClick': {} },
-    theme: "primary",
-    loading: (__VLS_ctx.exporting),
+    variant: "outline",
 }, ...__VLS_functionalComponentArgsRest(__VLS_73));
 let __VLS_76;
 let __VLS_77;
 let __VLS_78;
 const __VLS_79 = {
-    onClick: (__VLS_ctx.onExportPdf)
+    onClick: (__VLS_ctx.onReset)
 };
 __VLS_75.slots.default;
 var __VLS_75;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+    ...{ class: "spacer" },
+});
+const __VLS_80 = {}.TButton;
+/** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
+// @ts-ignore
+const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
+    ...{ 'onClick': {} },
+    theme: "primary",
+    loading: (__VLS_ctx.exporting),
+}));
+const __VLS_82 = __VLS_81({
+    ...{ 'onClick': {} },
+    theme: "primary",
+    loading: (__VLS_ctx.exporting),
+}, ...__VLS_functionalComponentArgsRest(__VLS_81));
+let __VLS_84;
+let __VLS_85;
+let __VLS_86;
+const __VLS_87 = {
+    onClick: (__VLS_ctx.onExportPdf)
+};
+__VLS_83.slots.default;
+var __VLS_83;
 var __VLS_3;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ref: "digestRef",
@@ -497,30 +524,30 @@ if (!__VLS_ctx.loading && __VLS_ctx.list.length === 0) {
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "pager" },
 });
-const __VLS_80 = {}.TPagination;
+const __VLS_88 = {}.TPagination;
 /** @type {[typeof __VLS_components.TPagination, typeof __VLS_components.tPagination, ]} */ ;
 // @ts-ignore
-const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
+const __VLS_89 = __VLS_asFunctionalComponent(__VLS_88, new __VLS_88({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.pagination.current),
     pageSize: (__VLS_ctx.pagination.pageSize),
     total: (__VLS_ctx.pagination.total),
     pageSizeOptions: ([20, 50, 100]),
 }));
-const __VLS_82 = __VLS_81({
+const __VLS_90 = __VLS_89({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.pagination.current),
     pageSize: (__VLS_ctx.pagination.pageSize),
     total: (__VLS_ctx.pagination.total),
     pageSizeOptions: ([20, 50, 100]),
-}, ...__VLS_functionalComponentArgsRest(__VLS_81));
-let __VLS_84;
-let __VLS_85;
-let __VLS_86;
-const __VLS_87 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_89));
+let __VLS_92;
+let __VLS_93;
+let __VLS_94;
+const __VLS_95 = {
     onChange: (__VLS_ctx.onPageChange)
 };
-var __VLS_83;
+var __VLS_91;
 /** @type {__VLS_StyleScopedClasses['digest-page']} */ ;
 /** @type {__VLS_StyleScopedClasses['filter-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
