@@ -1,5 +1,5 @@
 /// <reference types="../../../node_modules/.vue-global-types/vue_3.5_0_0_0.d.ts" />
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -20,6 +20,17 @@ const list = ref([]);
 const loading = ref(false);
 const exporting = ref(false);
 const digestRef = ref(null);
+const exportRef = ref(null);
+const exportRows = ref([]); // 导出用:筛选出的全部房源
+const EXPORT_ROWS_PER_PAGE = 22; // 每个PDF页的行数(A4纵向约容纳)
+const exportChunks = computed(() => {
+    const rows = exportRows.value;
+    const chunks = [];
+    for (let i = 0; i < rows.length; i += EXPORT_ROWS_PER_PAGE) {
+        chunks.push(rows.slice(i, i + EXPORT_ROWS_PER_PAGE));
+    }
+    return chunks;
+});
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const districtOptions = computed(() => {
     if (filters.city_id === 310000)
@@ -59,21 +70,25 @@ function fmtDate(s) {
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+function buildBaseParams() {
+    const params = { sort_by: 'digest' };
+    if (filters.city_id)
+        params.city_id = filters.city_id;
+    if (filters.district)
+        params.district = filters.district;
+    // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
+    const statuses = [];
+    if (filters.statusLive)
+        statuses.push('进行中');
+    if (filters.statusUpcoming)
+        statuses.push('即将开拍');
+    params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',');
+    return params;
+}
 async function loadData() {
     loading.value = true;
     try {
-        const params = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'digest' };
-        if (filters.city_id)
-            params.city_id = filters.city_id;
-        if (filters.district)
-            params.district = filters.district;
-        // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
-        const statuses = [];
-        if (filters.statusLive)
-            statuses.push('进行中');
-        if (filters.statusUpcoming)
-            statuses.push('即将开拍');
-        params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',');
+        const params = { ...buildBaseParams(), page: pagination.current, page_size: pagination.pageSize };
         const data = await listProperties(params);
         list.value = data.items || [];
         pagination.total = data.total || 0;
@@ -96,42 +111,76 @@ function onPageChange(pageInfo) {
     }
     loadData();
 }
+// 拉取筛选条件下的全部房源(翻遍所有页)
+async function fetchAllRows() {
+    const base = buildBaseParams();
+    const pageSize = 100;
+    const all = [];
+    let page = 1;
+    let total = Infinity;
+    // 上限保护:最多 100 页(1万条),避免异常无限循环
+    while (all.length < total && page <= 100) {
+        const data = await listProperties({ ...base, page, page_size: pageSize });
+        const items = data.items || [];
+        all.push(...items);
+        total = data.total || 0;
+        if (items.length === 0)
+            break;
+        page += 1;
+    }
+    return all;
+}
 async function onExportPdf() {
-    if (!digestRef.value || list.value.length === 0) {
+    if (pagination.total === 0) {
         MessagePlugin.warning('当前无数据可导出');
         return;
     }
     exporting.value = true;
+    const loadingMsg = MessagePlugin.loading('正在生成 PDF,请稍候...', 0);
     try {
-        const canvas = await html2canvas(digestRef.value, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        // A4 纵向,两侧留 15mm 页边距,顶部/底部 12mm
+        // 1. 拉取筛选出的全部房源
+        exportRows.value = await fetchAllRows();
+        if (exportRows.value.length === 0) {
+            MessagePlugin.warning('当前无数据可导出');
+            return;
+        }
+        // 2. 等待隐藏导出区域按分块渲染完成
+        await nextTick();
+        await new Promise(r => setTimeout(r, 60));
+        const pages = exportRef.value?.querySelectorAll('.export-page');
+        if (!pages || pages.length === 0)
+            throw new Error('no export pages');
+        // 3. 逐块(每块=1个PDF页)截图,行不会被从中间切断
         const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW = pdf.internal.pageSize.getWidth(); // 210mm
         const pageH = pdf.internal.pageSize.getHeight(); // 297mm
         const marginX = 15;
         const marginY = 12;
-        const imgW = pageW - marginX * 2;
-        const imgH = (canvas.height * imgW) / canvas.width;
-        const usableH = pageH - marginY * 2;
-        let heightLeft = imgH;
-        let position = marginY;
-        pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH);
-        heightLeft -= usableH;
-        while (heightLeft > 0) {
-            position = position - usableH;
-            pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH);
-            heightLeft -= usableH;
+        const maxW = pageW - marginX * 2;
+        const maxH = pageH - marginY * 2;
+        for (let i = 0; i < pages.length; i++) {
+            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            let imgW = maxW;
+            let imgH = (canvas.height * imgW) / canvas.width;
+            if (imgH > maxH) {
+                imgH = maxH;
+                imgW = (canvas.width * imgH) / canvas.height;
+            } // 单块超高则按高约束
+            if (i > 0)
+                pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH);
         }
         const today = new Date().toISOString().slice(0, 10);
         pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`);
-        MessagePlugin.success('PDF 已导出');
+        MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`);
     }
     catch (e) {
         MessagePlugin.error('导出失败,请重试');
     }
     finally {
+        loadingMsg.then((m) => m.close?.()).catch(() => { });
+        exportRows.value = [];
         exporting.value = false;
     }
 }
@@ -517,6 +566,128 @@ if (!__VLS_ctx.loading && __VLS_ctx.list.length === 0) {
     });
 }
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+    ...{ class: "export-holder" },
+    'aria-hidden': "true",
+});
+__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+    ref: "exportRef",
+});
+/** @type {typeof __VLS_ctx.exportRef} */ ;
+for (const [chunk, ci] of __VLS_getVForSourceType((__VLS_ctx.exportChunks))) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        key: (ci),
+        ...{ class: "export-page digest-sheet" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "sheet-header" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "sheet-title-wrap" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "sheet-title" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "sheet-subtitle" },
+    });
+    if (__VLS_ctx.cityLabel) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+        (__VLS_ctx.cityLabel);
+    }
+    if (__VLS_ctx.filters.district) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+        (__VLS_ctx.filters.district);
+    }
+    if (__VLS_ctx.rangeLabel) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+        (__VLS_ctx.rangeLabel);
+    }
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+        ...{ class: "sheet-count" },
+    });
+    (__VLS_ctx.exportRows.length);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+        ...{ class: "sheet-page" },
+    });
+    (ci + 1);
+    (__VLS_ctx.exportChunks.length);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "brand-box" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.img)({
+        ...{ class: "brand-logo" },
+        src: (__VLS_ctx.logoUrl),
+        alt: "法拍者联盟",
+        crossorigin: "anonymous",
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+        ...{ class: "brand-name" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.table, __VLS_intrinsicElements.table)({
+        ...{ class: "digest-table" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.thead, __VLS_intrinsicElements.thead)({});
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({});
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.tbody, __VLS_intrinsicElements.tbody)({});
+    for (const [row, i] of __VLS_getVForSourceType((chunk))) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({
+            key: (row.id),
+            ...{ class: ({ 'row-alt': i % 2 === 1 }) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+        (__VLS_ctx.cityName(row.city_id));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+        (row.district || '-');
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+            ...{ class: "td-title" },
+        });
+        (row.title || '-');
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+        (row.community_name || '-');
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+        (__VLS_ctx.fmtArea(row.area));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+            ...{ class: "td-price" },
+        });
+        (__VLS_ctx.fmtWan(row.starting_price));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+        (__VLS_ctx.fmtWan(row.appraisal_price));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+            ...{ class: "td-time" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({});
+        (__VLS_ctx.fmtDate(row.auction_start_time));
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "td-time-end" },
+        });
+        (__VLS_ctx.fmtDate(row.auction_end_time));
+    }
+}
+__VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "pager" },
 });
 const __VLS_88 = {}.TPagination;
@@ -563,6 +734,23 @@ var __VLS_91;
 /** @type {__VLS_StyleScopedClasses['td-time']} */ ;
 /** @type {__VLS_StyleScopedClasses['td-time-end']} */ ;
 /** @type {__VLS_StyleScopedClasses['empty-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-holder']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-page']} */ ;
+/** @type {__VLS_StyleScopedClasses['digest-sheet']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-header']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-title-wrap']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-subtitle']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-count']} */ ;
+/** @type {__VLS_StyleScopedClasses['sheet-page']} */ ;
+/** @type {__VLS_StyleScopedClasses['brand-box']} */ ;
+/** @type {__VLS_StyleScopedClasses['brand-logo']} */ ;
+/** @type {__VLS_StyleScopedClasses['brand-name']} */ ;
+/** @type {__VLS_StyleScopedClasses['digest-table']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-price']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-time']} */ ;
+/** @type {__VLS_StyleScopedClasses['td-time-end']} */ ;
 /** @type {__VLS_StyleScopedClasses['pager']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
@@ -574,6 +762,9 @@ const __VLS_self = (await import('vue')).defineComponent({
             loading: loading,
             exporting: exporting,
             digestRef: digestRef,
+            exportRef: exportRef,
+            exportRows: exportRows,
+            exportChunks: exportChunks,
             pagination: pagination,
             districtOptions: districtOptions,
             cityLabel: cityLabel,

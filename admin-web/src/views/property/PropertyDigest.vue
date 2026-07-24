@@ -79,6 +79,59 @@
       </table>
     </div>
 
+    <!-- 隐藏的导出区域:渲染筛选出的全部房源,按页分块(每块带品牌页眉+表头),逐块生成PDF页 -->
+    <div class="export-holder" aria-hidden="true">
+      <div ref="exportRef">
+        <div v-for="(chunk, ci) in exportChunks" :key="ci" class="export-page digest-sheet">
+          <div class="sheet-header">
+            <div class="sheet-title-wrap">
+              <div class="sheet-title">最新法拍房源捡漏清单</div>
+              <div class="sheet-subtitle">
+                <span v-if="cityLabel">{{ cityLabel }}</span>
+                <span v-if="filters.district"> · {{ filters.district }}</span>
+                <span v-if="rangeLabel"> · {{ rangeLabel }}</span>
+                <span class="sheet-count">共 {{ exportRows.length }} 套</span>
+                <span class="sheet-page">第 {{ ci + 1 }}/{{ exportChunks.length }} 页</span>
+              </div>
+            </div>
+            <div class="brand-box">
+              <img class="brand-logo" :src="logoUrl" alt="法拍者联盟" crossorigin="anonymous" />
+              <span class="brand-name">法拍者联盟</span>
+            </div>
+          </div>
+          <table class="digest-table">
+            <thead>
+              <tr>
+                <th style="width:56px">城市</th>
+                <th style="width:76px">区县</th>
+                <th style="width:22%">法拍房源名称</th>
+                <th style="width:120px">小区名</th>
+                <th style="width:68px">面积(㎡)</th>
+                <th style="width:92px">起拍价(万)</th>
+                <th style="width:92px">评估价(万)</th>
+                <th style="width:150px">开拍时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in chunk" :key="row.id" :class="{ 'row-alt': i % 2 === 1 }">
+                <td>{{ cityName(row.city_id) }}</td>
+                <td>{{ row.district || '-' }}</td>
+                <td class="td-title">{{ row.title || '-' }}</td>
+                <td>{{ row.community_name || '-' }}</td>
+                <td>{{ fmtArea(row.area) }}</td>
+                <td class="td-price">{{ fmtWan(row.starting_price) }}</td>
+                <td>{{ fmtWan(row.appraisal_price) }}</td>
+                <td class="td-time">
+                  <div>{{ fmtDate(row.auction_start_time) }}</div>
+                  <div class="td-time-end">至 {{ fmtDate(row.auction_end_time) }}</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="pager">
       <t-pagination
         v-model="pagination.current"
@@ -92,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -115,6 +168,17 @@ const list = ref<any[]>([])
 const loading = ref(false)
 const exporting = ref(false)
 const digestRef = ref<HTMLElement | null>(null)
+const exportRef = ref<HTMLElement | null>(null)
+const exportRows = ref<any[]>([])           // 导出用:筛选出的全部房源
+const EXPORT_ROWS_PER_PAGE = 22             // 每个PDF页的行数(A4纵向约容纳)
+const exportChunks = computed<any[][]>(() => {
+  const rows = exportRows.value
+  const chunks: any[][] = []
+  for (let i = 0; i < rows.length; i += EXPORT_ROWS_PER_PAGE) {
+    chunks.push(rows.slice(i, i + EXPORT_ROWS_PER_PAGE))
+  }
+  return chunks
+})
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 
 const districtOptions = computed(() => {
@@ -148,17 +212,22 @@ function fmtDate(s: string | null) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
+function buildBaseParams() {
+  const params: any = { sort_by: 'digest' }
+  if (filters.city_id) params.city_id = filters.city_id
+  if (filters.district) params.district = filters.district
+  // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
+  const statuses: string[] = []
+  if (filters.statusLive) statuses.push('进行中')
+  if (filters.statusUpcoming) statuses.push('即将开拍')
+  params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',')
+  return params
+}
+
 async function loadData() {
   loading.value = true
   try {
-    const params: any = { page: pagination.current, page_size: pagination.pageSize, sort_by: 'digest' }
-    if (filters.city_id) params.city_id = filters.city_id
-    if (filters.district) params.district = filters.district
-    // 状态复选 → auction_status(逗号分隔多值)。都不选时默认两者都要(仍限可参拍)
-    const statuses: string[] = []
-    if (filters.statusLive) statuses.push('进行中')
-    if (filters.statusUpcoming) statuses.push('即将开拍')
-    params.auction_status = (statuses.length ? statuses : ['进行中', '即将开拍']).join(',')
+    const params: any = { ...buildBaseParams(), page: pagination.current, page_size: pagination.pageSize }
     const data: any = await listProperties(params)
     list.value = data.items || []
     pagination.total = data.total || 0
@@ -181,40 +250,70 @@ function onPageChange(pageInfo: any) {
   loadData()
 }
 
+// 拉取筛选条件下的全部房源(翻遍所有页)
+async function fetchAllRows(): Promise<any[]> {
+  const base = buildBaseParams()
+  const pageSize = 100
+  const all: any[] = []
+  let page = 1
+  let total = Infinity
+  // 上限保护:最多 100 页(1万条),避免异常无限循环
+  while (all.length < total && page <= 100) {
+    const data: any = await listProperties({ ...base, page, page_size: pageSize })
+    const items = data.items || []
+    all.push(...items)
+    total = data.total || 0
+    if (items.length === 0) break
+    page += 1
+  }
+  return all
+}
+
 async function onExportPdf() {
-  if (!digestRef.value || list.value.length === 0) {
+  if (pagination.total === 0) {
     MessagePlugin.warning('当前无数据可导出')
     return
   }
   exporting.value = true
+  const loadingMsg = MessagePlugin.loading('正在生成 PDF,请稍候...', 0)
   try {
-    const canvas = await html2canvas(digestRef.value, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-    const imgData = canvas.toDataURL('image/jpeg', 0.92)
-    // A4 纵向,两侧留 15mm 页边距,顶部/底部 12mm
+    // 1. 拉取筛选出的全部房源
+    exportRows.value = await fetchAllRows()
+    if (exportRows.value.length === 0) {
+      MessagePlugin.warning('当前无数据可导出')
+      return
+    }
+    // 2. 等待隐藏导出区域按分块渲染完成
+    await nextTick()
+    await new Promise(r => setTimeout(r, 60))
+    const pages = exportRef.value?.querySelectorAll('.export-page')
+    if (!pages || pages.length === 0) throw new Error('no export pages')
+
+    // 3. 逐块(每块=1个PDF页)截图,行不会被从中间切断
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()   // 210mm
     const pageH = pdf.internal.pageSize.getHeight()  // 297mm
     const marginX = 15
     const marginY = 12
-    const imgW = pageW - marginX * 2
-    const imgH = (canvas.height * imgW) / canvas.width
-    const usableH = pageH - marginY * 2
-    let heightLeft = imgH
-    let position = marginY
-    pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH)
-    heightLeft -= usableH
-    while (heightLeft > 0) {
-      position = position - usableH
-      pdf.addPage()
-      pdf.addImage(imgData, 'JPEG', marginX, position, imgW, imgH)
-      heightLeft -= usableH
+    const maxW = pageW - marginX * 2
+    const maxH = pageH - marginY * 2
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i] as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const imgData = canvas.toDataURL('image/jpeg', 0.92)
+      let imgW = maxW
+      let imgH = (canvas.height * imgW) / canvas.width
+      if (imgH > maxH) { imgH = maxH; imgW = (canvas.width * imgH) / canvas.height }  // 单块超高则按高约束
+      if (i > 0) pdf.addPage()
+      pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH)
     }
     const today = new Date().toISOString().slice(0, 10)
     pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`)
-    MessagePlugin.success('PDF 已导出')
+    MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`)
   } catch (e) {
     MessagePlugin.error('导出失败,请重试')
   } finally {
+    loadingMsg.then((m: any) => m.close?.()).catch(() => {})
+    exportRows.value = []
     exporting.value = false
   }
 }
@@ -228,6 +327,11 @@ onMounted(() => loadData())
 .search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .search-bar .spacer { flex: 1; }
 .status-filter { display: flex; align-items: center; gap: 16px; padding: 0 4px; }
+
+/* 隐藏导出区域:移出视口(不能用display:none,否则html2canvas截不到) */
+.export-holder { position: absolute; left: -99999px; top: 0; width: 800px; }
+.export-page { width: 800px; margin-bottom: 20px; box-sizing: border-box; }
+.sheet-page { margin-left: 12px; color: #8a97ad; font-weight: 500; }
 
 /* 可导出清单区域:白底 */
 .digest-sheet {
