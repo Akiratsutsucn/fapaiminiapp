@@ -13,7 +13,7 @@ const ALL_MENUS = [
     { path: '/ai-assistant', label: 'AI助手', icon: 'chat', roles: ['admin'] },
     { path: '/users', label: '用户管理', icon: 'user', roles: ['admin', 'leader'] },
     { path: '/properties', label: '房源管理', icon: 'home', roles: ['admin', 'leader'] },
-    { path: '/property-digest', label: '房源清单', icon: 'list', roles: ['admin', 'leader', 'agent', 'salesperson'] },
+    { path: '/property-digest', label: '房源清单', icon: 'view-list', roles: ['admin', 'leader', 'agent', 'salesperson'] },
     { path: '/demands', label: '需求管理', icon: 'task', roles: ['admin', 'leader'] },
     { path: '/articles', label: '文章管理', icon: 'file-paste', roles: ['admin', 'leader', 'content_manager'] },
     { path: '/banners', label: '横幅管理', icon: 'image', roles: ['admin', 'leader', 'content_manager'] },
