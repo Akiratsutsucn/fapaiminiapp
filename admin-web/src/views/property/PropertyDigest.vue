@@ -57,7 +57,7 @@
             <th style="width:80px">面积(㎡)</th>
             <th style="width:110px">起拍价(万)</th>
             <th style="width:110px">评估价(万)</th>
-            <th style="width:150px">开拍时间</th>
+            <th style="width:170px">开拍时间</th>
           </tr>
         </thead>
         <tbody>
@@ -242,18 +242,16 @@ onMounted(() => loadData())
 .sheet-title { font-size: 26px; font-weight: 800; color: #1a2f52; letter-spacing: 2px; }
 .sheet-subtitle { margin-top: 8px; font-size: 14px; color: #5a6b85; }
 .sheet-count { margin-left: 12px; color: #1a56db; font-weight: 600; }
-/* 右上角:白底 LOGO + 文字 */
+/* 右上角:白底 LOGO + 文字(无圆角/无边框) */
 .brand-box {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   background: #ffffff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid #e3e9f2;
+  padding: 4px 8px;
 }
-.brand-logo { width: 44px; height: 44px; object-fit: contain; }
-.brand-name { font-size: 20px; font-weight: 700; color: #1a2f52; letter-spacing: 1px; }
+.brand-logo { width: 64px; height: 64px; object-fit: contain; }
+.brand-name { font-size: 30px; font-weight: 800; color: #1a2f52; letter-spacing: 2px; }
 
 /* 清单表格:蓝色风格 + 斑马纹 */
 .digest-table { width: 100%; border-collapse: collapse; font-size: 13px; }
