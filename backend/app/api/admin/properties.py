@@ -65,8 +65,12 @@ async def list_properties_admin(
         # 前端传 "1"/"0" → 有/无电梯
         conditions.append(Property.has_elevator == (has_elevator in ("1", "true", "有")))
     if auction_status:
-        # 按实时计算状态筛选，与小程序端口径一致
-        conditions.append(effective_status_sql() == auction_status)
+        # 按实时计算状态筛选，与小程序端口径一致。支持逗号分隔多值(如"进行中,即将开拍")。
+        _st_list = [s.strip() for s in auction_status.split(",") if s.strip()]
+        if len(_st_list) == 1:
+            conditions.append(effective_status_sql() == _st_list[0])
+        elif len(_st_list) > 1:
+            conditions.append(effective_status_sql().in_(_st_list))
     if auction_round:
         conditions.append(Property.auction_round == auction_round)
 
@@ -75,10 +79,22 @@ async def list_properties_admin(
         count_q = count_q.where(and_(*conditions))
     total = (await db.execute(count_q)).scalar() or 0
 
-    order_col = getattr(Property, sort_by, Property.created_at) if sort_by in ALLOWED_STATUS_SORT else Property.created_at
-    order_clause = order_col.asc() if sort_order == "asc" else order_col.desc()
+    if sort_by == "digest":
+        # 房源清单专用：进行中(拍卖中)排在即将开拍上方，各组内按拍卖结束时间升序。
+        from sqlalchemy import case as _case
+        _st = effective_status_sql()
+        status_rank = _case((_st == "进行中", 0), (_st == "即将开拍", 1), else_=2)
+        order_clauses = [
+            status_rank.asc(),
+            Property.auction_end_time.is_(None).asc(),
+            Property.auction_end_time.asc(),
+            Property.id.asc(),
+        ]
+    else:
+        order_col = getattr(Property, sort_by, Property.created_at) if sort_by in ALLOWED_STATUS_SORT else Property.created_at
+        order_clauses = [order_col.asc() if sort_order == "asc" else order_col.desc()]
 
-    q = select(Property).order_by(order_clause).offset((page - 1) * page_size).limit(page_size)
+    q = select(Property).order_by(*order_clauses).offset((page - 1) * page_size).limit(page_size)
     if conditions:
         q = q.where(and_(*conditions))
     rows = (await db.execute(q)).scalars().all()
