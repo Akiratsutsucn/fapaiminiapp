@@ -1,5 +1,18 @@
 <template>
   <div class="digest-page">
+    <!-- 导出进度遮罩 -->
+    <div v-if="exporting" class="export-overlay">
+      <div class="export-progress-box">
+        <div class="export-progress-title">正在导出 PDF</div>
+        <div class="export-progress-stage">{{ exportStageText }}</div>
+        <div class="export-progress-track">
+          <div class="export-progress-fill" :style="{ width: exportProgress + '%' }"></div>
+        </div>
+        <div class="export-progress-percent">{{ exportProgress }}%</div>
+        <div class="export-progress-tip">房源较多时需要一些时间，请勿关闭页面</div>
+      </div>
+    </div>
+
     <!-- 筛选栏 -->
     <t-card class="filter-card" :bordered="false">
       <div class="search-bar">
@@ -185,6 +198,8 @@ const filters = reactive({
 const list = ref<any[]>([])
 const loading = ref(false)
 const exporting = ref(false)
+const exportProgress = ref(0)               // 导出进度 0-100
+const exportStageText = ref('')             // 导出阶段文案
 const digestRef = ref<HTMLElement | null>(null)
 const exportRef = ref<HTMLElement | null>(null)
 const exportHolderRef = ref<HTMLElement | null>(null)
@@ -265,8 +280,8 @@ function onPageChange(pageInfo: any) {
   loadData()
 }
 
-// 拉取筛选条件下的全部房源(翻遍所有页)
-async function fetchAllRows(): Promise<any[]> {
+// 拉取筛选条件下的全部房源(翻遍所有页)。onProgress 回传已拉取比例(0-1)
+async function fetchAllRows(onProgress?: (ratio: number) => void): Promise<any[]> {
   const base = buildBaseParams()
   const pageSize = 100
   const all: any[] = []
@@ -278,6 +293,7 @@ async function fetchAllRows(): Promise<any[]> {
     const items = data.items || []
     all.push(...items)
     total = data.total || 0
+    if (total > 0) onProgress?.(Math.min(1, all.length / total))
     if (items.length === 0) break
     page += 1
   }
@@ -290,14 +306,19 @@ async function onExportPdf() {
     return
   }
   exporting.value = true
-  const loadingMsg = MessagePlugin.loading('正在生成 PDF,请稍候...', 0)
+  exportProgress.value = 0
+  exportStageText.value = '正在获取房源数据...'
   try {
-    // 1. 拉取筛选出的全部房源
-    exportRows.value = await fetchAllRows()
+    // 1. 拉取筛选出的全部房源(占进度 0-25%)
+    exportRows.value = await fetchAllRows(ratio => {
+      exportProgress.value = Math.round(ratio * 25)
+    })
     if (exportRows.value.length === 0) {
       MessagePlugin.warning('当前无数据可导出')
       return
     }
+    exportProgress.value = 25
+    exportStageText.value = '正在排版...'
     // 2. 先渲染测量表,按实测行高动态分页(保证每页内容不超过A4高度,长标题也不溢出)
     exportChunks.value = []
     await nextTick()
@@ -335,6 +356,7 @@ async function onExportPdf() {
     const marginY = 10
     const maxW = pageW - marginX * 2
     for (let i = 0; i < pages.length; i++) {
+      exportStageText.value = `正在生成第 ${i + 1} / ${pages.length} 页...`
       const el = pages[i] as HTMLElement
       const canvas = await html2canvas(el, {
         scale: 2,
@@ -355,17 +377,27 @@ async function onExportPdf() {
       const imgH = (canvas.height * imgW) / canvas.width
       if (i > 0) pdf.addPage()
       pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH)
+      // 渲染阶段占进度 25-98%
+      exportProgress.value = 25 + Math.round(((i + 1) / pages.length) * 73)
+      // 让进度条有机会重绘(html2canvas同步阻塞,主动让出一帧)
+      await new Promise(r => setTimeout(r, 0))
     }
+    exportStageText.value = '正在保存文件...'
+    exportProgress.value = 99
     const today = new Date().toISOString().slice(0, 10)
     pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`)
+    exportProgress.value = 100
     MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`)
   } catch (e) {
     MessagePlugin.error('导出失败,请重试')
   } finally {
-    loadingMsg.then((m: any) => m.close?.()).catch(() => {})
+    // 让用户看到100%完成态再关闭遮罩
+    if (exportProgress.value >= 100) await new Promise(r => setTimeout(r, 400))
     exportRows.value = []
     exportChunks.value = []
     exporting.value = false
+    exportProgress.value = 0
+    exportStageText.value = ''
   }
 }
 
@@ -375,6 +407,43 @@ onMounted(() => loadData())
 <style scoped>
 .digest-page { padding: 16px; }
 .filter-card { margin-bottom: 16px; }
+
+/* 导出进度遮罩 */
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(26, 47, 82, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.export-progress-box {
+  width: 420px;
+  max-width: 86vw;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 28px 32px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+.export-progress-title { font-size: 18px; font-weight: 700; color: #1a2f52; }
+.export-progress-stage { margin-top: 8px; font-size: 13px; color: #5a6b85; min-height: 18px; }
+.export-progress-track {
+  margin-top: 18px;
+  height: 10px;
+  border-radius: 6px;
+  background: #eef2f8;
+  overflow: hidden;
+}
+.export-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #1a56db, #3b82f6);
+  transition: width 0.25s ease;
+}
+.export-progress-percent { margin-top: 10px; font-size: 20px; font-weight: 700; color: #1a56db; }
+.export-progress-tip { margin-top: 6px; font-size: 12px; color: #9aa5b8; }
 .search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .search-bar .spacer { flex: 1; }
 .status-filter { display: flex; align-items: center; gap: 16px; padding: 0 4px; }

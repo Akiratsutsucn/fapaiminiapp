@@ -19,6 +19,8 @@ const filters = reactive({
 const list = ref([]);
 const loading = ref(false);
 const exporting = ref(false);
+const exportProgress = ref(0); // 导出进度 0-100
+const exportStageText = ref(''); // 导出阶段文案
 const digestRef = ref(null);
 const exportRef = ref(null);
 const exportHolderRef = ref(null);
@@ -108,8 +110,8 @@ function onPageChange(pageInfo) {
     }
     loadData();
 }
-// 拉取筛选条件下的全部房源(翻遍所有页)
-async function fetchAllRows() {
+// 拉取筛选条件下的全部房源(翻遍所有页)。onProgress 回传已拉取比例(0-1)
+async function fetchAllRows(onProgress) {
     const base = buildBaseParams();
     const pageSize = 100;
     const all = [];
@@ -121,6 +123,8 @@ async function fetchAllRows() {
         const items = data.items || [];
         all.push(...items);
         total = data.total || 0;
+        if (total > 0)
+            onProgress?.(Math.min(1, all.length / total));
         if (items.length === 0)
             break;
         page += 1;
@@ -133,14 +137,19 @@ async function onExportPdf() {
         return;
     }
     exporting.value = true;
-    const loadingMsg = MessagePlugin.loading('正在生成 PDF,请稍候...', 0);
+    exportProgress.value = 0;
+    exportStageText.value = '正在获取房源数据...';
     try {
-        // 1. 拉取筛选出的全部房源
-        exportRows.value = await fetchAllRows();
+        // 1. 拉取筛选出的全部房源(占进度 0-25%)
+        exportRows.value = await fetchAllRows(ratio => {
+            exportProgress.value = Math.round(ratio * 25);
+        });
         if (exportRows.value.length === 0) {
             MessagePlugin.warning('当前无数据可导出');
             return;
         }
+        exportProgress.value = 25;
+        exportStageText.value = '正在排版...';
         // 2. 先渲染测量表,按实测行高动态分页(保证每页内容不超过A4高度,长标题也不溢出)
         exportChunks.value = [];
         await nextTick();
@@ -181,6 +190,7 @@ async function onExportPdf() {
         const marginY = 10;
         const maxW = pageW - marginX * 2;
         for (let i = 0; i < pages.length; i++) {
+            exportStageText.value = `正在生成第 ${i + 1} / ${pages.length} 页...`;
             const el = pages[i];
             const canvas = await html2canvas(el, {
                 scale: 2,
@@ -205,19 +215,30 @@ async function onExportPdf() {
             if (i > 0)
                 pdf.addPage();
             pdf.addImage(imgData, 'JPEG', marginX, marginY, imgW, imgH);
+            // 渲染阶段占进度 25-98%
+            exportProgress.value = 25 + Math.round(((i + 1) / pages.length) * 73);
+            // 让进度条有机会重绘(html2canvas同步阻塞,主动让出一帧)
+            await new Promise(r => setTimeout(r, 0));
         }
+        exportStageText.value = '正在保存文件...';
+        exportProgress.value = 99;
         const today = new Date().toISOString().slice(0, 10);
         pdf.save(`最新法拍房源捡漏清单_${cityNameForFile()}_${today}.pdf`);
+        exportProgress.value = 100;
         MessagePlugin.success(`PDF 已导出(共 ${exportRows.value.length} 套 / ${pages.length} 页)`);
     }
     catch (e) {
         MessagePlugin.error('导出失败,请重试');
     }
     finally {
-        loadingMsg.then((m) => m.close?.()).catch(() => { });
+        // 让用户看到100%完成态再关闭遮罩
+        if (exportProgress.value >= 100)
+            await new Promise(r => setTimeout(r, 400));
         exportRows.value = [];
         exportChunks.value = [];
         exporting.value = false;
+        exportProgress.value = 0;
+        exportStageText.value = '';
     }
 }
 onMounted(() => loadData());
@@ -238,6 +259,35 @@ let __VLS_directives;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "digest-page" },
 });
+if (__VLS_ctx.exporting) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-overlay" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-box" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-title" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-stage" },
+    });
+    (__VLS_ctx.exportStageText);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-track" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-fill" },
+        ...{ style: ({ width: __VLS_ctx.exportProgress + '%' }) },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-percent" },
+    });
+    (__VLS_ctx.exportProgress);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "export-progress-tip" },
+    });
+}
 const __VLS_0 = {}.TCard;
 /** @type {[typeof __VLS_components.TCard, typeof __VLS_components.tCard, typeof __VLS_components.TCard, typeof __VLS_components.tCard, ]} */ ;
 // @ts-ignore
@@ -805,6 +855,14 @@ const __VLS_95 = {
 };
 var __VLS_91;
 /** @type {__VLS_StyleScopedClasses['digest-page']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-overlay']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-box']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-title']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-stage']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-track']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-fill']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-percent']} */ ;
+/** @type {__VLS_StyleScopedClasses['export-progress-tip']} */ ;
 /** @type {__VLS_StyleScopedClasses['filter-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
 /** @type {__VLS_StyleScopedClasses['status-filter']} */ ;
@@ -857,6 +915,8 @@ const __VLS_self = (await import('vue')).defineComponent({
             list: list,
             loading: loading,
             exporting: exporting,
+            exportProgress: exportProgress,
+            exportStageText: exportStageText,
             digestRef: digestRef,
             exportRef: exportRef,
             exportHolderRef: exportHolderRef,
