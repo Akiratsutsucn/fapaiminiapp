@@ -11,6 +11,8 @@
   "dependencies": {
     "@vueuse/core": "^11.0.0",
     "axios": "^1.7.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "marked": "^18.0.5",
     "pinia": "^2.2.0",
     "tdesign-icons-vue-next": "^0.3.0",

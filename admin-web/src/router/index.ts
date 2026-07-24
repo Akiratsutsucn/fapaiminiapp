@@ -8,6 +8,7 @@ const ADMIN_ONLY = ['admin']
 const ADMIN_OR_LEADER = ['admin', 'leader']
 const CONTENT_MANAGER = ['admin', 'leader', 'content_manager']  // 文章/横幅:含leader(只读)
 const CONTENT_TOOLS = ['admin', 'leader']  // 爬虫等内容工具:leader可见,content_manager不可
+const DIGEST_ROLES = ['admin', 'leader', 'agent', 'salesperson']  // 房源清单:代理商/业务员/领导/管理员可用
 
 const routes: RouteRecordRaw[] = [
   {
@@ -31,6 +32,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'ai-assistant', name: 'AiAssistant', component: () => import('@/views/ai/AiAssistantView.vue'), meta: { title: 'AI助手', roles: ADMIN_ONLY } },
       { path: 'users', name: 'Users', component: () => import('@/views/user/UserList.vue'), meta: { title: '用户管理', roles: ADMIN_OR_LEADER } },
       { path: 'properties', name: 'Properties', component: () => import('@/views/property/PropertyList.vue'), meta: { title: '房源管理', roles: ADMIN_OR_LEADER } },
+      { path: 'property-digest', name: 'PropertyDigest', component: () => import('@/views/property/PropertyDigest.vue'), meta: { title: '房源清单', roles: DIGEST_ROLES } },
       { path: 'properties/edit/:id?', name: 'PropertyEdit', component: () => import('@/views/property/PropertyEdit.vue'), meta: { title: '房源编辑', roles: ADMIN_ONLY } },
       { path: 'demands', name: 'Demands', component: () => import('@/views/demand/DemandList.vue'), meta: { title: '需求管理', roles: ADMIN_OR_LEADER } },
       { path: 'articles', name: 'Articles', component: () => import('@/views/article/ArticleList.vue'), meta: { title: '文章管理', roles: CONTENT_MANAGER } },
@@ -47,6 +49,8 @@ const routes: RouteRecordRaw[] = [
 // 内容管理员无 dashboard 权限,固定跳 dashboard 会被守卫拦成 403——故按角色取首个可达页。
 export function firstAccessiblePath(role: string): string {
   if (role === 'content_manager') return '/articles'
+  // 代理商/业务员无看板权限,落到房源清单
+  if (role === 'agent' || role === 'salesperson') return '/property-digest'
   // admin / leader 都能看 dashboard
   return '/dashboard'
 }
@@ -74,6 +78,7 @@ router.beforeEach((to, _from, next) => {
   // 访问根/看板时,内容管理员(无看板权限)重定向到其可达首页,避免落到无权页被拦
   if ((to.path === '/' || to.path === '/dashboard') && role) {
     if (role === 'content_manager') return next('/articles')
+    if (role === 'agent' || role === 'salesperson') return next('/property-digest')
   }
 
   // 已登录的角色权限校验

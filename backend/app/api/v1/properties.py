@@ -100,12 +100,14 @@ async def list_properties(
     discount_max: float | None = Query(None, description="折扣上限(如0.65)，捡漏入口用"),
     listed_day: str | None = Query(None, description="上架日筛选：yesterday=昨日上架(真实上架日期)"),
     sold_day: str | None = Query(None, description="成交日筛选：yesterday=昨日成交(真实结束日期)"),
+    start_from: str | None = Query(None, description="开拍时间下限(YYYY-MM-DD 或 ISO)，房源清单用"),
+    start_to: str | None = Query(None, description="开拍时间上限(YYYY-MM-DD 或 ISO)，房源清单用"),
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    from datetime import date as _date, timedelta as _timedelta
+    from datetime import date as _date, timedelta as _timedelta, datetime, time as dt_time
 
     def _multi(v):
         """逗号分隔的多值参数 → 去空白的列表；单值也兼容。"""
@@ -119,6 +121,19 @@ async def list_properties(
         conditions.append(Property.city_id == city_id)
     if district:
         conditions.append(Property.district == district)
+    # 开拍时间范围筛选(房源清单用)。start_from 取当天 00:00,start_to 取当天 23:59:59。
+    if start_from:
+        try:
+            _sf = _date.fromisoformat(start_from[:10])
+            conditions.append(Property.auction_start_time >= datetime.combine(_sf, dt_time.min))
+        except (ValueError, TypeError):
+            pass
+    if start_to:
+        try:
+            _st = _date.fromisoformat(start_to[:10])
+            conditions.append(Property.auction_start_time <= datetime.combine(_st, dt_time.max))
+        except (ValueError, TypeError):
+            pass
     if price_min is not None:
         conditions.append(Property.starting_price >= price_min)
     if price_max is not None:
