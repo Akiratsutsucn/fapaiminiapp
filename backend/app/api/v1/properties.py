@@ -236,6 +236,7 @@ async def list_properties(
         items.append(PropertyListItem(
             id=p.id,
             title=p.title,
+            city_id=p.city_id,
             district=p.district,
             sub_district=p.sub_district,
             community_name=p.community_name,

@@ -11,6 +11,7 @@
           <t-option :value="371300" label="临沂" />
         </t-select>
         <t-select v-model="filters.district" placeholder="区县" clearable style="width:150px" @change="onSearch">
+          <t-option :value="''" label="全部区县" />
           <t-option v-for="d in districtOptions" :key="d" :value="d" :label="d" />
         </t-select>
         <t-date-range-picker

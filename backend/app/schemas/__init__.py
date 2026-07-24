@@ -120,6 +120,7 @@ class RiskTagOut(BaseModel):
 class PropertyListItem(BaseModel):
     id: int
     title: str = ""
+    city_id: Optional[int] = None
     district: str = ""
     sub_district: Optional[str] = None
     community_name: str = ""

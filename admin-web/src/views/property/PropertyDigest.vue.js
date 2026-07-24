@@ -265,108 +265,119 @@ const __VLS_39 = {
     onChange: (__VLS_ctx.onSearch)
 };
 __VLS_35.slots.default;
+const __VLS_40 = {}.TOption;
+/** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
+// @ts-ignore
+const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
+    value: (''),
+    label: "全部区县",
+}));
+const __VLS_42 = __VLS_41({
+    value: (''),
+    label: "全部区县",
+}, ...__VLS_functionalComponentArgsRest(__VLS_41));
 for (const [d] of __VLS_getVForSourceType((__VLS_ctx.districtOptions))) {
-    const __VLS_40 = {}.TOption;
+    const __VLS_44 = {}.TOption;
     /** @type {[typeof __VLS_components.TOption, typeof __VLS_components.tOption, ]} */ ;
     // @ts-ignore
-    const __VLS_41 = __VLS_asFunctionalComponent(__VLS_40, new __VLS_40({
+    const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
         key: (d),
         value: (d),
         label: (d),
     }));
-    const __VLS_42 = __VLS_41({
+    const __VLS_46 = __VLS_45({
         key: (d),
         value: (d),
         label: (d),
-    }, ...__VLS_functionalComponentArgsRest(__VLS_41));
+    }, ...__VLS_functionalComponentArgsRest(__VLS_45));
 }
 var __VLS_35;
-const __VLS_44 = {}.TDateRangePicker;
+const __VLS_48 = {}.TDateRangePicker;
 /** @type {[typeof __VLS_components.TDateRangePicker, typeof __VLS_components.tDateRangePicker, ]} */ ;
 // @ts-ignore
-const __VLS_45 = __VLS_asFunctionalComponent(__VLS_44, new __VLS_44({
+const __VLS_49 = __VLS_asFunctionalComponent(__VLS_48, new __VLS_48({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.startRange),
     placeholder: "开拍时间范围",
     clearable: true,
     ...{ style: {} },
 }));
-const __VLS_46 = __VLS_45({
+const __VLS_50 = __VLS_49({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.filters.startRange),
     placeholder: "开拍时间范围",
     clearable: true,
     ...{ style: {} },
-}, ...__VLS_functionalComponentArgsRest(__VLS_45));
-let __VLS_48;
-let __VLS_49;
-let __VLS_50;
-const __VLS_51 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_49));
+let __VLS_52;
+let __VLS_53;
+let __VLS_54;
+const __VLS_55 = {
     onChange: (__VLS_ctx.onSearch)
 };
-var __VLS_47;
-const __VLS_52 = {}.TButton;
+var __VLS_51;
+const __VLS_56 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_53 = __VLS_asFunctionalComponent(__VLS_52, new __VLS_52({
+const __VLS_57 = __VLS_asFunctionalComponent(__VLS_56, new __VLS_56({
     ...{ 'onClick': {} },
     theme: "primary",
 }));
-const __VLS_54 = __VLS_53({
+const __VLS_58 = __VLS_57({
     ...{ 'onClick': {} },
     theme: "primary",
-}, ...__VLS_functionalComponentArgsRest(__VLS_53));
-let __VLS_56;
-let __VLS_57;
-let __VLS_58;
-const __VLS_59 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_57));
+let __VLS_60;
+let __VLS_61;
+let __VLS_62;
+const __VLS_63 = {
     onClick: (__VLS_ctx.onSearch)
 };
-__VLS_55.slots.default;
-var __VLS_55;
-const __VLS_60 = {}.TButton;
+__VLS_59.slots.default;
+var __VLS_59;
+const __VLS_64 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_61 = __VLS_asFunctionalComponent(__VLS_60, new __VLS_60({
+const __VLS_65 = __VLS_asFunctionalComponent(__VLS_64, new __VLS_64({
     ...{ 'onClick': {} },
     variant: "outline",
 }));
-const __VLS_62 = __VLS_61({
+const __VLS_66 = __VLS_65({
     ...{ 'onClick': {} },
     variant: "outline",
-}, ...__VLS_functionalComponentArgsRest(__VLS_61));
-let __VLS_64;
-let __VLS_65;
-let __VLS_66;
-const __VLS_67 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_65));
+let __VLS_68;
+let __VLS_69;
+let __VLS_70;
+const __VLS_71 = {
     onClick: (__VLS_ctx.onReset)
 };
-__VLS_63.slots.default;
-var __VLS_63;
+__VLS_67.slots.default;
+var __VLS_67;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "spacer" },
 });
-const __VLS_68 = {}.TButton;
+const __VLS_72 = {}.TButton;
 /** @type {[typeof __VLS_components.TButton, typeof __VLS_components.tButton, typeof __VLS_components.TButton, typeof __VLS_components.tButton, ]} */ ;
 // @ts-ignore
-const __VLS_69 = __VLS_asFunctionalComponent(__VLS_68, new __VLS_68({
+const __VLS_73 = __VLS_asFunctionalComponent(__VLS_72, new __VLS_72({
     ...{ 'onClick': {} },
     theme: "primary",
     loading: (__VLS_ctx.exporting),
 }));
-const __VLS_70 = __VLS_69({
+const __VLS_74 = __VLS_73({
     ...{ 'onClick': {} },
     theme: "primary",
     loading: (__VLS_ctx.exporting),
-}, ...__VLS_functionalComponentArgsRest(__VLS_69));
-let __VLS_72;
-let __VLS_73;
-let __VLS_74;
-const __VLS_75 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_73));
+let __VLS_76;
+let __VLS_77;
+let __VLS_78;
+const __VLS_79 = {
     onClick: (__VLS_ctx.onExportPdf)
 };
-__VLS_71.slots.default;
-var __VLS_71;
+__VLS_75.slots.default;
+var __VLS_75;
 var __VLS_3;
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ref: "digestRef",
@@ -486,30 +497,30 @@ if (!__VLS_ctx.loading && __VLS_ctx.list.length === 0) {
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ class: "pager" },
 });
-const __VLS_76 = {}.TPagination;
+const __VLS_80 = {}.TPagination;
 /** @type {[typeof __VLS_components.TPagination, typeof __VLS_components.tPagination, ]} */ ;
 // @ts-ignore
-const __VLS_77 = __VLS_asFunctionalComponent(__VLS_76, new __VLS_76({
+const __VLS_81 = __VLS_asFunctionalComponent(__VLS_80, new __VLS_80({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.pagination.current),
     pageSize: (__VLS_ctx.pagination.pageSize),
     total: (__VLS_ctx.pagination.total),
     pageSizeOptions: ([20, 50, 100]),
 }));
-const __VLS_78 = __VLS_77({
+const __VLS_82 = __VLS_81({
     ...{ 'onChange': {} },
     modelValue: (__VLS_ctx.pagination.current),
     pageSize: (__VLS_ctx.pagination.pageSize),
     total: (__VLS_ctx.pagination.total),
     pageSizeOptions: ([20, 50, 100]),
-}, ...__VLS_functionalComponentArgsRest(__VLS_77));
-let __VLS_80;
-let __VLS_81;
-let __VLS_82;
-const __VLS_83 = {
+}, ...__VLS_functionalComponentArgsRest(__VLS_81));
+let __VLS_84;
+let __VLS_85;
+let __VLS_86;
+const __VLS_87 = {
     onChange: (__VLS_ctx.onPageChange)
 };
-var __VLS_79;
+var __VLS_83;
 /** @type {__VLS_StyleScopedClasses['digest-page']} */ ;
 /** @type {__VLS_StyleScopedClasses['filter-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['search-bar']} */ ;
