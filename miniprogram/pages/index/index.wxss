@@ -175,11 +175,15 @@
   gap: 12rpx;
 }
 
-/* 全部房源：放大醒目，占据更大比例 */
+/* 全部房源：放大醒目，占据更大比例；橙底白字吸引注意力 */
 .qe-item-primary {
   flex: 2;
   gap: 16rpx;
-  padding: 12rpx 0;
+  padding: 22rpx 0;
+  margin: 8rpx 12rpx 8rpx 16rpx;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
+  box-shadow: 0 6rpx 16rpx rgba(255, 107, 53, 0.35);
 }
 
 .qe-item-map {
@@ -195,21 +199,36 @@
 .qe-text-primary {
   font-size: 36rpx;
   font-weight: 800;
-  color: var(--accent-orange-text);
+  color: #ffffff;
   letter-spacing: 1rpx;
 }
 
-/* 全部房源新图标：网格九宫格样式（替换原三横线图标） */
+/* 全部房源文字：每5秒轻微抖动一次，吸引注意力 */
+.qe-shake {
+  display: inline-block;
+  animation: qe-shake 5s ease-in-out infinite;
+}
+
+@keyframes qe-shake {
+  0%, 88%, 100% { transform: translateX(0) rotate(0); }
+  90% { transform: translateX(-4rpx) rotate(-2deg); }
+  92% { transform: translateX(4rpx) rotate(2deg); }
+  94% { transform: translateX(-4rpx) rotate(-2deg); }
+  96% { transform: translateX(4rpx) rotate(2deg); }
+  98% { transform: translateX(-2rpx) rotate(-1deg); }
+}
+
+/* 全部房源新图标：网格九宫格样式（白色，适配橙底） */
 .qe-icon-all {
   width: 44rpx;
   height: 44rpx;
   position: relative;
   flex-shrink: 0;
   background-image:
-    linear-gradient(var(--accent-orange), var(--accent-orange)),
-    linear-gradient(var(--accent-orange), var(--accent-orange)),
-    linear-gradient(var(--accent-orange), var(--accent-orange)),
-    linear-gradient(var(--accent-orange), var(--accent-orange));
+    linear-gradient(#ffffff, #ffffff),
+    linear-gradient(#ffffff, #ffffff),
+    linear-gradient(#ffffff, #ffffff),
+    linear-gradient(#ffffff, #ffffff);
   background-size: 18rpx 18rpx;
   background-repeat: no-repeat;
   background-position: 0 0, 26rpx 0, 0 26rpx, 26rpx 26rpx;
@@ -240,6 +259,84 @@
   width: 1rpx;
   height: 48rpx;
   background: var(--blue-100);
+}
+
+/* ===== 法拍房收益计算器入口（高度适中，弱于全部房源按钮） ===== */
+.yield-entry {
+  margin: 0 24rpx 16rpx;
+  padding: 22rpx 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+}
+
+.ye-icon {
+  width: 40rpx;
+  height: 40rpx;
+  flex-shrink: 0;
+  border-radius: 10rpx;
+  background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-2) 100%);
+  position: relative;
+}
+
+/* 计算器图标：机身顶部屏幕 + 圆点按键（纯 CSS，免 emoji） */
+.ye-icon::before {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  right: 8rpx;
+  top: 7rpx;
+  height: 8rpx;
+  border-radius: 3rpx;
+  background: #ffffff;
+}
+
+.ye-icon::after {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 21rpx;
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    9rpx 0 0 #ffffff,
+    18rpx 0 0 #ffffff,
+    0 9rpx 0 #ffffff,
+    9rpx 9rpx 0 #ffffff,
+    18rpx 9rpx 0 #ffffff;
+}
+
+.ye-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  min-width: 0;
+}
+
+.ye-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--blue-900);
+  letter-spacing: 1rpx;
+}
+
+.ye-sub {
+  font-size: 22rpx;
+  color: var(--blue-400, #8aa0bd);
+}
+
+.ye-arrow {
+  flex-shrink: 0;
+  font-size: 40rpx;
+  font-weight: 300;
+  color: var(--accent-orange);
+  line-height: 1;
 }
 
 /* ===== 区域标题 V2 ===== */

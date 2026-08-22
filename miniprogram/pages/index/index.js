@@ -6,7 +6,6 @@ const DISTRICTS_BY_CITY = {
     310000: ['浦东新区', '静安区', '徐汇区', '黄浦区', '长宁区', '虹口区', '杨浦区', '普陀区', '宝山区', '闵行区', '嘉定区', '松江区', '青浦区', '奉贤区', '金山区', '崇明区'],
     330200: ['海曙区', '江北区', '江东区', '北仑区', '镇海区', '鄞州区', '奉化区', '余姚市', '慈溪市', '宁海县', '象山县'],
     330100: ['上城区', '下城区', '江干区', '拱墅区', '西湖区', '滨江区', '萧山区', '余杭区', '临平区', '钱塘区', '富阳区', '临安区', '桐庐县', '淳安县', '建德市'],
-    371300: ['兰山区', '罗庄区', '河东区', '沂南县', '郯城县', '沂水县', '兰陵县', '费县', '平邑县', '莒南县', '蒙阴县', '临沭县'],
 };
 function districtsForCity(cityId) {
     return DISTRICTS_BY_CITY[cityId] || DISTRICTS_BY_CITY[310000];
@@ -15,7 +14,6 @@ const DEFAULT_CITIES = [
     { city_id: 310000, city_name: '上海', is_active: true },
     { city_id: 330200, city_name: '宁波', is_active: true },
     { city_id: 330100, city_name: '杭州', is_active: true },
-    { city_id: 371300, city_name: '临沂', is_active: true },
 ];
 const PRICE_RANGES = [
     { label: '100万以下', value: '0-1000000' },
@@ -156,6 +154,9 @@ Page({
     onMapFind() {
         wx.navigateTo({ url: '/pages/map-property/map-property' });
     },
+    onYieldCalc() {
+        wx.navigateTo({ url: '/pages/yield-calculator/yield-calculator' });
+    },
     onArticleTap(e) {
         const id = e.currentTarget.dataset.id;
         wx.navigateTo({ url: `/pages/article/article?id=${id}` });
@@ -190,20 +191,5 @@ Page({
     },
     onScrollTop() {
         wx.pageScrollTo({ scrollTop: 0, duration: 300 });
-    },
-    // 转发给好友
-    onShareAppMessage() {
-        const city = this.data.currentCityName || '上海';
-        return {
-            title: `法拍者联盟 — ${city}法拍房源每日更新，捡漏低至骨折价`,
-            path: '/pages/index/index',
-        };
-    },
-    // 分享到朋友圈
-    onShareTimeline() {
-        const city = this.data.currentCityName || '上海';
-        return {
-            title: `法拍者联盟 — ${city}法拍房源每日更新，捡漏低至骨折价`,
-        };
     },
 });

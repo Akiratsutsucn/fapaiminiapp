@@ -12,6 +12,7 @@
     "pages/customer-service/customer-service",
     "pages/mortgage-calculator/mortgage-calculator",
     "pages/tax-calculator/tax-calculator",
+    "pages/yield-calculator/yield-calculator",
     "pages/map-property/map-property",
     "pages/mine/mine"
   ],
@@ -81,6 +82,12 @@
         "selectedIconPath": "images/tab-mine-active.png"
       }
     ]
+  },
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.7",
+      "provider": "wx069ba97219f66d99"
+    }
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",

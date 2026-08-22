@@ -51,13 +51,23 @@
   <view class="quick-entry glass-card">
     <view class="qe-item qe-item-primary" bindtap="onViewAll">
       <view class="qe-icon-all"></view>
-      <text class="qe-text qe-text-primary">点我查看全部房源</text>
+      <text class="qe-text qe-text-primary qe-shake">点我查看全部房源</text>
     </view>
     <view class="qe-divider"></view>
     <view class="qe-item qe-item-map" bindtap="onMapFind">
       <view class="qe-icon-map"></view>
       <text class="qe-text">地图找房</text>
     </view>
+  </view>
+
+  <!-- 法拍房收益计算器入口（高度适中，不抢全部房源按钮注意力） -->
+  <view class="yield-entry refined-border" bindtap="onYieldCalc">
+    <view class="ye-icon"></view>
+    <view class="ye-body">
+      <text class="ye-title">法拍房收益计算器</text>
+      <text class="ye-sub">捡漏前算一算，未来收益早知道</text>
+    </view>
+    <text class="ye-arrow">›</text>
   </view>
 
   <!-- ============ 法拍秘籍 ============ -->
@@ -118,5 +128,3 @@
   <!-- 浮动按钮 -->
   <float-buttons bind:contact="onContact" bind:top="onScrollTop" />
 </view>
-
-<privacy-popup />

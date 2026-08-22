@@ -1,0 +1,154 @@
+<view class="page">
+  <!-- 输入区 -->
+  <view class="card">
+    <!-- 城市选择 -->
+    <view class="form-group">
+      <text class="label">房源所在城市</text>
+      <view class="opt-group">
+        <view class="opt-chip {{cityIndex === index ? 'active' : ''}}"
+              wx:for="{{cities}}" wx:key="cityId"
+              bindtap="onCityTap" data-index="{{index}}">{{item.cityName}}</view>
+      </view>
+    </view>
+
+    <view class="section-divider"><text>买入信息</text></view>
+
+    <view class="form-group">
+      <text class="label">法拍成交价（元）</text>
+      <input class="input" type="digit" placeholder="如 3373600" value="{{dealPrice}}" data-field="dealPrice" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">保证金（元，仅展示·已抵扣进成交价）</text>
+      <input class="input" type="digit" placeholder="如 300000" value="{{deposit}}" data-field="deposit" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">建筑面积（㎡，影响契税档位）</text>
+      <input class="input" type="digit" placeholder="如 89" value="{{area}}" data-field="area" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">维修基金欠费（元）</text>
+      <input class="input" type="digit" placeholder="选填，如 5000" value="{{repairFundOwed}}" data-field="repairFundOwed" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">物业欠费（元）</text>
+      <input class="input" type="digit" placeholder="选填" value="{{propertyOwed}}" data-field="propertyOwed" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">水电煤欠费（元）</text>
+      <input class="input" type="digit" placeholder="选填" value="{{utilityOwed}}" data-field="utilityOwed" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">竞拍服务费（元）</text>
+      <input class="input" type="digit" placeholder="选填" value="{{auctionServiceFee}}" data-field="auctionServiceFee" bindinput="onInput" />
+    </view>
+
+    <view class="section-divider"><text>持有与卖出</text></view>
+
+    <view class="form-group">
+      <text class="label">物业费单价（元/㎡·月）</text>
+      <input class="input" type="digit" placeholder="如 2.5" value="{{propertyFeeRate}}" data-field="propertyFeeRate" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">二手房卖出总价（元）</text>
+      <input class="input" type="digit" placeholder="如 4000000" value="{{sellPrice}}" data-field="sellPrice" bindinput="onInput" />
+    </view>
+    <view class="form-group">
+      <text class="label">持有年数（买入到卖出间隔）</text>
+      <input class="input" type="digit" placeholder="如 1" value="{{holdYears}}" data-field="holdYears" bindinput="onInput" />
+    </view>
+
+    <view class="section-divider"><text>税费条件</text></view>
+
+    <view class="form-group">
+      <text class="label">购房套数（影响契税）</text>
+      <view class="opt-group">
+        <view class="opt-chip {{homeCount === 1 ? 'active' : ''}}" bindtap="onHomeCount" data-value="1">首套</view>
+        <view class="opt-chip {{homeCount === 2 ? 'active' : ''}}" bindtap="onHomeCount" data-value="2">二套</view>
+        <view class="opt-chip {{homeCount >= 3 ? 'active' : ''}}" bindtap="onHomeCount" data-value="3">三套及以上</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="label">卖出时是否满2年（影响增值税）</text>
+      <view class="opt-group">
+        <view class="opt-chip {{overTwoYears ? 'active' : ''}}" bindtap="onToggleTwoYears" data-value="true">满2年（免征）</view>
+        <view class="opt-chip {{!overTwoYears ? 'active' : ''}}" bindtap="onToggleTwoYears" data-value="false">不满2年</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="label">卖出时是否满五唯一（免个税）</text>
+      <view class="opt-group">
+        <view class="opt-chip {{overFiveUnique ? 'active' : ''}}" bindtap="onToggleFiveUnique" data-value="true">满五唯一（免征）</view>
+        <view class="opt-chip {{!overFiveUnique ? 'active' : ''}}" bindtap="onToggleFiveUnique" data-value="false">非唯一</view>
+      </view>
+    </view>
+
+    <view class="form-group" wx:if="{{!overFiveUnique}}">
+      <text class="label">个人所得税计征方式</text>
+      <view class="opt-group">
+        <view class="opt-chip {{incomeMode === 'diff' ? 'active' : ''}}" bindtap="onIncomeMode" data-value="diff">差额20%</view>
+        <view class="opt-chip {{incomeMode === 'assess' ? 'active' : ''}}" bindtap="onIncomeMode" data-value="assess">核定1%</view>
+      </view>
+    </view>
+
+    <view class="btn-row">
+      <button class="btn-primary" bindtap="onCalculate">开始计算收益</button>
+    </view>
+  </view>
+
+  <!-- 结果区 -->
+  <view class="card result-card gild-top" wx:if="{{calculated}}">
+    <view class="result-highlight">
+      <text class="result-label">预计净利润（扣除垫付退还后）</text>
+      <text class="result-number">{{netProfit}}</text>
+      <text class="result-unit">元</text>
+      <text class="result-sub">回报收益率 {{returnRate}}% · 年化 {{annualRate}}%</text>
+    </view>
+
+    <!-- 三阶段明细 -->
+    <view class="stage" wx:for="{{stages}}" wx:key="title" wx:for-item="stage">
+      <view class="stage-head">
+        <text class="stage-title">{{stage.title}}</text>
+        <text class="stage-total">{{stage.total}}</text>
+      </view>
+      <view class="fee-list">
+        <view class="fee-row" wx:for="{{stage.items}}" wx:key="label" wx:for-item="it">
+          <text class="fee-k">{{it.label}}<text class="fee-note" wx:if="{{it.note}}">（{{it.note}}）</text></text>
+          <text class="fee-v">{{it.amount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 汇总 -->
+    <view class="fee-list summary">
+      <view class="fee-row"><text class="fee-k">垫付卖方税费合计</text><text class="fee-v">{{advancePaid}} 元</text></view>
+      <view class="fee-row"><text class="fee-k">可申请退还金额</text><text class="fee-v" style="color: var(--success);">+{{advanceRefund}} 元</text></view>
+      <view class="fee-row"><text class="fee-k">总成本（含垫付）</text><text class="fee-v">{{totalCost}} 元</text></view>
+      <view class="fee-row"><text class="fee-k">实际投入成本（扣除可退垫付）</text><text class="fee-v">{{investCost}} 元</text></view>
+      <view class="fee-row"><text class="fee-k">二手房卖出总价</text><text class="fee-v">{{sellPriceWan}} 元</text></view>
+      <view class="fee-row total"><text class="fee-k">净利润（扣除垫付退还后）</text><text class="fee-v accent">{{netProfit}} 元</text></view>
+    </view>
+
+    <view class="disclaimer">税费按 {{cityName}} 现行政策常见口径估算，最终以税务及不动产登记部门核定为准。买入时垫付的卖方税费可申请退还，退还以实际到账为准。本测算不含贷款利息、出租收益及装修费用。</view>
+
+    <view class="btn-row share-btn-row">
+      <button class="btn-primary" bindtap="onGenShareImage" disabled="{{generating}}">{{generating ? '生成中…' : '生成收益测算图'}}</button>
+    </view>
+  </view>
+
+  <!-- 分享图弹窗 -->
+  <view class="share-modal" wx:if="{{showShareModal}}" bindtap="onCloseShareModal">
+    <view class="share-panel" catchtap="">
+      <image class="share-img" src="{{shareImg}}" mode="widthFix" show-menu-by-longpress />
+      <view class="share-actions">
+        <button class="share-btn save" bindtap="onSaveShareImage">保存到相册</button>
+        <button class="share-btn forward" open-type="share">转发给好友</button>
+      </view>
+      <view class="share-tip">长按图片也可保存或转发</view>
+    </view>
+  </view>
+
+  <!-- 隐藏 canvas（离屏绘制分享图） -->
+  <canvas type="2d" id="shareCanvas" class="offscreen-canvas"></canvas>
+</view>
