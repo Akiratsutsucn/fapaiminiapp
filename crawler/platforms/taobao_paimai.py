@@ -34,6 +34,14 @@ NOTICE_API = "https://h5api.m.taobao.com/h5/mtop.com.taobao.auction.notice.conte
 PROJECT_API = "https://h5api.m.taobao.com/h5/mtop.com.taobao.auction.project.content.get/1.0/"
 APP_KEY = "12574478"
 
+# 临沂区县简写→全称(benefits 里多为简写;engine 白名单/engine 区县定归属只认全称,
+# 不归一会被「非白名单辖区」误杀)。
+_LY_BARE_DISTRICT_MAP = {
+    "兰山": "兰山区", "罗庄": "罗庄区", "河东": "河东区",
+    "沂南": "沂南县", "郯城": "郯城县", "沂水": "沂水县", "兰陵": "兰陵县",
+    "平邑": "平邑县", "莒南": "莒南县", "蒙阴": "蒙阴县", "临沭": "临沭县",
+}
+
 DETAIL_URL_TEMPLATE = (
     "https://pages-fast.m.taobao.com/wow/z/app/pm/dzc-ice/dzc-detail"
     "?x-ssr=true&disableNav=YES&x-preload=true&forceThemis=true&skeleton=true"
@@ -362,6 +370,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         """
         client = await self._get_http()
 
+        # 相似组按城市隔离:crawler 实例在四城间复用,不清空会把上一城市(如临沂)
+        # 捕获的折叠组带到本城市(如上海)末尾展开,展开条目被错标成当前城市。
+        self._similar_groups = {}
+
         # 构造关键词列表:城市整体 + 各区县
         keywords = [city or ""]
         try:
@@ -555,7 +567,7 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         benefits = row.get("auctionBenefits", [])
         # 城市名(非区县):benefits 里可能同时含城市名和区名(如['上海','黄浦']),
         # 优先取区名,城市名仅在无区名时兜底。
-        _city_names = ("上海", "宁波", "杭州")
+        _city_names = ("上海", "宁波", "杭州", "临沂")
         _districts = (
             # 上海
             "黄浦", "徐汇", "长宁", "静安", "普陀", "虹口", "杨浦",
@@ -567,6 +579,10 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
             # 杭州（含已撤并的「下城」「江干」旧区）
             "上城", "下城", "江干", "拱墅", "西湖", "滨江", "萧山", "余杭",
             "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德",
+            # 临沂(3区9县,区名兼容带/不带『区』后缀)
+            "兰山", "罗庄", "河东", "兰山区", "罗庄区", "河东区",
+            "沂南", "郯城", "沂水", "兰陵", "费县", "平邑",
+            "莒南", "蒙阴", "临沭",
         )
         if isinstance(benefits, list):
             _city_fallback = ""
@@ -580,6 +596,8 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     _city_fallback = b
             if not district:
                 district = _city_fallback
+        if district in _LY_BARE_DISTRICT_MAP:
+            district = _LY_BARE_DISTRICT_MAP[district]
 
         starting_price_text = ""
         if init_price:
@@ -1188,11 +1206,14 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                         "象山", "宁海", "余姚", "慈溪", "宁波")
         hz_districts = ("上城", "下城", "江干", "拱墅", "西湖", "滨江", "萧山", "余杭",
                         "临平", "钱塘", "富阳", "临安", "桐庐", "淳安", "建德", "杭州")
+        ly_districts = ("兰山", "罗庄", "河东", "兰山区", "罗庄区", "河东区",
+                        "沂南", "郯城", "沂水", "兰陵", "费县", "平邑",
+                        "莒南", "蒙阴", "临沭", "临沂")
         # 市名(非区)——只作兜底,绝不优先于真正的区名。
         # 历史bug:市名混在区名列表里且取第一个匹配,benefits中"杭州"常排在"钱塘"前,
         # 导致742条district被错存成"杭州"而非具体区,C端按区筛不到。
-        _city_names = ("上海", "宁波", "杭州")
-        _all_districts = sh_districts + nb_districts + hz_districts
+        _city_names = ("上海", "宁波", "杭州", "临沂")
+        _all_districts = sh_districts + nb_districts + hz_districts + ly_districts
         # 第一遍:只认真正的区(排除市名)
         for b in benefits:
             if isinstance(b, str) and b in _all_districts and b not in _city_names:
@@ -1207,9 +1228,12 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
         # City from benefits
         city_from_benefits = ""
         for b in benefits:
-            if isinstance(b, str) and b in ("上海", "上海市", "宁波", "宁波市", "杭州", "杭州市"):
+            if isinstance(b, str) and b in ("上海", "上海市", "宁波", "宁波市",
+                                            "杭州", "杭州市", "临沂", "临沂市"):
                 city_from_benefits = b.rstrip("市")
                 break
+        if district in _LY_BARE_DISTRICT_MAP:
+            district = _LY_BARE_DISTRICT_MAP[district]
 
         # Community from extra
         community = extra.get("hCellName", "")
@@ -1248,8 +1272,8 @@ class TaobaoPaiMaiCrawler(AbstractBrokerCrawler):
                     images.append(pic)
 
         # City division code for validation
-        city_div_code = {"上海": "310000", "宁波": "330200", "杭州": "330100"}.get(
-            city_from_benefits, "")
+        city_div_code = {"上海": "310000", "宁波": "330200", "杭州": "330100",
+                         "临沂": "371300"}.get(city_from_benefits, "")
 
         # Build location string from district + city
         location_str = ""

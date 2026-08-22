@@ -447,6 +447,10 @@ class CrawlEngine:
                 except Exception:
                     pass
 
+                # 城市归属以「该条目被哪个城市关键词搜到」为准(item.city 采集时已按 cfg 设置)。
+                # 不能沿用 configs[0] 全城统一:非首城房源在详情缺失/divisions 为空时会被
+                # 解析器兜底成首城(临沂批量房源曾因此 pc='上海' 错挂,129条)。
+                city_id = CITY_ID_MAP.get(getattr(item, "city", "") or configs[0].city, 310000)
                 async with semaphore:
                     task_db = await get_session()
                     try:
@@ -597,8 +601,19 @@ class CrawlEngine:
                                 f"{_other_province.group(1)} — {(auction_item.title or '')[:36]}"
                             )
                             return "skipped_city", None
+                        # 区县是城市归属最强信号,优先于下方 pc/addr 文本链:
+                        # pc 在平台 divisions 缺失时会被解析器兜底成「搜索城市」(临沂批量房源
+                        # 曾因此 pc='上海' 错挂);addr 含路名会误判(莒南「上海路」含『上海』、
+                        # 浦东「临沂路」含『临沂』)。district 唯一命中某市辖区时直接定归属。
+                        _dist0 = (auction_item.district or "").strip()
+                        _dc_hits = [cid for cid, dset in VALID_DISTRICTS.items()
+                                    if _dist0 and _dist0 in dset]
+                        if len(_dc_hits) == 1:
+                            auction_item.city_id = _dc_hits[0]
+                            auction_item.province_city = {
+                                v: k for k, v in CITY_ID_MAP.items()}[_dc_hits[0]]
                         # 兼容 parser 偶尔解析异常的边界情况（如「江宁波市」「省宁波市」）
-                        if "宁波" in pc or "宁波" in addr:
+                        elif "宁波" in pc or "宁波" in addr:
                             auction_item.city_id = 330200
                             auction_item.province_city = "宁波"
                         elif "杭州" in pc or "杭州" in addr:

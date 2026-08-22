@@ -1,29 +1,30 @@
-"""本地无认证 SOCKS5 → 青果按量提取住宅代理 的纯 asyncio 桥接器。
+"""本地无认证 SOCKS5 → 青果长效住宅代理(动态型) 的纯 asyncio 桥接器。
 
-用途：Chromium/httpx 直接对接青果短效住宅代理不方便(每次要提取新IP、IP约1分钟失效)，
+用途：Chromium/httpx 直接对接青果住宅代理不方便(每次要提取新IP)，
 故在本机起一个无认证 socks5 监听端口，屏蔽上游细节：
   - 本地端：SOCKS5 无认证、CONNECT、DOMAINNAME/IPv4/IPv6（爬虫全部只连这里）
-  - 上游端：青果 HTTP 代理（对返回的 server 发 HTTP CONNECT，账密 Authkey:Authpwd）
+  - 上游端：青果 HTTP 代理（对返回的 server 发 HTTP CONNECT，白名单免账密/账密 Authkey:Authpwd）
 
-青果按量提取(qg.net)：
-  - 提取: GET https://share.proxy.qg.net/get?key=<Authkey>&num=1&distinct=true
-    → {code:SUCCESS, data:[{proxy_ip, server:"ip:port", area, isp, deadline}]}
-  - server 才是代理地址；IP 短效(实测约 1 分钟失效)；限速 60 次/分钟。
-  - 换 IP = 重新提取。本桥按 TTL 缓存一个当前出口，到期或失败自动换新。
+青果长效代理·动态型(longterm.proxy.qg.net,2026-08-12 接入)：
+  - 提取: GET https://longterm.proxy.qg.net/get?key=<Authkey>&num=1&distinct=false
+    → {code:SUCCESS, data:{ips:[{proxy_ip, server:"ip:port", area, isp, deadline}]}}
+  - server 才是代理地址；IP 长效(动态型约 30 分钟,到期自动更换)。
+  - 换 IP = 到期后重新提取；动态型无需(也不能)手动释放(delete 仅静态型,每周限2次)。
+  - 单通道(total=1)：通道被占(NO_AVAILABLE_CHANNEL)时复用当前在用 IP,不报错。
+  - 提取限速 (通道数*5+10) 次/分钟;TTL 默认 1500s → 稳态远低于上限。
 
 会话/IP 策略：
   - 全桥共享「当前出口 IP」，TTL 内所有新连接复用同一出口(保证单个 SSR 页面的所有子请求
     走同一住宅 IP，不跳变触发风控)；TTL 到期后下一个新连接触发换 IP。
   - CONNECT 上游失败(IP 已失效/被拒)→ 强制换一次 IP 重试，仍失败才回本地报错。
-  - 提取受 60 次/分钟限流：TTL 默认 45s → 稳态约 1.3 次/分钟，远低于上限。
 
 用法：python -m crawler.socks_bridge  （读 /opt/fapai/.env 的 QG_* 配置）
 环境变量：
   LOCAL_SOCKS_PORT (默认 11080)
-  QG_KEY   (青果 Authkey，默认读 QG_KEY)
-  QG_PWD   (青果 Authpwd，账密鉴权用；留空则依赖白名单免账密)
-  QG_FETCH_URL (提取API，默认 https://share.proxy.qg.net/get)
-  QG_IP_TTL (出口IP复用秒数，默认 45)
+  QG_KEY   (青果长效 Authkey)
+  QG_PWD   (青果 Authpwd，账密鉴权用；白名单免账密时留空)
+  QG_FETCH_URL (提取API，默认 https://longterm.proxy.qg.net/get)
+  QG_IP_TTL (出口IP复用秒数，默认 1500=25分钟,<30分钟有效期)
   QG_AREA / QG_AREA_EX / QG_ISP (可选：地区/排除地区/运营商过滤)
 """
 import asyncio
@@ -45,17 +46,25 @@ LOCAL_PORT = int(os.getenv("LOCAL_SOCKS_PORT", "11080"))
 
 QG_KEY = os.getenv("QG_KEY", "").strip()
 QG_PWD = os.getenv("QG_PWD", "").strip()
-QG_FETCH_URL = os.getenv("QG_FETCH_URL", "https://share.proxy.qg.net/get").strip()
-QG_IP_TTL = float(os.getenv("QG_IP_TTL", "45"))
+# 长效代理(动态型)提取API：IP 30分钟有效,到期自动更换,无需手动释放(delete仅静态型)。
+QG_FETCH_URL = os.getenv("QG_FETCH_URL", "https://longterm.proxy.qg.net/get").strip()
+# 长效 IP 复用秒数：默认 1500s(25分钟),< 30分钟有效期,留 5 分钟余量提前换。
+QG_IP_TTL = float(os.getenv("QG_IP_TTL", "1500"))
 # 外部强制换IP的信号文件：爬虫 touch 它，桥在下次取IP时检测到 mtime 变新即强制换出口。
 # 跨进程、无需PID/网络接口。见 crawler/socks_bridge_ctl.py。
 QG_KICK_FILE = os.getenv("QG_KICK_FILE", "/tmp/fapai_bridge_kick").strip()
 QG_AREA = os.getenv("QG_AREA", "").strip()
 QG_AREA_EX = os.getenv("QG_AREA_EX", "").strip()
 QG_ISP = os.getenv("QG_ISP", "").strip()
+# 长效动态型单通道默认 distinct=false;短效多IP池用 true。可用 env 覆盖。
+QG_DISTINCT = os.getenv("QG_DISTINCT", "false").strip()
 
 # 提取失败时的最短重试间隔(秒)，避免撞 60次/分钟 限流后疯狂重试
 _FETCH_MIN_INTERVAL = 1.2
+
+
+class ChannelBusyError(OSError):
+    """长效代理单通道被占(NO_AVAILABLE_CHANNEL)——非真错误,应复用当前在用IP。"""
 
 
 def _log(msg: str):
@@ -90,7 +99,9 @@ class QGProxyManager:
         return False
 
     def _build_fetch_url(self) -> str:
-        params = {"key": QG_KEY, "num": "1", "distinct": "true"}
+        # 长效代理动态型单通道:distinct=false(同一通道复用,不排除已提取过的IP)。
+        # 短效多IP池才需 distinct=true。可用 QG_DISTINCT 覆盖。
+        params = {"key": QG_KEY, "num": "1", "distinct": QG_DISTINCT, "format": "json"}
         if QG_AREA:
             params["area"] = QG_AREA
         if QG_AREA_EX:
@@ -100,19 +111,62 @@ class QGProxyManager:
         return QG_FETCH_URL + "?" + urllib.parse.urlencode(params)
 
     def _fetch_sync(self) -> tuple[str, str]:
-        """同步 HTTP 拉一个新出口。返回 (server, area)。失败抛异常。"""
+        """同步 HTTP 拉一个新出口。返回 (server, area)。失败抛异常。
+        长效代理单通道：通道被占(NO_AVAILABLE_CHANNEL)时返回 None 信号,由 get() 复用旧 IP。"""
         url = self._build_fetch_url()
         req = urllib.request.Request(url, headers={"User-Agent": "fapai-bridge/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = resp.read().decode("utf-8", "ignore")
+        # 青果对业务错误(如 NO_AVAILABLE_CHANNEL)也返回 HTTP 400,真实 code 在 body 里。
+        # 必须捕获 HTTPError 读 body,否则 urlopen 直接抛错丢失业务码。
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                body = resp.read().decode("utf-8", "ignore")
+        except urllib.error.HTTPError as he:
+            try:
+                body = he.read().decode("utf-8", "ignore")
+            except Exception:
+                body = ""
+            if not body:
+                raise OSError(f"青果提取 HTTP {he.code},无body")
         data = json.loads(body)
-        if data.get("code") != "SUCCESS" or not data.get("data"):
+        code = data.get("code")
+        # 通道被占：抛专用异常,get() 捕获后复用当前出口(动态长效单通道的常态)
+        if code == "NO_AVAILABLE_CHANNEL":
+            raise ChannelBusyError("通道被占,复用当前出口")
+        if code != "SUCCESS" or not data.get("data"):
             raise OSError(f"青果提取失败: {body[:200]}")
-        item = data["data"][0]
-        server = item.get("server", "").strip()
+        d = data["data"]
+        # 兼容两种返回结构：短效 data[{...}] / 长效 data{ips:[{...}]}
+        items = d.get("ips") if isinstance(d, dict) else d
+        if isinstance(items, dict):  # 单个对象也兼容
+            items = [items]
+        if not items:
+            raise OSError(f"青果返回空列表: {body[:200]}")
+        item = items[0]
+        server = (item.get("server") or "").strip()
         if not server or ":" not in server:
             raise OSError(f"青果返回无效 server: {item}")
         return server, item.get("area", "")
+
+    def _query_current_sync(self) -> tuple[str, str] | None:
+        """通道被占时,查在用 IP 复用。返回 (server, area) 或 None。"""
+        try:
+            url = f"https://longterm.proxy.qg.net/query?key={QG_KEY}"
+            req = urllib.request.Request(url, headers={"User-Agent": "fapai-bridge/1.0"})
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    body = resp.read().decode("utf-8", "ignore")
+            except urllib.error.HTTPError as he:
+                body = he.read().decode("utf-8", "ignore") if he.fp else ""
+            data = json.loads(body)
+            if data.get("code") != "SUCCESS":
+                return None
+            items = data.get("data") or []
+            if not items:
+                return None
+            server = (items[0].get("server") or "").strip()
+            return (server, "在用") if server and ":" in server else None
+        except Exception:
+            return None
 
     async def get(self, force: bool = False) -> str:
         """返回当前可用出口 server(ip:port)。TTL 过期或 force 时换新。"""
@@ -133,7 +187,24 @@ class QGProxyManager:
                 await asyncio.sleep(wait)
 
             self._last_fetch_call = time.time()
-            server, area = await asyncio.to_thread(self._fetch_sync)
+            try:
+                server, area = await asyncio.to_thread(self._fetch_sync)
+            except ChannelBusyError:
+                # 单通道被占：优先复用内存里的当前出口;没有则查在用IP复用
+                if self._server:
+                    # 不刷新 _fetched_at:否则每次 kick(爬虫熔断/主动换IP)都把TTL时钟
+                    # 归零,青果30分钟通道占用期内永远轮换不了新IP——风控后全轮卡死同一
+                    # 出口(2026-08-22 阿里早班即此)。保留原提取时刻,TTL自然到期后
+                    # 下次 get() 真实重新提取(届时青果占用期也已过,能拿到新IP)。
+                    _left = max(0, int(QG_IP_TTL - (time.time() - self._fetched_at)))
+                    _log(f"通道被占,复用当前出口 {self._server} (约{_left}s后TTL到期可换新)")
+                    return self._server
+                cur = await asyncio.to_thread(self._query_current_sync)
+                if cur:
+                    server, area = cur
+                    _log(f"通道被占,复用在用IP {server}")
+                else:
+                    raise OSError("通道被占且查不到在用IP")
             self._server = server
             self._area = area
             self._fetched_at = time.time()
@@ -257,7 +328,7 @@ async def main():
         _log("警告：未配置 QG_KEY，青果提取会失败。请在 .env 设置 QG_KEY/QG_PWD。")
     server = await asyncio.start_server(handle_client, LOCAL_HOST, LOCAL_PORT)
     _log(
-        f"本地无认证 socks5://{LOCAL_HOST}:{LOCAL_PORT} → 青果按量提取"
+        f"本地无认证 socks5://{LOCAL_HOST}:{LOCAL_PORT} → 青果长效住宅代理(动态型)"
         f"(TTL={QG_IP_TTL}s, area={QG_AREA or '不限'})"
     )
     async with server:
