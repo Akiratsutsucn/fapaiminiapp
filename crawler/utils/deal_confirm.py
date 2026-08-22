@@ -120,14 +120,29 @@ async def download_pdf_text(url: str, timeout: float = 20.0) -> str:
         import httpx
         if url.startswith("//"):
             url = "https:" + url
+        # Referer 按来源域名选择（公拍网 imgcdn 无正确 Referer 会 403；京东同理）。
+        if "gpai.net" in url:
+            referer = "https://www.gpai.net/"
+        elif "jd.com" in url or "jdcdn" in url:
+            referer = "https://paimai.jd.com/"
+        elif "alicdn" in url or "taobao" in url:
+            referer = "https://pages-fast.m.taobao.com/"
+        else:
+            referer = "https://paimai.jd.com/"
         headers = {
-            "Referer": "https://paimai.jd.com/",
+            "Referer": referer,
             "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                            "AppleWebKit/537.36 (KHTML, like Gecko) "
                            "Chrome/126.0.0.0 Safari/537.36"),
         }
-        async with httpx.AsyncClient(timeout=timeout, headers=headers,
-                                     follow_redirects=True) as client:
+        # 走本地住宅代理桥(127.0.0.1:11080)规避 imgcdn/alicdn 对机房IP的 403/420。
+        # 桥未起或失败时由 httpx 抛错→上层静默降级(返回空串)，不影响主流程。
+        import os
+        proxy = os.getenv("DEAL_CONFIRM_PROXY", "socks5h://127.0.0.1:11080")
+        client_kwargs = {"timeout": timeout, "headers": headers, "follow_redirects": True}
+        if proxy:
+            client_kwargs["proxy"] = proxy
+        async with httpx.AsyncClient(**client_kwargs) as client:
             resp = await client.get(url)
             resp.raise_for_status()
             data = resp.content
@@ -154,13 +169,18 @@ async def parse_deal_confirm_end_time(url: str) -> datetime | None:
 async def parse_deal_confirm(url: str) -> dict:
     """给定成交确认书 PDF url，一次性解析「网拍结束时间」+「成交价」。
 
-    返回 {"end_time": datetime|None, "deal_price": int}。下载/解析失败返回空值字典，
-    不抛异常（调用方据此回退）。只下载一次 PDF，避免重复网络开销。
+    返回 {"end_time": datetime|None, "deal_price": int, "deal_date": datetime|None}。
+    下载/解析失败返回空值字典，不抛异常（调用方据此回退）。只下载一次 PDF，避免重复网络开销。
+
+    deal_date：真实成交时间。成交确认书是真成交后才出具的，其内「网拍结束时间」
+    即真实成交那一刻，故 deal_date == end_time（与拍卖前预估的 auction_end_time 区分）。
     """
     text = await download_pdf_text(url)
     if not text:
-        return {"end_time": None, "deal_price": 0}
+        return {"end_time": None, "deal_price": 0, "deal_date": None}
+    end_time = extract_online_end_time(text)
     return {
-        "end_time": extract_online_end_time(text),
+        "end_time": end_time,
         "deal_price": extract_deal_price(text),
+        "deal_date": end_time,  # 成交确认书的网拍结束时间=真实成交时间
     }

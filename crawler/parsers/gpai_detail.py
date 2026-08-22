@@ -32,6 +32,28 @@ _RE_SIGN_CN = re.compile(
 )
 
 
+# 成交日期/时间明文：「成交日期：2026-6-4 10:43:37」「成交时间：2026-06-04 10:43」
+_RE_DEAL_DATE = re.compile(
+    r"成交(?:日期|时间|日)?[：:]\s*(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})"
+    r"(?:[日号]?\s*(\d{1,2})[:：时点](\d{1,2})(?:[:：分](\d{1,2}))?)?"
+)
+
+
+def _extract_deal_date_from_text(text: str):
+    """从成交房源正文提取真实成交时间。匹配「成交日期：2026-6-4 10:43:37」等。"""
+    m = _RE_DEAL_DATE.search(text or "")
+    if not m:
+        return None
+    try:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        hh = int(m.group(4)) if m.group(4) else 0
+        mm = int(m.group(5)) if m.group(5) else 0
+        ss = int(m.group(6)) if m.group(6) else 0
+        return datetime(y, mo, d, hh, mm, ss)
+    except (ValueError, TypeError):
+        return None
+
+
 def _cn_year(s: str) -> int:
     """二〇二六 → 2026。"""
     return int("".join(str(_CN_NUM[c]) for c in s))
@@ -136,6 +158,8 @@ class GPaiDetailParser(AbstractParser):
                     item.online_auction_end_time = info["end_time"]
                 if info.get("deal_price"):
                     item.final_deal_price = info["deal_price"]
+                if info.get("deal_date"):
+                    item.deal_date = info["deal_date"]  # 真实成交时间
             except Exception as e:
                 logger.debug(f"[公拍网] 成交确认书 PDF 解析失败: {e}")
 
@@ -148,6 +172,10 @@ class GPaiDetailParser(AbstractParser):
             dp = _extract_deal_price(full_text)
             if dp:
                 item.final_deal_price = dp
+        # HTML 正文兜底解析真实成交时间：成交后正文有「成交日期：2026-6-4 10:43:37」
+        # 或「成交时间：…」明文（PDF 未给出时）。
+        if not item.deal_date:
+            item.deal_date = _extract_deal_date_from_text(full_text)
         # 有成交价即视为已成交（公拍网成交价只在成交后才显示）
         if item.final_deal_price and not item.deal_confirmed:
             item.deal_confirmed = True

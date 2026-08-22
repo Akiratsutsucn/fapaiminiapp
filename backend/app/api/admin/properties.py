@@ -134,6 +134,8 @@ async def list_properties_admin(
             "announcement_url": p.announcement_url, "description": p.description,
             "view_count": p.view_count, "participant_count": p.participant_count,
             "loan_support": p.loan_support, "has_attachments": p.has_attachments,
+            "final_deal_price": p.final_deal_price,
+            "deal_date": str(p.deal_date) if p.deal_date else None,
             "cover_image": cover,
             "created_at": str(p.created_at), "updated_at": str(p.updated_at),
         })
@@ -188,6 +190,7 @@ async def export_properties(
         ("beike_latest_deal_time", "贝壳最新成交时间"),
         ("auction_round", "拍卖轮次"), ("auction_status", "拍卖状态"),
         ("auction_start_time", "开拍时间"), ("auction_end_time", "结束时间"),
+        ("final_deal_price", "成交价格(元)"), ("deal_date", "成交日期"),
         ("court_name", "拍卖法院"), ("case_number", "案号"),
         ("view_count", "围观人数"), ("participant_count", "参拍人数"),
         ("loan_support", "支持贷款"), ("has_attachments", "有无附件"),

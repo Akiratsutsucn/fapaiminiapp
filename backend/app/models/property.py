@@ -103,6 +103,10 @@ class Property(Base):
     #   「网络拍卖成交价格：￥…」、公拍网HTML「成交价：…元」、阿里成交结果)。
     #   远低于评估价 appraisal_price，是小程序「昨日成交」展示折扣冲击力的核心数据。
     final_deal_price = Column(BigInteger, nullable=False, default=0, comment="法拍成交价(元),来自成交确认书")
+    # deal_date：真实成交时间（用户 2026-08-04 要求）。
+    #   区别于 online_auction_end_time（那是拍卖前预估的结束日，到期不一定真成交）。
+    #   公拍网=「竞价成功确认书」成交时间；京东=获拍/领先时间；阿里=成交结果时间。
+    deal_date = Column(DateTime, nullable=True, comment="真实成交时间(成交确认书/获拍时间)")
 
     # === smart enrichment（O5/O6）===
     tags = Column(JSON, nullable=True, comment="智能标签数组，如 ['学区房','地铁2号线','次新房']")

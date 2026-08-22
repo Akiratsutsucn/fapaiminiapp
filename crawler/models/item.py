@@ -112,6 +112,10 @@ class AuctionItem:
     online_auction_end_time: datetime | None = None
     # final_deal_price：法拍成交价(元)，来自成交确认书/成交公告
     final_deal_price: int = 0
+    # deal_date：真实成交时间（用户 2026-08-04 要求）。
+    #   区别于 online_auction_end_time/auction_end_time（预估结束日，到期不一定成交）。
+    #   公拍网/阿里=成交确认书内时间；京东=出价记录获拍时间。
+    deal_date: datetime | None = None
 
     # === images ===
     image_urls: list[str] = field(default_factory=list)

@@ -18,6 +18,42 @@ from ..utils.deal_confirm import (
 )
 
 
+# 京东实时接口里可能带成交/获拍时间的字段名（不同接口版本不一，宽松覆盖）
+_JD_DEAL_TIME_KEYS = ("dealTime", "finishTime", "bidTime", "dealDate",
+                      "successTime", "endTime", "hammerTime", "winTime")
+
+
+def _extract_jd_deal_time(rt: dict):
+    """从京东 getPaimaiRealTimeData 实时接口提取真实成交/获拍时间。
+    兼容毫秒/秒时间戳与「2026-05-24 10:37:05」字符串。取不到返回 None。"""
+    if not rt:
+        return None
+    for k in _JD_DEAL_TIME_KEYS:
+        v = rt.get(k)
+        if v in (None, "", 0):
+            continue
+        # 数字时间戳（毫秒/秒）
+        if isinstance(v, (int, float)) or (isinstance(v, str) and v.isdigit()):
+            ts = int(v)
+            if ts > 10**12:      # 毫秒
+                ts //= 1000
+            if ts > 10**9:       # 合理秒时间戳
+                try:
+                    return datetime.fromtimestamp(ts)
+                except (ValueError, OSError, OverflowError):
+                    continue
+        # 字符串时间
+        if isinstance(v, str):
+            m = re.search(r"(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})[日号]?\s*(\d{1,2})[:：时点](\d{1,2})(?:[:：分](\d{1,2}))?", v)
+            if m:
+                try:
+                    return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                    int(m.group(4)), int(m.group(5)), int(m.group(6) or 0))
+                except (ValueError, TypeError):
+                    continue
+    return None
+
+
 class JDDetailParser(AbstractParser):
     """Parse a JD auction (paimai.jd.com) detail page HTML into an AuctionItem."""
 
@@ -61,6 +97,11 @@ class JDDetailParser(AbstractParser):
                             item.online_auction_end_time = info["end_time"]
                         if info.get("deal_price"):
                             item.final_deal_price = info["deal_price"]
+                        if info.get("deal_date"):
+                            item.deal_date = info["deal_date"]  # 真实成交时间
+                    # 实时接口若带获拍/成交时间字段，作为 deal_date 兜底
+                    if not item.deal_date:
+                        item.deal_date = _extract_jd_deal_time(rt)
                 elif rt.get("blowFlag"):
                     # 流拍标志
                     item.auction_status = "流拍"

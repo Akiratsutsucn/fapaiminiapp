@@ -186,6 +186,8 @@ const ALL_COLUMNS = [
   { colKey: 'auction_status', title: '拍卖状态', width: 90 },
   { colKey: 'auction_start_time', title: '开拍时间', width: 160, sorter: true },
   { colKey: 'auction_end_time', title: '结束时间', width: 160 },
+  { colKey: 'final_deal_price_yuan', title: '成交价格(元)', width: 110 },
+  { colKey: 'deal_date_fmt', title: '成交日期', width: 150 },
   { colKey: 'court_name', title: '拍卖法院', ellipsis: true, width: 140 },
   { colKey: 'case_number', title: '案号', width: 120 },
   { colKey: 'view_count', title: '围观人数', width: 80 },
@@ -279,6 +281,8 @@ async function loadData() {
       latest_total_price_wan: p.latest_total_price ? (p.latest_total_price / 10000).toFixed(1) : '--',
       bargain_potential_wan: p.bargain_potential ? (p.bargain_potential / 10000).toFixed(1) : '--',
       beike_latest_deal_total_price_wan: p.beike_latest_deal_total_price ? (p.beike_latest_deal_total_price / 10000).toFixed(1) : '--',
+      final_deal_price_yuan: p.final_deal_price ? p.final_deal_price.toLocaleString('zh-CN') : '--',
+      deal_date_fmt: p.deal_date ? String(p.deal_date).slice(0, 19) : '--',
       has_elevator: p.has_elevator === true ? '有' : p.has_elevator === false ? '无' : '--',
       loan_support: p.loan_support === true ? '是' : p.loan_support === false ? '否' : '--',
     }))

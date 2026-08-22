@@ -142,6 +142,7 @@ class PropertyListItem(BaseModel):
     final_deal_price: int = 0
     deal_discount_rate: float = 0.0
     online_auction_end_time: Optional[datetime] = None
+    deal_date: Optional[datetime] = None  # 真实成交时间(成交确认书/获拍时间)
 
     model_config = {"from_attributes": True}
 
@@ -205,6 +206,7 @@ class PropertyDetail(BaseModel):
     online_auction_end_time: Optional[datetime] = None
     final_deal_price: int = 0
     deal_discount_rate: float = 0.0
+    deal_date: Optional[datetime] = None  # 真实成交时间(成交确认书/获拍时间)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     images: list[PropertyImageOut] = []

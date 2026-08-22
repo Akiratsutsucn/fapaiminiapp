@@ -26,7 +26,7 @@ DYNAMIC_FIELDS = frozenset({
     "market_deal_price", "market_deal_unit_price",
     "auction_status", "auction_round",
     "auction_start_time", "auction_end_time", "online_auction_end_time",
-    "final_deal_price", "deal_confirmed",
+    "final_deal_price", "deal_confirmed", "deal_date",
     "view_count", "participant_count",
 })
 
@@ -35,6 +35,7 @@ DYNAMIC_FIELDS = frozenset({
 # 房源 auction_status 变空、从「在拍」列表消失(2026-06-27 超时被杀曾致1100条status清空)。
 _DYNAMIC_KEEP_IF_EMPTY = frozenset({
     "auction_status", "auction_start_time", "auction_end_time", "online_auction_end_time",
+    "deal_date",
 })
 
 # 永不参与 update 的字段(主键/创建时间/图片单独处理)。

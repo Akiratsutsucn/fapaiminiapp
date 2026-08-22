@@ -58,6 +58,39 @@ def _safe_get(d: dict, *keys, default=None):
     return default
 
 
+# 阿里 initData 里可能带成交时间的字段名（版本不一，宽松覆盖）
+_ALI_DEAL_TIME_KEYS = ("dealTime", "soldTime", "successTime", "hammerTime",
+                       "dealDate", "winTime", "finishTime")
+
+
+def _extract_ali_deal_time(data: dict):
+    """从阿里 initData 提取真实成交时间。兼容毫秒/秒时间戳与字符串。取不到返回 None。"""
+    if not data:
+        return None
+    for k in _ALI_DEAL_TIME_KEYS:
+        v = data.get(k)
+        if v in (None, "", 0):
+            continue
+        if isinstance(v, (int, float)) or (isinstance(v, str) and v.isdigit()):
+            ts = int(v)
+            if ts > 10**12:      # 毫秒
+                ts //= 1000
+            if ts > 10**9:
+                try:
+                    return datetime.fromtimestamp(ts)
+                except (ValueError, OSError, OverflowError):
+                    continue
+        if isinstance(v, str):
+            m = re.search(r"(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})[日号]?\s*(\d{1,2})[:：时点](\d{1,2})(?:[:：分](\d{1,2}))?", v)
+            if m:
+                try:
+                    return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                    int(m.group(4)), int(m.group(5)), int(m.group(6) or 0))
+                except (ValueError, TypeError):
+                    continue
+    return None
+
+
 class TaobaoPaiMaiDetailParser(AbstractParser):
     """Parse a PaiMai detail API JSON response into an AuctionItem."""
 
@@ -120,18 +153,37 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
                     item.online_auction_end_time = info["end_time"]
                 if info.get("deal_price"):
                     item.final_deal_price = info["deal_price"]
+                if info.get("deal_date"):
+                    item.deal_date = info["deal_date"]  # 真实成交时间
             except Exception as e:
                 logger.debug(f"[阿里] 成交确认书 PDF 解析失败: {e}")
 
-        # 成交识别（阿里）：bidStatus==5(已成交) 或 列表 status=sold → 已成交。
-        # 成交价 = currentPriceLong(成交后即落槌价，已存入 latest_total_price)；
-        # 成交确认书 PDF 给出更精确值时优先用 PDF（上面已覆盖）。
+        # 成交识别（阿里）：单一 bidStatus 不可靠（实测成交房源 bidStatus=2，曾被误判撤回）。
+        # 真实成交判据（组合）：
+        #   ① bidStatus==5（明确成交态），或
+        #   ② 有成交价(currentPriceLong>0, 已存 latest_total_price) 且 有出价(bidTimes>0)
+        #      且 已过结束时间(endTime<=now) —— 表示竞价结束且有落槌价 = 成交；
+        #      showSfDealConfirm==True（有司法成交确认书）时进一步强化。
+        #   ③ deal_confirmed（成交确认书附件）兜底。
         bid_status = int(data.get("bidStatus", 0) or 0)
-        is_sold = (bid_status == 5) or item.deal_confirmed
+        bid_times = int(data.get("bidTimes", 0) or 0)
+        show_confirm = bool(data.get("showSfDealConfirm"))
+        has_deal_price = item.latest_total_price > 0
+        now = datetime.now()
+        ended = bool(item.auction_end_time and item.auction_end_time <= now)
+        is_sold = (
+            bid_status == 5
+            or item.deal_confirmed
+            or (has_deal_price and bid_times > 0 and ended)
+            or (has_deal_price and show_confirm and ended)
+        )
         if is_sold:
             item.deal_confirmed = True
             if not item.final_deal_price and item.latest_total_price > 0:
                 item.final_deal_price = item.latest_total_price
+            # 真实成交时间 = endTime（成交房源的结束时间即落槌成交时刻）
+            if not item.deal_date:
+                item.deal_date = _extract_ali_deal_time(data) or item.auction_end_time
         # 正文出现成交确认书字样也置 deal_confirmed（已由 apply_text_fallbacks 处理）
 
         self._compute_derived_fields(item)
@@ -209,11 +261,13 @@ class TaobaoPaiMaiDetailParser(AbstractParser):
             if round_val in ("一拍", "二拍", "变卖"):
                 item.auction_round = round_val
 
-        # Status from bidStatus
+        # Status from bidStatus（注意：bidStatus==2 实为「竞价中/已结束待判」，
+        # 不能直接映射成时序态，否则会把已结束成交的房源误导；时序态交给下方
+        # normalize_status 按 start/end 重算，这里仅保留明确的结果态 5/6）。
         bid_status = int(data.get("bidStatus", 0))
         status_map = {
-            1: "即将开拍", 2: "即将开拍", 3: "进行中",
-            4: "已结束", 5: "已成交", 6: "已撤回",
+            1: "即将开拍", 3: "进行中",
+            5: "已成交", 6: "已撤回",
         }
         status = status_map.get(bid_status, "")
         if status:
