@@ -10,7 +10,7 @@
   python -m crawler.backfill_ali_images [--commit] [--limit N] [--city-id 371300]
                                         [--platform 阿里拍卖|京东拍卖]
 """
-import sys, re, asyncio
+import sys, re, asyncio, subprocess
 from sqlalchemy import select, func
 from loguru import logger
 
@@ -43,6 +43,48 @@ def extract_item_id(source_url: str) -> str | None:
     m = re.search(r"itemId=(\d+)", source_url) or re.search(r"id=(\d+)", source_url) \
         or re.search(r"/(\d{8,})", source_url)
     return m.group(1) if m else None
+
+
+# ===== 隧道出口IP轮换等待(阿里专用) =====
+# 青果长效动态型是隧道模式:server固定、出口IP服务端自动轮换(约30分钟),
+# 提取API恒返回通道被占,无法主动换IP。SSR连续失败(当前出口被阿里风控)时,
+# 正确做法是停手等下一轮轮换,而不是把几百条房源全烧在被风控的IP上。
+def _exit_ip_via_bridge() -> str:
+    """经本地socks桥查当前隧道出口IP(与爬虫同出口)。"""
+    for url in ("https://ipinfo.io/ip", "https://api.ipify.org"):
+        try:
+            r = subprocess.run(
+                ["curl", "-s", "--max-time", "15", "-x", "socks5://127.0.0.1:11080", url],
+                capture_output=True, text=True, timeout=20)
+            ip = r.stdout.strip()
+            if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", ip):
+                return ip
+        except Exception:
+            pass
+    return ""
+
+
+async def _wait_ip_rotation(old_ip: str, max_wait: int = 2400) -> bool:
+    """轮询桥出口IP直到轮换(或超时)。返回是否等到了新IP。"""
+    waited = 0
+    while waited < max_wait:
+        await asyncio.sleep(60)
+        waited += 60
+        ip = await asyncio.to_thread(_exit_ip_via_bridge)
+        if ip and ip != old_ip:
+            print(f"  出口IP已轮换 {old_ip or '?'} → {ip} (等待{waited}s)", flush=True)
+            return True
+        if waited % 300 == 0:
+            print(f"  等待隧道轮换中... {waited}s (出口仍 {ip or old_ip or '?'})", flush=True)
+    return False
+
+
+def _reset_ssr_circuit(crawler):
+    """解掉阿里爬虫的SSR熔断,轮换后用新出口重试。"""
+    crawler._ssr_circuit_open = False
+    crawler._ssr_circuit_skips = 0
+    if hasattr(crawler, "_ssr_fail_streak"):
+        crawler._ssr_fail_streak = 0
 
 
 async def main():
@@ -88,6 +130,9 @@ async def main():
         print(f"待补图{PLATFORM}房源(city={CITY_ID or '全部'}): {len(ids)}  commit={COMMIT}", flush=True)
 
         fixed = stillempty = noid = nodetail = 0
+        fail_streak = 0
+        total_waited = 0           # 轮换等待总预算(秒),防整轮耗在等IP上
+        WAIT_BUDGET = 100 * 60
         for pid in ids:
             p = (await db.execute(select(Property).where(Property.id == pid))).scalar_one_or_none()
             if not p or not p.source_url:
@@ -105,7 +150,23 @@ async def main():
                 detail = None
             if not detail:
                 nodetail += 1
+                # 阿里:连续失败=当前出口IP被风控(熔断期会快速连烧几十条),
+                # 停手等隧道自动轮换(约30分钟)再继续,烧穿也比全灭强。
+                if PLATFORM == "阿里拍卖":
+                    fail_streak += 1
+                    if fail_streak >= 3 and total_waited < WAIT_BUDGET:
+                        old = await asyncio.to_thread(_exit_ip_via_bridge)
+                        print(f"  连续{fail_streak}条详情失败,疑似出口IP被风控,"
+                              f"等隧道轮换(当前 {old or '?'})...", flush=True)
+                        t0 = asyncio.get_event_loop().time()
+                        ok = await _wait_ip_rotation(old)
+                        total_waited += int(asyncio.get_event_loop().time() - t0)
+                        _reset_ssr_circuit(crawler)
+                        fail_streak = 0
+                        if not ok:
+                            print("  等轮换超时(40分钟),继续尝试", flush=True)
                 continue
+            fail_streak = 0
             try:
                 item = await parser.parse(detail, p.source_url, p.city_id or 310000)
             except Exception as e:
