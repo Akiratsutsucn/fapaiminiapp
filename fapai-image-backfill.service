@@ -9,7 +9,7 @@ Group=ubuntu
 WorkingDirectory=/opt/fapai
 EnvironmentFile=/opt/fapai/.env
 Environment=PYTHONPATH=/opt/fapai
-ExecStart=/bin/bash -c '/opt/fapai/venv/bin/python -m crawler.recheck_hidden_images --commit; /opt/fapai/venv/bin/python -m crawler.backfill_ali_images --commit --platform 阿里拍卖; /opt/fapai/venv/bin/python -m crawler.backfill_ali_images --commit --platform 京东拍卖'
+ExecStart=/bin/bash -c 'if pgrep -f "crawler.backfill_ali_images" >/dev/null; then echo "已有补图进程在跑,本次跳过"; exit 0; fi; exec flock -n /tmp/fapai-imgbackfill.lock /bin/bash -c "/opt/fapai/venv/bin/python -m crawler.recheck_hidden_images --commit; /opt/fapai/venv/bin/python -m crawler.backfill_ali_images --commit --platform 阿里拍卖; /opt/fapai/venv/bin/python -m crawler.backfill_ali_images --commit --platform 京东拍卖"'
 TimeoutStartSec=10800
 StandardOutput=append:/var/log/fapai/image-backfill.log
 StandardError=append:/var/log/fapai/image-backfill.log
