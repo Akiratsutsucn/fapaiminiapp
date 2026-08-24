@@ -460,9 +460,14 @@ async def refresh_community(
     try:
         import sys
         from pathlib import Path
-        crawler_root = Path(__file__).resolve().parents[3] / "crawler"
-        if str(crawler_root.parent) not in sys.path:
-            sys.path.insert(0, str(crawler_root.parent))
+        # crawler 包与 backend 同级(生产 /opt/fapai/{backend,crawler}):
+        # 沿父目录向上找第一个真正存在 crawler 包的根,不再写死层级
+        # (原 parents[3] 指向 backend/,导致 No module named 'crawler')。
+        for _root in Path(__file__).resolve().parents:
+            if (_root / "crawler" / "community_scraper.py").exists():
+                if str(_root) not in sys.path:
+                    sys.path.insert(0, str(_root))
+                break
         from crawler.community_scraper import crawl_for_property
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"爬虫模块加载失败: {e}")
