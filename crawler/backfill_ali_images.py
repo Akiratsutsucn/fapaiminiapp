@@ -1,7 +1,7 @@
 """补图：为缺少可见图片的在拍房源重新抓取并下载图片。
 
 针对详情抓取失败/图片下载限流(阿里 img.alicdn.com 420)导致首轮没存到图的房源，
-重新跑详情解析+下载图片。阿里走 IMAGE_PROXY 住宅代理规避420;京东直连。
+重新跑详情解析+下载图片。图片下载直连(实测比住宅代理更不易被alicdn限流420)。
 
 候选口径:状态为「即将开拍/进行中」且无任何可见图(原口径 auction_start_time>now
 漏掉所有「进行中」房源——它们已开拍但仍需图)。
@@ -95,11 +95,14 @@ async def main():
         parser = JDDetailParser()
         need_browser = False
     else:
-        proxy = settings.IMAGE_PROXY or settings.GPAI_PROXY
+        # 图片下载直连(不走住宅代理):2026-08-24 实测 img.alicdn.com 对服务器机房IP
+        # 连发30次全200,而经青果住宅代理批量下载反而大面积420(住宅出口IP被阿里
+        # 系CDN重点限流)。直连还顺带不烧代理流量、不与SSR抢同一出口IP的风控额度。
+        # 若直连也遇420,ImageProcessor 自带重试+10分钟冷却兜底。
         img_proc = ImageProcessor(
             extra_headers={"Referer": "https://pages-fast.m.taobao.com/"},
             cookies_str=settings.TAOBAO_COOKIE,
-            proxy=proxy,
+            proxy=None,
         )
         crawler = TaobaoPaiMaiCrawler()
         parser = TaobaoPaiMaiDetailParser()
