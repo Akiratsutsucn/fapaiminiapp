@@ -131,6 +131,8 @@ class ImageProcessor:
             use_proxy = bool(self._proxy) and attempt == max_retries
             try:
                 async with self._semaphore:
+                    # alicdn 对突发请求敏感(420),并发3下再加点间隔,降低触发冷却的概率
+                    await asyncio.sleep(0.4)
                     if self._client and not use_proxy:
                         resp = await self._client.get(url)
                     else:
