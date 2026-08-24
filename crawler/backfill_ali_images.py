@@ -10,7 +10,7 @@
   python -m crawler.backfill_ali_images [--commit] [--limit N] [--city-id 371300]
                                         [--platform 阿里拍卖|京东拍卖]
 """
-import sys, re, asyncio, subprocess
+import sys, re, asyncio, subprocess, time
 from sqlalchemy import select, func
 from loguru import logger
 
@@ -147,6 +147,13 @@ async def main():
                 print(f"  id={pid} 无法解析itemId: {p.source_url[:60]}", flush=True)
                 continue
             try:
+                # 图片下载冷却期(alicdn连续420)中硬跑=白烧一次SSR成功:
+                # 图全被跳过下载→这套仍判"仍空"。等冷却结束再抓。
+                _cd = getattr(img_proc, "_cooldown_until", 0)
+                _left = (_cd - time.monotonic()) if _cd else 0
+                if _left > 0:
+                    print(f"  图片冷却中,等{int(_left)+3}s再继续(避免白烧SSR)", flush=True)
+                    await asyncio.sleep(_left + 3)
                 detail = await crawler.fetch_detail_api(item_id)
             except Exception as e:
                 logger.debug(f"id={pid} detail fail: {e}")
