@@ -33,6 +33,7 @@ PLATFORM = "阿里拍卖"
 # 补图状态范围:默认在拍(小程序可见);--statuses 可扩到历史(后台可见),
 # 如 --statuses 已结束,已成交,已撤回
 STATUSES = ["即将开拍", "进行中"]
+IDS: list[int] = []
 for i, a in enumerate(sys.argv):
     if a == "--limit" and i + 1 < len(sys.argv):
         LIMIT = int(sys.argv[i + 1])
@@ -42,6 +43,8 @@ for i, a in enumerate(sys.argv):
         PLATFORM = sys.argv[i + 1]
     if a == "--statuses" and i + 1 < len(sys.argv):
         STATUSES = [s for s in sys.argv[i + 1].split(",") if s]
+    if a == "--ids" and i + 1 < len(sys.argv):
+        IDS = [int(x) for x in sys.argv[i + 1].split(",") if x.strip()]
 
 
 def extract_item_id(source_url: str) -> str | None:
@@ -134,6 +137,8 @@ async def main():
             .order_by(Property.id.desc())   # 新的优先:历史模式近期房源最常被翻看,源页面也最可能还活着
         )
         ids = [r[0] for r in (await db.execute(sub)).all()]
+        if IDS:
+            ids = [i for i in IDS if i in set(ids)]
         if LIMIT:
             ids = ids[:LIMIT]
         print(f"待补图{PLATFORM}房源(city={CITY_ID or '全部'}): {len(ids)}  commit={COMMIT}", flush=True)
