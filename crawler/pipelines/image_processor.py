@@ -132,7 +132,13 @@ class ImageProcessor:
             try:
                 async with self._semaphore:
                     # alicdn 对突发请求敏感(420),并发3下再加点间隔,降低触发冷却的概率
-                    await asyncio.sleep(0.4)
+                    await asyncio.sleep(0.8)
+                    # 上次 420 → 换 alicdn 镜像主机重试(gw/img 同内容,限流独立计算)
+                    if last_error == "HTTP 420":
+                        if "gw.alicdn.com" in url:
+                            url = url.replace("gw.alicdn.com", "img.alicdn.com")
+                        elif "img.alicdn.com" in url:
+                            url = url.replace("img.alicdn.com", "gw.alicdn.com")
                     if self._client and not use_proxy:
                         resp = await self._client.get(url)
                     else:
