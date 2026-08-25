@@ -30,6 +30,9 @@ COMMIT = "--commit" in sys.argv
 LIMIT = 0
 CITY_ID = 0
 PLATFORM = "阿里拍卖"
+# 补图状态范围:默认在拍(小程序可见);--statuses 可扩到历史(后台可见),
+# 如 --statuses 已结束,已成交,已撤回
+STATUSES = ["即将开拍", "进行中"]
 for i, a in enumerate(sys.argv):
     if a == "--limit" and i + 1 < len(sys.argv):
         LIMIT = int(sys.argv[i + 1])
@@ -37,6 +40,8 @@ for i, a in enumerate(sys.argv):
         CITY_ID = int(sys.argv[i + 1])
     if a == "--platform" and i + 1 < len(sys.argv):
         PLATFORM = sys.argv[i + 1]
+    if a == "--statuses" and i + 1 < len(sys.argv):
+        STATUSES = [s for s in sys.argv[i + 1].split(",") if s]
 
 
 def extract_item_id(source_url: str) -> str | None:
@@ -115,7 +120,7 @@ async def main():
         # 在拍(即将开拍/进行中)、但无可见图片的房源(--city-id 可限定城市,如临沂371300)
         _conds = [
             Property.auction_platform == PLATFORM,
-            Property.auction_status.in_(("即将开拍", "进行中")),
+            Property.auction_status.in_(tuple(STATUSES)),
             Property.is_deleted == 0,
         ]
         if CITY_ID:
@@ -126,6 +131,7 @@ async def main():
             .where(*_conds)
             .group_by(Property.id)
             .having(func.count(PropertyImage.id) == 0)
+            .order_by(Property.id.desc())   # 新的优先:历史模式近期房源最常被翻看,源页面也最可能还活着
         )
         ids = [r[0] for r in (await db.execute(sub)).all()]
         if LIMIT:
