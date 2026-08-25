@@ -132,6 +132,19 @@ async def main():
             ids = ids[:LIMIT]
         print(f"待补图{PLATFORM}房源(city={CITY_ID or '全部'}): {len(ids)}  commit={COMMIT}", flush=True)
 
+        # 列表优先快速通道(阿里):列表API稳定可用且每行自带 headerPicUrls
+        # (0825实测:206套缺图中177套在四城列表里且全部带图)。先抓四城列表
+        # 填 _row_cache,命中即免SSR直接补图——SSR名额是阿里侧最稀缺资源。
+        if PLATFORM == "阿里拍卖":
+            from crawler.utils.url_registry import get_configs
+            for _cfg in get_configs(platform="阿里拍卖"):
+                try:
+                    _items = await crawler.collect_list_items(_cfg.source_url, _cfg.city, 8)
+                    print(f"  列表采集 {_cfg.city}: {len(_items)} 条", flush=True)
+                except Exception as e:
+                    print(f"  列表采集 {_cfg.city} 失败: {e}", flush=True)
+            print(f"  列表缓存 {len(getattr(crawler, '_row_cache', {}))} 条", flush=True)
+
         fixed = stillempty = noid = nodetail = 0
         fail_streak = 0
         total_waited = 0           # 轮换等待总预算(秒),防整轮耗在等IP上
@@ -146,18 +159,28 @@ async def main():
                 noid += 1
                 print(f"  id={pid} 无法解析itemId: {p.source_url[:60]}", flush=True)
                 continue
-            try:
-                # 图片下载冷却期(alicdn连续420)中硬跑=白烧一次SSR成功:
-                # 图全被跳过下载→这套仍判"仍空"。等冷却结束再抓。
-                _cd = getattr(img_proc, "_cooldown_until", 0)
-                _left = (_cd - time.monotonic()) if _cd else 0
-                if _left > 0:
-                    print(f"  图片冷却中,等{int(_left)+3}s再继续(避免白烧SSR)", flush=True)
-                    await asyncio.sleep(_left + 3)
-                detail = await crawler.fetch_detail_api(item_id)
-            except Exception as e:
-                logger.debug(f"id={pid} detail fail: {e}")
-                detail = None
+            # 快速通道:列表行带图 → 免SSR
+            detail = None
+            if PLATFORM == "阿里拍卖":
+                _row = getattr(crawler, "_row_cache", {}).get(item_id)
+                if _row:
+                    try:
+                        detail = crawler._build_detail_from_row(_row)
+                    except Exception:
+                        detail = None
+            if not detail:
+                try:
+                    # 图片下载冷却期(alicdn连续420)中硬跑=白烧一次SSR成功:
+                    # 图全被跳过下载→这套仍判"仍空"。等冷却结束再抓。
+                    _cd = getattr(img_proc, "_cooldown_until", 0)
+                    _left = (_cd - time.monotonic()) if _cd else 0
+                    if _left > 0:
+                        print(f"  图片冷却中,等{int(_left)+3}s再继续(避免白烧SSR)", flush=True)
+                        await asyncio.sleep(_left + 3)
+                    detail = await crawler.fetch_detail_api(item_id)
+                except Exception as e:
+                    logger.debug(f"id={pid} detail fail: {e}")
+                    detail = None
             if not detail:
                 nodetail += 1
                 # 阿里:连续失败=当前出口IP被风控(熔断期会快速连烧几十条),
